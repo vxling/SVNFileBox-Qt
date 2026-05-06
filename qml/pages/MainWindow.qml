@@ -134,12 +134,11 @@ Item {
                                 }
 
                                 Button {
+                                    flat: true
                                     id: refreshBtn
                                     text: "刷新"
                                     implicitWidth: 70
                                     implicitHeight: 32
-                                    background: Rectangle {
-                                        color: parent.pressed ? "#1565C0" : (parent.hovered ? "#1E88E5" : "#F5F7FA")
                                         radius: 6
                                         border.color: parent.pressed ? "#1565C0" : (parent.hovered ? "#1E88E5" : "#E0E0E0")
                                     }
@@ -390,16 +389,18 @@ Item {
                     RowLayout {
                         spacing: 12
                         Button {
+                            flat: true
+                            flat: true
                             text: "确认"
                             implicitWidth: 100; implicitHeight: 36
-                            background: Rectangle { color: "#1E88E5"; radius: 6 }
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: doCheckout()
                         }
                         Button {
+                            flat: true
+                            flat: true
                             text: "取消"
                             implicitWidth: 100; implicitHeight: 36
-                            background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: contentStack.pop()
                         }
@@ -470,9 +471,10 @@ Item {
                             readOnly: true
                         }
                         Button {
+                            flat: true
+                            flat: true
                             text: "浏览..."
                             implicitWidth: 90; implicitHeight: 36
-                            background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: localRepoDialog.open()
                         }
@@ -493,16 +495,18 @@ Item {
                     RowLayout {
                         spacing: 12
                         Button {
+                            flat: true
+                            flat: true
                             text: "确认"
                             implicitWidth: 100; implicitHeight: 36
-                            background: Rectangle { color: "#1E88E5"; radius: 6 }
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: doAddLocal()
                         }
                         Button {
+                            flat: true
+                            flat: true
                             text: "取消"
                             implicitWidth: 100; implicitHeight: 36
-                            background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: contentStack.pop()
                         }
@@ -553,9 +557,10 @@ Item {
                         }
                         Item { Layout.fillWidth: true }
                         Button {
+                            flat: true
+                            flat: true
                             text: "← 返回"
                             implicitWidth: 80; implicitHeight: 30
-                            background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
                             onClicked: contentStack.pop()
                         }
@@ -682,16 +687,18 @@ Item {
                     RowLayout {
                         spacing: 12
                         Button {
+                            flat: true
+                            flat: true
                             text: "保存"
                             implicitWidth: 100; implicitHeight: 36
-                            background: Rectangle { color: "#1E88E5"; radius: 6 }
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: saveSettings()
                         }
                         Button {
+                            flat: true
+                            flat: true
                             text: "← 返回"
                             implicitWidth: 80; implicitHeight: 36
-                            background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: contentStack.pop()
                         }
@@ -763,9 +770,10 @@ Item {
                     Item { Layout.fillHeight: true }
 
                     Button {
+                        flat: true
+                        flat: true
                         text: "← 返回"
                         implicitWidth: 80; implicitHeight: 36
-                        background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                         contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
                         onClicked: contentStack.pop()
                     }
