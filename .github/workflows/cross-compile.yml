@@ -112,15 +112,15 @@ jobs:
           cmake --build build --parallel --config Release
 
       - name: Package
-        shell: bash
+        shell: pwsh
         run: |
           mkdir -p release/bin
           cp build/Release/SVNFileBox.exe release/bin/
-          cd release && zip -r ../svnfilebox-win64.zip bin/
+          Compress-Archive -Path release/bin -DestinationPath svnfilebox-win64.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: svnfilebox-win64.zip
-          path: release/*.zip
+          path: svnfilebox-win64.zip
           retention-days: 5
