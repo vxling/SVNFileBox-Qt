@@ -160,6 +160,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
+                            cacheBuffer: 200
                             model: fileModel
                             delegate: fileItemDelegate
                             visible: fileModel.count > 0
@@ -390,14 +391,12 @@ Item {
                         spacing: 12
                         Button {
                             flat: true
-                            flat: true
                             text: "确认"
                             implicitWidth: 100; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: doCheckout()
                         }
                         Button {
-                            flat: true
                             flat: true
                             text: "取消"
                             implicitWidth: 100; implicitHeight: 36
@@ -472,7 +471,6 @@ Item {
                         }
                         Button {
                             flat: true
-                            flat: true
                             text: "浏览..."
                             implicitWidth: 90; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
@@ -496,14 +494,12 @@ Item {
                         spacing: 12
                         Button {
                             flat: true
-                            flat: true
                             text: "确认"
                             implicitWidth: 100; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: doAddLocal()
                         }
                         Button {
-                            flat: true
                             flat: true
                             text: "取消"
                             implicitWidth: 100; implicitHeight: 36
@@ -558,7 +554,6 @@ Item {
                         Item { Layout.fillWidth: true }
                         Button {
                             flat: true
-                            flat: true
                             text: "← 返回"
                             implicitWidth: 80; implicitHeight: 30
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
@@ -592,6 +587,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
+                        cacheBuffer: 200
                         model: ListModel { id: syncRecordListModel }
 
                         delegate: Rectangle {
@@ -688,14 +684,12 @@ Item {
                         spacing: 12
                         Button {
                             flat: true
-                            flat: true
                             text: "保存"
                             implicitWidth: 100; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: saveSettings()
                         }
                         Button {
-                            flat: true
                             flat: true
                             text: "← 返回"
                             implicitWidth: 80; implicitHeight: 36
@@ -770,7 +764,6 @@ Item {
                     Item { Layout.fillHeight: true }
 
                     Button {
-                        flat: true
                         flat: true
                         text: "← 返回"
                         implicitWidth: 80; implicitHeight: 36
