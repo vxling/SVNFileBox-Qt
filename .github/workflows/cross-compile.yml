@@ -58,8 +58,11 @@ jobs:
       - name: Configure CMake
         env:
           Qt6_DIR: ${{ matrix.qt_dir }}/lib/cmake/Qt6
+          CMAKE_PREFIX_PATH: ${{ matrix.qt_dir }}
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DQt6_DIR=${{ matrix.qt_dir }}/lib/cmake/Qt6
 
       - name: Build
         run: |
