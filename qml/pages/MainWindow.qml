@@ -487,10 +487,10 @@ Item {
                 FileDialog {
                     id: localRepoDialog
                     title: "选择 SVN 工作副本目录"
-                    folder: shortcuts.home
+                    currentFolder: shortcuts.home
                     modality: Qt.WindowModal
                     onAccepted: {
-                        localRepoPathInput.text = folder
+                        localRepoPathInput.text = currentFolder
                     }
                 }
 
