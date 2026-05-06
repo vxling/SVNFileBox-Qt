@@ -78,7 +78,6 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
             }
             hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
             onClicked: removeClicked()
             Layout.alignment: Qt.AlignVCenter
         }
