@@ -56,11 +56,11 @@ jobs:
         run: |
           pip install aqtinstall==3.1
           mkdir -p ~/Qt
-          aqt install-qt mac desktop 6.5.3 clang_64 -O ~/Qt
+          aqt install-qt mac desktop 6.5.3 macos -O ~/Qt
 
       - name: Build
         env:
-          Qt6_DIR: /Users/runner/Qt/6.5.3/clang_64/lib/cmake/Qt6
+          Qt6_DIR: /Users/runner/Qt/6.5.3/macos/lib/cmake/Qt6
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -101,15 +101,17 @@ jobs:
           aqt install-qt windows desktop 6.5.3 win64_msvc2019_64 -O C:/Qt
 
       - name: Build
+        shell: bash
         env:
           Qt6_DIR: C:/Qt/6.5.3/msvc2019_64/lib/cmake/Qt6
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DQt6_DIR=$env:Qt6_DIR
+            -DQt6_DIR=$Qt6_DIR
           cmake --build build --parallel
 
       - name: Package
+        shell: bash
         run: |
           cmake --install build --prefix release
           cd release
