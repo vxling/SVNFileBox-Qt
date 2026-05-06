@@ -27,12 +27,12 @@ jobs:
       - name: Package
         run: |
           cmake --install build --prefix release
-          cd release && cpack -G TGZ
+          cd release && tar -czvf ../svnfilebox-linux.tar.gz .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: svnfilebox-linux-x64.tar.gz
+          name: svnfilebox-linux.tar.gz
           path: release/*.tar.gz
           retention-days: 5
 
@@ -70,7 +70,7 @@ jobs:
       - name: Package
         run: |
           cmake --install build --prefix release
-          cd release && cpack -G TGZ
+          cd release && tar -czvf ../svnfilebox-macos.tar.gz .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -106,6 +106,7 @@ jobs:
           Qt6_DIR: C:/Qt/6.5.3/msvc2019_64/lib/cmake/Qt6
         run: |
           cmake -B build \
+            -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DQt6_DIR=$Qt6_DIR
           cmake --build build --parallel
@@ -114,7 +115,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release/bin
-          cp build/Release/SVNFileBox.exe release/bin/
+          cp build/SVNFileBox.exe release/bin/
           cd release && zip -r ../svnfilebox-win64.zip bin/
 
       - name: Upload Artifact
