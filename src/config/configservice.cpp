@@ -1,37 +1,149 @@
 #include "configservice.h"
+#include <QCoreApplication>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QCoreApplication>
+#include <QJsonArray>
+#include <algorithm>
 
-ConfigService::ConfigService(QObject *parent)
-    : QObject(parent)
-    , m_configPath(QCoreApplication::applicationDirPath() + "/config.json")
-{}
-
-QVariantMap ConfigService::loadConfig() const
+ConfigService::ConfigService(QObject *parent) : QObject(parent)
 {
-    QVariantMap map;
-    QFile f(m_configPath);
-    if (f.open(QIODevice::ReadOnly)) {
-        QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-        map = doc.object().toVariantMap();
-        f.close();
-    }
-    return map;
+    load();
 }
 
-void ConfigService::saveConfig(const QVariantMap &config)
+QString ConfigService::configFilePath() const
 {
-    QFile f(m_configPath);
-    if (f.open(QIODevice::WriteOnly)) {
-        QJsonDocument doc(QJsonObject::fromVariantMap(config));
-        f.write(doc.toJson());
-        f.close();
-        emit const_cast<ConfigService*>(this)->configChanged();
-    }
+    return QDir(QCoreApplication::applicationDirPath() + "/..")
+        .absoluteFilePath(".svnfilebox/config.json");
 }
 
-QString ConfigService::localPath() const { return loadConfig().value("localPath").toString(); }
-QString ConfigService::remoteUrl() const { return loadConfig().value("remoteUrl").toString(); }
-QString ConfigService::username() const { return loadConfig().value("username").toString(); }
+QString ConfigService::getPassword(const QString &repoName) const
+{
+    for (const auto &r : m_repositories) {
+        if (r.name == repoName) return r.password;
+    }
+    return QString();
+}
+
+void ConfigService::load()
+{
+    QFile file(configFilePath());
+    if (!file.open(QIODevice::ReadOnly)) {
+        // 默认路径
+        m_localPath = QDir::home().absoluteFilePath(".svnfilebox/workcopies");
+        return;
+    }
+    QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+    file.close();
+
+    m_localPath = root["localPath"].toString(QDir::home().absoluteFilePath(".svnfilebox/workcopies"));
+    m_remoteUrl = root["remoteUrl"].toString();
+    m_syncIntervalMinutes = root["syncIntervalMinutes"].toInt(1);
+    m_proxyUrl = root["proxyUrl"].toString();
+    m_syncRecordRetentionDays = root["syncRecordRetentionDays"].toInt(30);
+    m_autoStart = root["autoStart"].toBool(true);
+    m_minimizeToTray = root["minimizeToTray"].toBool(true);
+
+    m_repositories.clear();
+    QJsonArray repos = root["repositories"].toArray();
+    for (const QJsonValue &v : repos) {
+        QJsonObject o = v.toObject();
+        Repository r;
+        r.name = o["name"].toString();
+        r.url = o["url"].toString();
+        r.localPath = o["localPath"].toString();
+        r.username = o["username"].toString();
+        r.password = o["password"].toString();
+        r.type = o["type"].toString("Local");
+        m_repositories.append(r);
+    }
+    m_activeRepoName = root["activeRepositoryName"].toString();
+}
+
+void ConfigService::saveConfig()
+{
+    saveToDisk();
+    emit repositoriesChanged();
+}
+
+void ConfigService::saveToDisk()
+{
+    QDir().mkpath(QFileInfo(configFilePath()).absolutePath());
+    QFile file(configFilePath());
+    if (!file.open(QIODevice::WriteOnly)) return;
+
+    QJsonObject root;
+    root["localPath"] = m_localPath;
+    root["remoteUrl"] = m_remoteUrl;
+    root["syncIntervalMinutes"] = m_syncIntervalMinutes;
+    root["proxyUrl"] = m_proxyUrl;
+    root["syncRecordRetentionDays"] = m_syncRecordRetentionDays;
+    root["autoStart"] = m_autoStart;
+    root["minimizeToTray"] = m_minimizeToTray;
+    root["activeRepositoryName"] = m_activeRepoName;
+
+    QJsonArray repos;
+    for (const Repository &r : m_repositories) {
+        QJsonObject o;
+        o["name"] = r.name;
+        o["url"] = r.url;
+        o["localPath"] = r.localPath;
+        o["username"] = r.username;
+        o["password"] = r.password;
+        o["type"] = r.type;
+        repos.append(o);
+    }
+    root["repositories"] = repos;
+
+    file.write(QJsonDocument(root).toJson());
+    file.close();
+}
+
+void ConfigService::addRepository(const QVariantMap &repo)
+{
+    Repository r;
+    r.name = repo["name"].toString();
+    r.url = repo["url"].toString();
+    r.localPath = repo["localPath"].toString();
+    r.username = repo["username"].toString();
+    r.password = repo["password"].toString();
+    r.type = repo["type"].canConvert<QString>() ? repo["type"].toString() : QString("Local");
+    m_repositories.append(r);
+    saveToDisk();
+    emit repositoriesChanged();
+}
+
+void ConfigService::removeRepository(const QString &name)
+{
+    m_repositories.erase(
+        std::remove_if(m_repositories.begin(), m_repositories.end(),
+                      [&](const Repository &r) { return r.name == name; }),
+        m_repositories.end());
+    saveToDisk();
+    emit repositoriesChanged();
+}
+
+QVariantList ConfigService::repositories() const
+{
+    QVariantList list;
+    for (const Repository &r : m_repositories) {
+        QVariantMap map;
+        map["name"] = r.name;
+        map["url"] = r.url;
+        map["path"] = r.localPath;
+        map["username"] = r.username;
+        map["password"] = r.password;
+        map["type"] = r.type;
+        map["isSelected"] = (r.name == m_activeRepoName);
+        list.append(map);
+    }
+    return list;
+}
+
+void ConfigService::setActiveRepository(const QString &name)
+{
+    m_activeRepoName = name;
+    saveToDisk();
+}

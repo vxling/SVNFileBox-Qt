@@ -1,6 +1,12 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/">
+        <file>qml/main.qml</file>
         <file>qml/pages/MainWindow.qml</file>
+        <file>qml/components/SidebarButton.qml</file>
+        <file>qml/components/StatusBadge.qml</file>
+        <file>qml/components/FileTypeIcon.qml</file>
+        <file>qml/components/RepoListItem.qml</file>
+        <file>qml/components/FileListItem.qml</file>
     </qresource>
 </RCC>

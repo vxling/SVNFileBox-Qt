@@ -2,23 +2,37 @@
 #define FILEMODEL_H
 
 #include <QAbstractListModel>
-#include <QVariantList>
+#include <QList>
+#include <QFileInfo>
+#include <QDateTime>
 
 class FileItem
 {
 public:
     QString name;
-    QString path;
-    QString status; // "synced", "modified", "new", "deleted"
-    QString modifiedTime;
+    QString fullPath;
+    bool isDirectory;
+    qint64 fileSize;
+    QDateTime lastModified;
+    QString svnStatus;      // Normal/Modified/Added/Deleted/Conflicted/Unversioned/Missing/Hidden
+    bool isCurrentPath;     // "返回上级目录" 行
 };
 
 class FileModel : public QAbstractListModel
 {
     Q_OBJECT
+    Q_PROPERTY(QString currentPath READ currentPath WRITE setCurrentPath)
 
 public:
-    enum Roles { NameRole = Qt::UserRole + 1, PathRole, StatusRole, ModifiedRole };
+    enum Roles {
+        NameRole = Qt::UserRole + 1,
+        FullPathRole,
+        IsDirectoryRole,
+        SvnStatusRole,
+        FileSizeDisplayRole,
+        LastModifiedDisplayRole,
+        IsCurrentPathRole
+    };
 
     explicit FileModel(QObject *parent = nullptr);
 
@@ -26,12 +40,18 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    Q_INVOKABLE void addFile(const QString &name, const QString &path, const QString &status);
-    Q_INVOKABLE void updateStatus(int row, const QString &status);
+    Q_INVOKABLE void load(const QString &path);
+    Q_INVOKABLE QString getFilePath(int row) const;
     Q_INVOKABLE void clear();
+
+    QString currentPath() const { return m_currentPath; }
+    void setCurrentPath(const QString &path) { m_currentPath = path; }
 
 private:
     QList<FileItem> m_files;
+    QString m_currentPath;
+
+    static QString formatFileSize(qint64 bytes);
 };
 
 #endif // FILEMODEL_H
