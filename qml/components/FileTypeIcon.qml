@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 
 Label {
     id: root
