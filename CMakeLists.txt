@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Qt Core & QML
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Dialogs)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
 
 # App
 set(APP_SOURCES
@@ -28,7 +28,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Qml
     Qt6::Quick
     Qt6::QuickControls2
-    Qt6::Dialogs
 )
 
 # Resources

@@ -7,7 +7,7 @@ import SVNFileBox.SVN
 import SVNFileBox.Sync
 import SVNFileBox.Config
 import SVNFileBox.Models
-import "../components"
+import SVNFileBox.Components
 
 Item {
     id: mainWindow

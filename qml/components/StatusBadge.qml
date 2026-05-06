@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 
 Rectangle {
     id: root
@@ -39,6 +40,5 @@ Rectangle {
         font.pixelSize: 10
         font.bold: true
         color: "#FFFFFF"
-        anchors.centerIn: parent
     }
 }

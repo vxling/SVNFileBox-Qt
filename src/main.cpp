@@ -23,6 +23,9 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
+    // 让 qrc:/ 成为可导入路径，这样 import ./components 就能找到 qmldir
+    engine.addImportPath(":/");
+
     // 全局单例（供 QML 直接访问）
     engine.rootContext()->setContextProperty("svnClient", new SVNClient(&engine));
     engine.rootContext()->setContextProperty("syncEngine", new SyncEngine(&engine));
