@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.Dialogs
 import SVNFileBox.SVN
 import SVNFileBox.Sync
 import SVNFileBox.Config
