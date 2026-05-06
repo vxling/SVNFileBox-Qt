@@ -19,7 +19,7 @@ set(APP_SOURCES
     src/models/filemodel.cpp
 )
 
-add_executable(${PROJECT_NAME} ${APP_SOURCES})
+add_executable(${PROJECT_NAME} WIN32 ${APP_SOURCES})
 
 # Qt linking
 target_link_libraries(${PROJECT_NAME} PRIVATE
