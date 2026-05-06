@@ -7,17 +7,8 @@ import SVNFileBox.Sync
 import SVNFileBox.Config
 import SVNFileBox.Models
 
-Window {
+Item {
     id: mainWindow
-    width: 1100
-    height: 580
-    minimumWidth: 900
-    minimumHeight: 550
-    visible: true
-    title: "SVNFileBox"
-    color: "#F0F4F8"
-    x: Screen.desktopAvailableWidth / 2 - width / 2
-    y: Screen.desktopAvailableHeight / 2 - height / 2
 
     // ---------- 全局单例（来自 main.cpp） ----------
     default property alias _contentStack: contentStack.children
@@ -26,21 +17,14 @@ Window {
     StackView {
         id: contentStack
         anchors.fill: parent
-        initialItem: mainPage
+        initialItem: mainPageItem
     }
-
-    Component { id: mainPage { mainPageContent{} } }
-    Component { id: checkoutPage { checkoutPageContent{} } }
-    Component { id: addLocalPage { addLocalPageContent{} } }
-    Component { id: syncRecordsPage { syncRecordsPageContent{} } }
-    Component { id: settingsPage { settingsPageContent{} } }
-    Component { id: aboutPage { aboutPageContent{} } }
 
     // ============================================================
     // 主页面
     // ============================================================
     Item {
-        id: mainPageContent
+        id: mainPageItem
         anchors.fill: parent
 
         RowLayout {
@@ -88,28 +72,28 @@ Window {
                         SidebarButton {
                             icon: "🌐"; text: "从网络添加仓库"
                             accent: true
-                            onClicked: contentStack.push(checkoutPage)
+                            onClicked: contentStack.push(checkoutPageContent)
                         }
                         SidebarButton {
                             icon: "📂"; text: "添加本地仓库"
                             accent: true
-                            onClicked: contentStack.push(addLocalPage)
+                            onClicked: contentStack.push(addLocalPageContent)
                         }
                         SidebarButton {
                             icon: "📋"; text: "查看同步记录"
                             accent: true
-                            onClicked: contentStack.push(syncRecordsPage)
+                            onClicked: contentStack.push(syncRecordsPageContent)
                         }
 
                         Rectangle { height: 1; color: "#E8E8E8"; Layout.topMargin: 4; Layout.bottomMargin: 4; Layout.fillWidth: true }
 
                         SidebarButton {
                             icon: "⚙️"; text: "设置"
-                            onClicked: contentStack.push(settingsPage)
+                            onClicked: contentStack.push(settingsPageContent)
                         }
                         SidebarButton {
                             icon: "ℹ️"; text: "关于"
-                            onClicked: contentStack.push(aboutPage)
+                            onClicked: contentStack.push(aboutPageContent)
                         }
                     }
                 }
@@ -371,7 +355,6 @@ Window {
     Item {
         id: checkoutPageContent
         anchors.fill: parent
-        visible: false
 
         Rectangle {
             anchors.fill: parent
@@ -464,7 +447,6 @@ Window {
     Item {
         id: addLocalPageContent
         anchors.fill: parent
-        visible: false
 
         Rectangle {
             anchors.fill: parent
@@ -563,7 +545,6 @@ Window {
     Item {
         id: syncRecordsPageContent
         anchors.fill: parent
-        visible: false
 
         Rectangle {
             anchors.fill: parent
@@ -652,7 +633,6 @@ Window {
     Item {
         id: settingsPageContent
         anchors.fill: parent
-        visible: false
 
         Rectangle {
             anchors.fill: parent
@@ -753,7 +733,6 @@ Window {
     Item {
         id: aboutPageContent
         anchors.fill: parent
-        visible: false
 
         Rectangle {
             anchors.fill: parent
