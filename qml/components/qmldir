@@ -1,7 +1,0 @@
-module SVNFileBox.Components
-
-SidebarButton 1.0 SidebarButton.qml
-StatusBadge 1.0 StatusBadge.qml
-FileTypeIcon 1.0 FileTypeIcon.qml
-RepoListItem 1.0 RepoListItem.qml
-FileListItem 1.0 FileListItem.qml

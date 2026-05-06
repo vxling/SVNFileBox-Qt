@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import SVNFileBox.Components
+import "../components"
 
 Rectangle {
     id: root
