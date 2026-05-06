@@ -117,8 +117,6 @@ Item {
                         color: "#FAFBFC"
                         border.color: "#E8E8E8"
                         border.width: 0
-                        border.style: BorderStyle.Solid
-                        border.only: BorderBottom
 
                         RowLayout {
                             anchors.fill: parent
@@ -156,7 +154,6 @@ Item {
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
-                                cursorShape: Qt.PointingHandCursor
                                 onClicked: fileModel.load(currentPath)
                             }
                         }
@@ -178,7 +175,6 @@ Item {
                             height: 32
                             color: "#F8F9FA"
                             border.color: "#EEEEEE"
-                            border.only: BorderBottom
                             z: 1
 
                             RowLayout {
@@ -404,7 +400,6 @@ Item {
                         implicitWidth: 100; implicitHeight: 36
                         background: Rectangle { color: "#1E88E5"; radius: 6 }
                         contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: doCheckout()
                     }
                     Button {
@@ -412,7 +407,6 @@ Item {
                         implicitWidth: 100; implicitHeight: 36
                         background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                         contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: contentStack.pop()
                     }
                 }
@@ -486,7 +480,6 @@ Item {
                         implicitWidth: 90; implicitHeight: 36
                         background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                         contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: localRepoDialog.open()
                     }
                 }
@@ -510,7 +503,6 @@ Item {
                         implicitWidth: 100; implicitHeight: 36
                         background: Rectangle { color: "#1E88E5"; radius: 6 }
                         contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: doAddLocal()
                     }
                     Button {
@@ -518,7 +510,6 @@ Item {
                         implicitWidth: 100; implicitHeight: 36
                         background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                         contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: contentStack.pop()
                     }
                 }
@@ -572,7 +563,6 @@ Item {
                         implicitWidth: 80; implicitHeight: 30
                         background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                         contentItem: Label { text: parent.text; color: "#1A1A2E"; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: contentStack.pop()
                     }
                 }
@@ -608,8 +598,6 @@ Item {
                     delegate: Rectangle {
                         width: syncRecordListView.width
                         height: 36
-                        border.color: "#F0F0F0"
-                        border.only: BorderBottom
                         color: parent.ListView.isCurrentItem ? "#F8F9FA" : "transparent"
 
                         RowLayout {
@@ -704,7 +692,6 @@ Item {
                         implicitWidth: 100; implicitHeight: 36
                         background: Rectangle { color: "#1E88E5"; radius: 6 }
                         contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: saveSettings()
                     }
                     Button {
@@ -712,7 +699,6 @@ Item {
                         implicitWidth: 80; implicitHeight: 36
                         background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                         contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: contentStack.pop()
                     }
                 }
@@ -787,7 +773,6 @@ Item {
                     implicitWidth: 80; implicitHeight: 36
                     background: Rectangle { color: "#F5F7FA"; radius: 6; border.color: "#E0E0E0" }
                     contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
-                    cursorShape: Qt.PointingHandCursor
                     onClicked: contentStack.pop()
                 }
             }
