@@ -15,12 +15,21 @@ jobs:
           - os: ubuntu-24.04
             artifact: svnfilebox-linux-x64.tar.gz
             cpack: TGZ
+            host: linux
+            arch: gcc_64
+            qt_dir: /opt/Qt/6.7.2/gcc_64
           - os: windows-2022
             artifact: svnfilebox-win64.zip
             cpack: ZIP
+            host: win64
+            arch: msvc2019_64
+            qt_dir: C:/Qt/6.7.2/msvc2019_64
           - os: macos-14
             artifact: svnfilebox-macos.tar.gz
             cpack: TGZ
+            host: mac
+            arch: clang_64
+            qt_dir: /Users/runner/Qt/6.7.2/clang_64
 
     runs-on: ${{ matrix.os }}
 
@@ -28,12 +37,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Qt
-        uses: qt-actions/setup-qt@v2
-        with:
-          version: "6.7.2"
+      - name: Install Python and aqtinstall
+        run: pip install aqtinstall
+
+      - name: Install Qt (Linux)
+        if: matrix.host == 'linux'
+        run: |
+          sudo aqt install-qt linux desktop 6.7.2 gcc_64 -O /opt/Qt
+
+      - name: Install Qt (macOS)
+        if: matrix.host == 'mac'
+        run: |
+          aqt install-qt mac desktop 6.7.2 clang_64 -O /Users/runner/Qt
+
+      - name: Install Qt (Windows)
+        if: matrix.host == 'windows'
+        run: |
+          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt
 
       - name: Configure CMake
+        env:
+          Qt6_DIR: ${{ matrix.qt_dir }}/lib/cmake/Qt6
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release
 
