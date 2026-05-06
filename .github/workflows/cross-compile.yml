@@ -27,7 +27,7 @@ jobs:
       - name: Package
         run: |
           cmake --install build --prefix release
-          cd release && tar -czvf svnfilebox-linux.tar.gz .
+          cd release && tar --warning=no-file-changed -czvf svnfilebox-linux.tar.gz .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
