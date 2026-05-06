@@ -189,13 +189,17 @@ Item {
                         }
 
                         // 空状态
-                        Label {
-                            text: "暂无文件，请在左侧添加仓库"
-                            font.pixelSize: 14
-                            font.italic: true
-                            color: "#999999"
-                            anchors.centerIn: parent
-                            visible: fileModel.count === 0
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Label {
+                                text: "暂无文件，请在左侧添加仓库"
+                                font.pixelSize: 14
+                                font.italic: true
+                                color: "#999999"
+                                anchors.centerIn: parent
+                                visible: fileModel.count === 0
+                            }
                         }
                     }
                 }
@@ -272,8 +276,11 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton
+                        onClicked: {
+                            if (isCurrentPath) doubleClicked()
+                        }
                         onDoubleClicked: {
-                            if (model.isDirectory) {
+                            if (!isCurrentPath && model.isDirectory) {
                                 navigateInto(model.fullPath)
                             }
                         }
