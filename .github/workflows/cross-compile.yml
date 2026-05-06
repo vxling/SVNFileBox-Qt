@@ -13,20 +13,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt
+      - name: Install Qt via apt
         run: |
-          pip install aqtinstall==3.1
-          mkdir -p ~/Qt
-          aqt install-qt linux desktop 6.7.2 gcc_64 -O ~/Qt
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev qt6-qmake
 
       - name: Build
-        env:
-          Qt6_DIR: ~/Qt/6.7.2/gcc_64/lib/cmake/Qt6
-          CMAKE_PREFIX_PATH: ~/Qt/6.7.2/gcc_64
         run: |
-          cmake -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DQt6_DIR=$Qt6_DIR
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build --parallel
 
       - name: Package
@@ -51,12 +45,11 @@ jobs:
         run: |
           pip install aqtinstall==3.1
           mkdir -p ~/Qt
-          aqt install-qt mac desktop 6.7.2 clang_64 -O ~/Qt
+          aqt install-qt mac desktop 6.5.7 clang_64 -O ~/Qt
 
       - name: Build
         env:
-          Qt6_DIR: ~/Qt/6.7.2/clang_64/lib/cmake/Qt6
-          CMAKE_PREFIX_PATH: ~/Qt/6.7.2/clang_64
+          Qt6_DIR: ~/Qt/6.5.7/clang_64/lib/cmake/Qt6
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -84,12 +77,11 @@ jobs:
       - name: Install Qt
         run: |
           pip install aqtinstall==3.1
-          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt
+          aqt install-qt windows desktop 6.5.7 win64_msvc2019_64 -O C:/Qt
 
       - name: Build
         env:
-          Qt6_DIR: C:/Qt/6.7.2/msvc2019_64/lib/cmake/Qt6
-          CMAKE_PREFIX_PATH: C:/Qt/6.7.2/msvc2019_64
+          Qt6_DIR: C:/Qt/6.5.7/msvc2019_64/lib/cmake/Qt6
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
