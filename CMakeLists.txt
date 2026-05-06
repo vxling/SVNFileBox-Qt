@@ -35,3 +35,8 @@ target_sources(${PROJECT_NAME} PRIVATE resources.qrc)
 
 # Install
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+
+# CPack config
+include(CPack)
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
