@@ -12,27 +12,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: linux
+          - os: ubuntu-24.04
             artifact: svnfilebox-linux-x64.tar.gz
-          - os: windows-latest
-            target: windows
+            cpack: TGZ
+          - os: windows-2022
             artifact: svnfilebox-win64.zip
-          - os: macos-latest
-            target: macos
+            cpack: ZIP
+          - os: macos-14
             artifact: svnfilebox-macos.tar.gz
+            cpack: TGZ
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Install Qt
-        uses: jurihock/qt-deploy@v1
-        with:
-          version: 6.7.2
-          tools: '["qt.qt6.672.gcc_64"]'
-
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Qt
+        uses: minscq/setup-qt@v2
+        with:
+          version: "6.7.2"
 
       - name: Configure CMake
         run: |
@@ -45,10 +44,11 @@ jobs:
       - name: Package
         run: |
           cmake --install build --prefix release
-          # 打包逻辑根据平台调整
+          cd release && cpack -G ${{ matrix.cpack }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: release/
+          path: release/*.${{ matrix.cpack == 'ZIP' && 'zip' || 'tar.gz' }}
+          retention-days: 5
