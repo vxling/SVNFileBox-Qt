@@ -19,7 +19,10 @@ public:
     Q_INVOKABLE bool commit(const QString &path, const QString &message);
     Q_INVOKABLE bool update(const QString &path);
     Q_INVOKABLE bool remove(const QString &path);
+    Q_INVOKABLE bool mkdir(const QString &path);
+    Q_INVOKABLE bool move(const QString &src, const QString &dst);
     Q_INVOKABLE QString getInfo(const QString &path);
+    Q_INVOKABLE QString getStatus(const QString &path);
 
 signals:
     void commandFinished(const QString &output);

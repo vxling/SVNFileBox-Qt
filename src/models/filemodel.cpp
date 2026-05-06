@@ -1,6 +1,11 @@
 #include "filemodel.h"
+#include "svn/svnclient.h"
 #include <QDir>
 #include <QUrl>
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QFile>
+#include <QMimeData>
 
 FileModel::FileModel(QObject *parent) : QAbstractListModel(parent) {}
 
@@ -82,7 +87,9 @@ void FileModel::load(const QString &path)
         item.fileSize = fi.size();
         item.lastModified = fi.lastModified();
         item.isCurrentPath = false;
-        item.svnStatus = "Normal";  // TODO: 从 SVNClient 获取真实状态
+        item.svnStatus = m_svnClient
+            ? m_svnClient->getStatus(fi.absoluteFilePath())
+            : QString("Normal");
         m_files.append(item);
     }
 
@@ -101,6 +108,41 @@ void FileModel::clear()
     beginResetModel();
     m_files.clear();
     endResetModel();
+}
+
+bool FileModel::createDirectory(const QString &path)
+{
+    QDir dir;
+    return dir.mkpath(path);
+}
+
+QString FileModel::pasteFromClipboard()
+{
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (!clipboard) return QString();
+
+    const QMimeData *mime = clipboard->mimeData();
+    if (!mime) return QString();
+
+    // Try to get file URLs from clipboard
+    QStringList files;
+    for (const QUrl &url : mime->urls()) {
+        if (url.isLocalFile()) {
+            files.append(url.toLocalFile());
+        }
+    }
+
+    if (files.isEmpty()) return QString();
+
+    // Copy first file from clipboard to current directory
+    QString src = files.first();
+    QString name = src.split("/").last();
+    QString dst = m_currentPath + "/" + name;
+
+    if (QFile::copy(src, dst)) {
+        return dst;
+    }
+    return QString();
 }
 
 QString FileModel::formatFileSize(qint64 bytes)

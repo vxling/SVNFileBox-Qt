@@ -5,6 +5,9 @@
 #include <QList>
 #include <QFileInfo>
 #include <QDateTime>
+#include <QString>
+
+class SVNClient;
 
 class FileItem
 {
@@ -43,6 +46,11 @@ public:
     Q_INVOKABLE void load(const QString &path);
     Q_INVOKABLE QString getFilePath(int row) const;
     Q_INVOKABLE void clear();
+    Q_INVOKABLE bool createDirectory(const QString &path);
+    Q_INVOKABLE QString pasteFromClipboard();
+
+    void setSvnClient(SVNClient *client) { m_svnClient = client; }
+    SVNClient *svnClient() const { return m_svnClient; }
 
     QString currentPath() const { return m_currentPath; }
     void setCurrentPath(const QString &path) { m_currentPath = path; }
@@ -50,6 +58,7 @@ public:
 private:
     QList<FileItem> m_files;
     QString m_currentPath;
+    SVNClient *m_svnClient = nullptr;
 
     static QString formatFileSize(qint64 bytes);
 };

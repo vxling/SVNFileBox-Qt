@@ -32,9 +32,41 @@ bool SVNClient::remove(const QString &path)
     return runSvnBool({"remove", "--non-interactive", "--trust-server-cert", path});
 }
 
+bool SVNClient::mkdir(const QString &path)
+{
+    return runSvnBool({"mkdir", "--non-interactive", "--trust-server-cert", path});
+}
+
+bool SVNClient::move(const QString &src, const QString &dst)
+{
+    return runSvnBool({"move", "--non-interactive", "--trust-server-cert", src, dst});
+}
+
 QString SVNClient::getInfo(const QString &path)
 {
     return runSvn({"info", "--non-interactive", "--trust-server-cert", path});
+}
+
+QString SVNClient::getStatus(const QString &path)
+{
+    QString output = runSvn({"status", "--non-interactive", "--trust-server-cert", path});
+    if (output.isEmpty()) return "Normal";
+    // Parse first character of first line
+    QChar statusChar = output[0];
+    switch (statusChar.unicode()) {
+        case 'A': return "Added";
+        case 'D': return "Deleted";
+        case 'M': return "Modified";
+        case 'R': return "Replaced";
+        case 'C': return "Conflicted";
+        case 'G': return "Merged";
+        case 'U': return "Updated";
+        case '?': return "Unversioned";
+        case '!': return "Missing";
+        case '~': return "Obstructed";
+        case 'I': return "Ignored";
+        default:  return "Normal";
+    }
 }
 
 QString SVNClient::runSvn(const QStringList &args, const QString &workDir)

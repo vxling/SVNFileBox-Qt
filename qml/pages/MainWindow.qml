@@ -326,9 +326,66 @@ Item {
                 Clipboard.text = fileModel.getFilePath(fileContextMenu.currentIndex)
             }
 
-            function pasteFile() { /* TODO */ }
-            function newFolder() { /* TODO */ }
-            function renameFile() { /* TODO */ }
+            function deleteFile() {
+                var idx = fileContextMenu.currentIndex
+                if (idx < 0) return
+                var filePath = fileModel.getFilePath(idx)
+                var fileName = fileModel.getFilePath(idx).split("/").pop()
+                confirmDeleteDialog.fileToDelete = filePath
+                confirmDeleteDialog.fileName = fileName
+                confirmDeleteDialog.open()
+            }
+
+            function doDeleteFile(filePath) {
+                if (svnClient.remove(filePath)) {
+                    svnClient.commit(filePath, "[SVNFileBox] Delete: " + filePath.split("/").pop())
+                    fileModel.load(currentPath)
+                }
+            }
+
+            function pasteFile() {
+                var pastedPath = fileModel.pasteFromClipboard()
+                if (pastedPath !== "") {
+                    svnClient.add(pastedPath)
+                    svnClient.commit(pastedPath, "[SVNFileBox] Paste: " + pastedPath.split("/").pop())
+                    fileModel.load(currentPath)
+                }
+            }
+            function newFolder() {
+                // Show input dialog
+                newFolderDialog.open()
+            }
+
+            function doCreateFolder(name) {
+                if (!name || name.trim() === "") return
+                var targetPath = currentPath + "/" + name.trim()
+                // Create physical directory
+                var dir = fileModel.createDirectory(targetPath)
+                if (dir) {
+                    // Tell SVN to track it
+                    svnClient.mkdir(targetPath)
+                    // Commit
+                    svnClient.commit(targetPath, "[SVNFileBox] Add folder: " + name.trim())
+                    // Refresh file list
+                    fileModel.load(currentPath)
+                }
+            }
+            function renameFile() {
+                var idx = fileContextMenu.currentIndex
+                if (idx < 0) return
+                renameDialog.oldPath = fileModel.getFilePath(idx)
+                renameDialog.oldName = renameDialog.oldPath.split("/").pop()
+                renameDialog.newNameField.text = renameDialog.oldName
+                renameDialog.open()
+            }
+
+            function doRenameFile(oldPath, newPath, newName) {
+                if (newName.trim() === "" || newName === oldPath.split("/").pop()) return
+                if (svnClient.move(oldPath, newPath)) {
+                    svnClient.commit(newPath, "[SVNFileBox] Rename: " + oldPath.split("/").pop() + " → " + newName.trim())
+                    fileModel.load(currentPath)
+                }
+            }
             function deleteFile() { /* TODO */ }
             function manualSync() { syncEngine.syncNow() }
 
@@ -779,6 +836,122 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    // ---------- 新建文件夹对话框 ----------
+    Dialog {
+        id: newFolderDialog
+        title: "新建文件夹"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        modal: true
+        parent: mainWindow
+        width: 400
+
+        ColumnLayout {
+            spacing: 12
+            Label { text: "文件夹名称：" }
+            TextField {
+                id: newFolderNameField
+                Layout.fillWidth: true
+                placeholderText: "请输入文件夹名称"
+                focus: true
+                onAccepted: {
+                    newFolderDialog.accept()
+                }
+            }
+        }
+
+        onAccepted: {
+            if (newFolderNameField.text.trim() !== "") {
+                mainWindow.doCreateFolder(newFolderNameField.text)
+                newFolderNameField.text = ""
+            }
+        }
+        onRejected: {
+            newFolderNameField.text = ""
+        }
+    }
+
+    // ---------- 确认删除对话框 ----------
+    Dialog {
+        id: confirmDeleteDialog
+        title: "确认删除"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        modal: true
+        parent: mainWindow
+        width: 380
+
+        property string fileToDelete: ""
+        property string fileName: ""
+
+        ColumnLayout {
+            spacing: 12
+            Label {
+                text: "确定要删除以下文件（夹）吗？\n此操作不可撤销。"
+                wrapMode: Text.WordWrap
+            }
+            Label {
+                text: confirmDeleteDialog.fileName
+                font.bold: true
+                color: "#D32F2F"
+                wrapMode: Text.WordWrap
+            }
+        }
+
+        onAccepted: {
+            if (fileToDelete !== "") {
+                mainWindow.doDeleteFile(fileToDelete)
+                fileToDelete = ""
+                fileName = ""
+            }
+        }
+        onRejected: {
+            fileToDelete = ""
+            fileName = ""
+        }
+    }
+
+    // ---------- 重命名对话框 ----------
+    Dialog {
+        id: renameDialog
+        title: "重命名"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        modal: true
+        parent: mainWindow
+        width: 400
+
+        property string oldPath: ""
+        property string oldName: ""
+        property alias newNameField: renameNewNameField
+
+        ColumnLayout {
+            spacing: 12
+            Label { text: "新名称：" }
+            TextField {
+                id: renameNewNameField
+                Layout.fillWidth: true
+                placeholderText: "请输入新名称"
+                focus: true
+            }
+        }
+
+        onAccepted: {
+            var newName = renameNewNameField.text.trim()
+            if (newName === "") {
+                renameDialog.close()
+                return
+            }
+            var newPath = currentPath + "/" + newName
+            mainWindow.doRenameFile(renameDialog.oldPath, newPath, newName)
+            oldPath = ""
+            oldName = ""
+            renameNewNameField.text = ""
+        }
+        onRejected: {
+            oldPath = ""
+            oldName = ""
+            renameNewNameField.text = ""
         }
     }
 }

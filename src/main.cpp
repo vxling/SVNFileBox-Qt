@@ -25,7 +25,18 @@ int main(int argc, char *argv[])
     qmlRegisterType<ConfigService>("SVNFileBox.Config", 1, 0, "ConfigService");
     qmlRegisterType<FileModel>("SVNFileBox.Models", 1, 0, "FileModel");
 
+    // Singleton instances for context properties
+    SVNClient svnClient;
+    SyncEngine syncEngine;
+    ConfigService configService;
+    FileModel fileModel;
+    fileModel.setSvnClient(&svnClient);
+
     QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty("svnClient", &svnClient);
+    engine.rootContext()->setContextProperty("syncEngine", &syncEngine);
+    engine.rootContext()->setContextProperty("configService", &configService);
+    engine.rootContext()->setContextProperty("fileModel", &fileModel);
 
     // qrc:/ 成为可导入路径，这样 import "qml/components" 就能找到组件
     engine.addImportPath(":/");
