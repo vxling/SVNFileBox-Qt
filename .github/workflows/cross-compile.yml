@@ -7,76 +7,104 @@ on:
     branches: [main]
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            artifact: svnfilebox-linux-x64.tar.gz
-            cpack: TGZ
-            host: linux
-            arch: gcc_64
-            qt_dir: /opt/Qt/6.7.2/gcc_64
-          - os: windows-2022
-            artifact: svnfilebox-win64.zip
-            cpack: ZIP
-            host: win64
-            arch: msvc2019_64
-            qt_dir: C:/Qt/6.7.2/msvc2019_64
-          - os: macos-14
-            artifact: svnfilebox-macos.tar.gz
-            cpack: TGZ
-            host: mac
-            arch: clang_64
-            qt_dir: /Users/runner/Qt/6.7.2/clang_64
-
-    runs-on: ${{ matrix.os }}
-
+  linux:
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Python and aqtinstall
-        run: pip install aqtinstall
-
-      - name: Install Qt (Linux)
-        if: matrix.host == 'linux'
+      - name: Install Qt
         run: |
-          sudo aqt install-qt linux desktop 6.7.2 gcc_64 -O /opt/Qt
+          pip install aqtinstall==3.1
+          mkdir -p ~/Qt
+          aqt install-qt linux desktop 6.7.2 gcc_64 -O ~/Qt
 
-      - name: Install Qt (macOS)
-        if: matrix.host == 'mac'
-        run: |
-          aqt install-qt mac desktop 6.7.2 clang_64 -O /Users/runner/Qt
-
-      - name: Install Qt (Windows)
-        if: matrix.host == 'windows'
-        run: |
-          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt
-
-      - name: Configure CMake
+      - name: Build
         env:
-          Qt6_DIR: ${{ matrix.qt_dir }}/lib/cmake/Qt6
-          CMAKE_PREFIX_PATH: ${{ matrix.qt_dir }}
+          Qt6_DIR: ~/Qt/6.7.2/gcc_64/lib/cmake/Qt6
+          CMAKE_PREFIX_PATH: ~/Qt/6.7.2/gcc_64
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DQt6_DIR=${{ matrix.qt_dir }}/lib/cmake/Qt6
+            -DQt6_DIR=$Qt6_DIR
+          cmake --build build --parallel
+
+      - name: Package
+        run: |
+          cmake --install build --prefix release
+          cd release && cpack -G TGZ
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: svnfilebox-linux-x64.tar.gz
+          path: release/*.tar.gz
+          retention-days: 5
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        run: |
+          pip install aqtinstall==3.1
+          mkdir -p ~/Qt
+          aqt install-qt mac desktop 6.7.2 clang_64 -O ~/Qt
 
       - name: Build
+        env:
+          Qt6_DIR: ~/Qt/6.7.2/clang_64/lib/cmake/Qt6
+          CMAKE_PREFIX_PATH: ~/Qt/6.7.2/clang_64
         run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DQt6_DIR=$Qt6_DIR
+          cmake --build build --parallel
+
+      - name: Package
+        run: |
+          cmake --install build --prefix release
+          cd release && cpack -G TGZ
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: svnfilebox-macos.tar.gz
+          path: release/*.tar.gz
+          retention-days: 5
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        run: |
+          pip install aqtinstall==3.1
+          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt
+
+      - name: Build
+        env:
+          Qt6_DIR: C:/Qt/6.7.2/msvc2019_64/lib/cmake/Qt6
+          CMAKE_PREFIX_PATH: C:/Qt/6.7.2/msvc2019_64
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DQt6_DIR=$env:Qt6_DIR
           cmake --build build --parallel
 
       - name: Package
         run: |
           cmake --install build --prefix release
           cd release
-          cpack -G ${{ matrix.cpack }}
+          cpack -G ZIP
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: release/*.${{ matrix.cpack == 'ZIP' && 'zip' || 'tar.gz' }}
+          name: svnfilebox-win64.zip
+          path: release/*.zip
           retention-days: 5
