@@ -1,0 +1,54 @@
+name: Qt Cross-Compile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            artifact: svnfilebox-linux-x64.tar.gz
+          - os: windows-latest
+            target: windows
+            artifact: svnfilebox-win64.zip
+          - os: macos-latest
+            target: macos
+            artifact: svnfilebox-macos.tar.gz
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Install Qt
+        uses: jurihock/qt-deploy@v1
+        with:
+          version: 6.7.2
+          tools: '["qt.qt6.672.gcc_64"]'
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          cmake --build build --parallel
+
+      - name: Package
+        run: |
+          cmake --install build --prefix release
+          # 打包逻辑根据平台调整
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: release/
