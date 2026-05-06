@@ -6,6 +6,8 @@ ApplicationWindow {
     id: root
     visible: true
     color: "#F0F4F8"
+    // Allow customization of all controls (Basic style supports full customization)
+    Controls.style: Basic
 
     width: 1100
     height: 580
