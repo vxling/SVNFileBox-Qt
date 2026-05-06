@@ -114,12 +114,12 @@ jobs:
       - name: Package
         shell: pwsh
         env:
-          Qt6_bin: C:/Qt/6.5.3/msvc2019_64/bin
+          Qt6_dir: C:/Qt/6.5.3/msvc2019_64
         run: |
-          $env:Path = "$env:Qt6_bin;$env:Path"
+          $env:Path = "$env:Qt6_dir/bin;$env:Path"
           mkdir -p release/bin
           cp build/Release/SVNFileBox.exe release/bin/
-          windeployqt release/bin/SVNFileBox.exe --no-translations
+          windeployqt release/bin/SVNFileBox.exe --qmldir $env:Qt6_dir/qml --no-translations
           Compress-Archive -Path release/bin -DestinationPath svnfilebox-win64.zip
 
       - name: Upload Artifact
