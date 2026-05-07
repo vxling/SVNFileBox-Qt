@@ -745,6 +745,7 @@ Item {
                     title: "选择 SVN 工作副本目录"
                     currentFolder: shortcuts.home
                     modality: Qt.WindowModal
+                    selectFolder: true
                     onAccepted: {
                         localRepoPathInput.text = currentFolder
                     }
