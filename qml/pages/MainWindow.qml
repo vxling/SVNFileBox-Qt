@@ -774,7 +774,7 @@ Item {
         var path = localRepoPathInput.text.trim()
         if (!path) { addLocalStatusLabel.text = "请先选择目录"; return }
         // FolderDialog.folder 返回 file:///... 格式，转为普通路径
-        if (path.startsWith("file://")) path = path.substring(7)
+        if (path.startsWith("file:///")) path = path.substring(8)
         if (path.startsWith("file:")) path = path.substring(5)
         if (!svnClient.isValidWorkingCopy(path)) {
             addLocalStatusLabel.text = "这不是一个有效的 SVN 工作副本"
@@ -946,7 +946,7 @@ Item {
     // ================================================================
     // Dialog：新建文件夹
     // ================================================================
-    Dialog {
+    QtQuick.Dialogs.Dialog {
         id: newFolderDialog
         title: "新建文件夹"
         standardButtons: Dialog.Ok | Dialog.Cancel
@@ -983,7 +983,7 @@ Item {
     // ================================================================
     // Dialog：确认删除
     // ================================================================
-    Dialog {
+    QtQuick.Dialogs.Dialog {
         id: confirmDeleteDialog
         title: "确认删除"
         standardButtons: Dialog.Yes | Dialog.No
@@ -1010,7 +1010,7 @@ Item {
     // ================================================================
     // Dialog：重命名
     // ================================================================
-    Dialog {
+    QtQuick.Dialogs.Dialog {
         id: renameDialog
         title: "重命名"
         standardButtons: Dialog.Ok | Dialog.Cancel
@@ -1051,7 +1051,7 @@ Item {
     // ================================================================
     // Dialog：SVN 冲突解决
     // ================================================================
-    Dialog {
+    QtQuick.Dialogs.Dialog {
         id: conflictDialog
         title: "SVN 冲突"
         standardButtons: Dialog.Ok | Dialog.Cancel
