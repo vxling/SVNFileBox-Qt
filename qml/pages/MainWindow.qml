@@ -156,16 +156,6 @@ Item {
                                     text: "刷新"
                                     implicitWidth: 70
                                     implicitHeight: 32
-                                        radius: 6
-                                        border.color: parent.pressed ? "#1565C0" : (parent.hovered ? "#1E88E5" : "#E0E0E0")
-                                    }
-                                    contentItem: Label {
-                                        text: parent.text
-                                        color: parent.pressed ? "#FFFFFF" : (parent.hovered ? "#FFFFFF" : "#1A1A2E")
-                                        font.pixelSize: 12
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
                                     onClicked: fileModel.load(currentPath)
                                 }
                             }
