@@ -741,12 +741,13 @@ Item {
                     }
                 }
 
-                FolderDialog {
+                FileDialog {
                     id: localRepoDialog
                     title: "选择 SVN 工作副本目录"
-                    folder: shortcuts.home
+                    selectFolder: true
+                    currentFolder: shortcuts.home
                     onAccepted: {
-                        localRepoPathInput.text = localRepoDialog.folder
+                        localRepoPathInput.text = localRepoDialog.currentFolder
                     }
                 }
 
