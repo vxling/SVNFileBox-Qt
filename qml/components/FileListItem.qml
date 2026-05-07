@@ -13,7 +13,7 @@ Rectangle {
     property string lastModifiedDisplay: ""
     property bool isCurrentPath: false  // "返回上级目录" 行
     signal doubleClicked()
-    signal contextMenuRequested()
+    signal contextMenuRequested(real x, real y)
 
     color: {
         if (isCurrentPath) return "#F8F9FA"
@@ -35,7 +35,7 @@ Rectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: {
             if (mouse.button === Qt.RightButton) {
-                contextMenuRequested()
+                contextMenuRequested(mouse.x, mouse.y)
             }
         }
         onDoubleClicked: if (!isCurrentPath) doubleClicked()

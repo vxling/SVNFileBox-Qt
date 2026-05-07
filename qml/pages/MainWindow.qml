@@ -350,7 +350,8 @@ Item {
 
             onContextMenuRequested: {
                 fileContextMenu.currentIndex = index
-                fileContextMenu.popup()
+                var g = fileListItem.mapToItem(null, x, y)
+                fileContextMenu.popup(g.x, g.y)
             }
         }
     }
