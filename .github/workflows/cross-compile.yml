@@ -143,8 +143,8 @@ jobs:
         with:
           draft: true
           prerelease: false
-          tag_name: v1.0.0-qt
-          name: SVNFileBox-Qt v1.0.0
+          tag_name: v1.0.1-qt
+          name: SVNFileBox-Qt v1.0.1
           body: |
             ## SVNFileBox-Qt
 
