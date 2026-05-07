@@ -1026,7 +1026,6 @@ Item {
                     Layout.preferredWidth: 140
                     Layout.preferredHeight: 40
                     text: "保留本地"
-                    Controls.style: Basic
                     background: Rectangle { color: "#1565C0"; radius: 4 }
                     contentItem: Label {
                         text: parent.text
@@ -1044,7 +1043,6 @@ Item {
                     Layout.preferredWidth: 140
                     Layout.preferredHeight: 40
                     text: "使用服务器"
-                    Controls.style: Basic
                     background: Rectangle { color: "#6D4C41"; radius: 4 }
                     contentItem: Label {
                         text: parent.text

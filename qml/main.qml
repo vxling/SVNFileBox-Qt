@@ -7,9 +7,6 @@ ApplicationWindow {
     visible: true
     color: "#F0F4F8"
 
-    // Enable Basic style so all Buttons can use custom background/contentItem/radius/border
-    Controls.style: Basic
-
     width: 1100
     height: 580
     minimumWidth: 900
