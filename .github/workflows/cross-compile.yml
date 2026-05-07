@@ -85,30 +85,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Qt
-        id: cache-qt
-        uses: actions/cache@v4
-        with:
-          path: C:/Qt
-          key: ${{ runner.os }}-qt6.5.3-${{ hashFiles('.github/workflows/cross-compile.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-qt6.5.3-
+      - name: Install Visual Studio 2019 Build Tools
+        run: |
+          choco install visualstudio2019buildtools -y
+          $vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build"
+          echo "$vspath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install Qt
-        if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           pip install aqtinstall==3.1
           aqt install-qt windows desktop 6.5.3 win64_msvc2019_64 -O C:/Qt
 
       - name: Build
-        shell: bash
+        shell: cmd
         env:
           Qt6_DIR: C:/Qt/6.5.3/msvc2019_64/lib/cmake/Qt6
+          VSINSTALLDIR: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools"
         run: |
-          cmake -B build \
-            -G "Visual Studio 17 2022" -A x64 \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DQt6_DIR=$Qt6_DIR
+          call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
+          cmake -B build ^
+            -G "Visual Studio 16 2019" -A x64 ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DQt6_DIR=%Qt6_DIR%
           cmake --build build --parallel --config Release
 
       - name: Package
@@ -118,8 +116,14 @@ jobs:
         run: |
           $env:Path = "$env:Qt6_dir/bin;$env:Path"
           mkdir -p release/bin
-          cp build/Release/SVNFileBox.exe release/bin/
-          windeployqt release/bin/SVNFileBox.exe --qmldir $env:Qt6_dir/qml --no-translations
+          cmake --install build --config Release --prefix release
+          if (Test-Path "release/bin/SVNFileBox.exe") {
+            windeployqt release/bin/SVNFileBox.exe --qmldir $env:Qt6_dir/qml --no-translations
+          } elseif (Test-Path "release/SVNFileBox.exe") {
+            windeployqt release/SVNFileBox.exe --qmldir $env:Qt6_dir/qml --no-translations
+            mkdir -p release/bin
+            cp release/SVNFileBox.exe release/bin/
+          }
           Compress-Archive -Path release/bin -DestinationPath svnfilebox-win64.zip
 
       - name: Upload Artifact
