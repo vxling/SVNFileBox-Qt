@@ -13,6 +13,7 @@ Rectangle {
     property string lastModifiedDisplay: ""
     property bool isCurrentPath: false  // "返回上级目录" 行
     signal doubleClicked()
+    signal contextMenuRequested()
 
     color: {
         if (isCurrentPath) return "#F8F9FA"
@@ -32,8 +33,12 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onClicked: {
+            if (mouse.button === Qt.RightButton) {
+                contextMenuRequested()
+            }
+        }
         onDoubleClicked: if (!isCurrentPath) doubleClicked()
-        onClicked: if (isCurrentPath) doubleClicked()
     }
 
     RowLayout {

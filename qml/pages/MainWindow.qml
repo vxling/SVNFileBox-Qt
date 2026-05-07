@@ -269,10 +269,11 @@ Item {
                 MenuItem { text: "手工同步"; onClicked: manualSync() }
             }
 
-            // ---------- 文件列表项代理 ----------
+                    // ---------- 文件列表项代理 ----------
             Component {
                 id: fileItemDelegate
                 FileListItem {
+                    id: fileListItem
                     name: model.name
                     fullPath: model.fullPath
                     isDirectory: model.isDirectory
@@ -281,31 +282,22 @@ Item {
                     lastModifiedDisplay: model.lastModifiedDisplay
                     isCurrentPath: model.isCurrentPath
 
-                    MouseArea {
-                        anchors.fill: parent
-                        acceptedButtons: Qt.RightButton
-                        onClicked: {
-                            fileContextMenu.currentIndex = index
-                            fileContextMenu.popup()
+                    onDoubleClicked: {
+                        if (model.isCurrentPath) {
+                            goUp()
+                        } else if (model.isDirectory) {
+                            navigateInto(model.fullPath)
+                        } else {
+                            openInExplorer()
                         }
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        acceptedButtons: Qt.LeftButton
-                        onClicked: {
-                            if (isCurrentPath) doubleClicked()
-                        }
-                        onDoubleClicked: {
-                            if (!isCurrentPath && model.isDirectory) {
-                                navigateInto(model.fullPath)
-                            }
-                        }
+                    onContextMenuRequested: {
+                        fileContextMenu.currentIndex = index
+                        fileContextMenu.popup()
                     }
                 }
             }
-
-            // ---------- 仓库列表项代理 ----------
             Component {
                 id: repoListDelegate
                 RepoListItem {
