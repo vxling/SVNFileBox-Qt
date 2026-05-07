@@ -784,6 +784,11 @@ Item {
         var info = svnClient.info(path)
         var name = path.substring(path.lastIndexOf("/") + 1)
         configService.addRepository({ name: name, url: info.url, localPath: path, username: "", password: "" })
+        // 手动同步到 repoListModel（repoListModel 只在 onCompleted 时加载一次，不会自动更新）
+        var newRepo = { name: name, path: path, url: info.url, username: "", password: "", type: "Local", isSelected: false }
+        repoListModel.append(newRepo)
+        // 选中新加的仓库（会触发 navigateInto + 文件列表加载）
+        selectRepo(repoListModel.count - 1)
         syncEngine.startSync(name, path, info.url, "", "")
         addLocalDrawer.close()
     }
