@@ -12,8 +12,8 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 550
 
-    x: Screen.desktopAvailableWidth / 2 - width / 2
-    y: Screen.desktopAvailableHeight / 2 - height / 2
+    // 让 Qt 自动居中，不手动算坐标（避免最大化时 title bar 偏上）
+    Component.onCompleted: root.centerOnScreen()
 
     // MainWindow is now an Item, load it directly
     Loader {
