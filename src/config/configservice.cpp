@@ -147,3 +147,8 @@ void ConfigService::setActiveRepository(const QString &name)
     m_activeRepoName = name;
     saveToDisk();
 }
+
+QString ConfigService::activeRepositoryName() const
+{
+    return m_activeRepoName;
+}

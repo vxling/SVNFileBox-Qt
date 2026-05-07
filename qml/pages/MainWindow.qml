@@ -19,13 +19,20 @@ Item {
         target: syncEngine
         function onSyncNotification(message) {
             statusBarText.text = message
+            syncIndicator.running = false
         }
         function onFilesChanged() {
             fileModel.load(currentPath)
+            syncIndicator.running = false
         }
         function onConflictDetected(files) {
-            conflictFileList = files
+            conflictDialog.conflictFileList = files
             conflictDialog.open()
+            syncIndicator.running = false
+        }
+        function onSyncStarted() {
+            statusBarText.text = "同步中..."
+            syncIndicator.running = true
         }
     }
 
@@ -37,7 +44,15 @@ Item {
         for (var i = 0; i < repos.length; i++) {
             repoListModel.append(repos[i])
         }
-        if (repos.length > 0) {
+        // 找到 active repo 并选中
+        for (var j = 0; j < repoListModel.count; j++) {
+            if (repoListModel.get(j).isSelected) {
+                selectRepo(j)
+                return
+            }
+        }
+        // 没有 active repo 且有仓库，选第一个
+        if (repoListModel.count > 0) {
             selectRepo(0)
         }
     }
@@ -228,14 +243,51 @@ Item {
             anchors.fill: parent
             anchors.leftMargin: 12
             anchors.rightMargin: 12
+            spacing: 8
+
+            // 仓库名标签
+            Label {
+                id: statusBarRepoLabel
+                text: configService.activeRepositoryName || ""
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                color: "#FFFFFF"
+                background: Rectangle {
+                    color: "#1565C0"
+                    radius: 3
+                    anchors.fill: parent
+                    anchors.margins: 2
+                }
+                padding: 3
+                visible: text !== ""
+            }
 
             Label {
                 id: statusBarPathLabel
-                text: configService.localPath()
+                text: currentPath || configService.localPath()
                 font.pixelSize: 12
                 color: "#FFFFFF"
                 Layout.fillWidth: true
+                elide: Text.ElideMiddle
             }
+
+            // 同步指示器（旋转圆点）
+            Rectangle {
+                id: syncIndicator
+                width: 10
+                height: 10
+                radius: 5
+                color: "#FFFFFF"
+                visible: running
+                property bool running: false
+                SequentialAnimation on color {
+                    running: syncIndicator.running
+                    loops: Animation.Infinite
+                    ColorAnimation { from: "#FFFFFF"; to: "#BBDEFB"; duration: 600 }
+                    ColorAnimation { from: "#BBDEFB"; to: "#FFFFFF"; duration: 600 }
+                }
+            }
+
             Label {
                 id: statusBarText
                 text: "就绪"
@@ -429,6 +481,7 @@ Item {
         }
         var repo = repoListModel.get(index)
         configService.setActiveRepository(repo.name)
+        statusBarRepoLabel.text = repo.name
         navigateInto(repo.path)
     }
 
@@ -752,15 +805,20 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     Label {
-                        text: "同步记录"
+                        text: "同步记录 (" + syncRecordService.recordCount + ")"
                         font.pixelSize: 16
                         font.weight: Font.DemiBold
                         color: "#1A1A2E"
                     }
                     Item { Layout.fillWidth: true }
                     Button {
+                        text: "清空"
+                        implicitWidth: 60; implicitHeight: 30
+                        onClicked: syncRecordService.clearRecords()
+                    }
+                    Button {
                         text: "关闭"
-                        implicitWidth: 80; implicitHeight: 30
+                        implicitWidth: 60; implicitHeight: 30
                         onClicked: syncRecordsDrawer.close()
                     }
                 }
@@ -792,7 +850,7 @@ Item {
                     Layout.fillHeight: true
                     clip: true
                     cacheBuffer: 200
-                    model: ListModel { id: syncRecordListModel }
+                    model: syncRecordService
 
                     delegate: Rectangle {
                         width: syncRecordListView.width
@@ -997,45 +1055,87 @@ Item {
         parent: mainWindow
         width: 500
 
-        property string conflictFile: ""
         property var conflictFileList: []
+
+        onVisibleChanged: {
+            if (visible && conflictFileList.length > 0) {
+                conflictFileLabel.text = conflictFileList.join("\n")
+            }
+        }
 
         ColumnLayout {
             spacing: 12
             Label {
-                text: "检测到以下文件存在冲突："
+                text: "检测到 " + conflictDialog.conflictFileList.length + " 个文件存在冲突："
                 font.pixelSize: 13
-                color: "#333333"
+                font.weight: Font.DemiBold
+                color: "#E53935"
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: conflictList.height + 16
+                color: "#FFF3E0"
+                border.color: "#FFB74D"
+                border.width: 1
+                radius: 4
+
+                ListView {
+                    id: conflictList
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    model: conflictDialog.conflictFileList
+                    interactive: false
+                    clip: true
+                    delegate: Label {
+                        text: modelData
+                        font.pixelSize: 12
+                        color: "#E53935"
+                        wrapMode: Text.WordWrap
+                    }
+                }
             }
 
             Label {
-                id: conflictFileLabel
-                text: conflictDialog.conflictFile
+                text: "请选择保留哪个版本："
                 font.pixelSize: 12
-                color: "#E53935"
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
+                color: "#666666"
             }
 
             RowLayout {
                 spacing: 12
                 Button {
-                    text: "使用我的版本"
+                    text: "保留我的版本"
                     implicitHeight: 36
+                    Layout.minimumWidth: 130
+                    accentColor: "#1E88E5"
                     onClicked: {
-                        syncEngine.resolveConflict("mine-conflict")
+                        for (var i = 0; i < conflictDialog.conflictFileList.length; i++) {
+                            var filePath = conflictDialog.conflictFileList[i]
+                            syncEngine.resolveConflictForFile(filePath, "mine-conflict")
+                        }
                         conflictDialog.close()
+                        fileModel.load(currentPath)
                     }
                 }
                 Button {
                     text: "使用服务器版本"
                     implicitHeight: 36
+                    Layout.minimumWidth: 130
                     onClicked: {
-                        syncEngine.resolveConflict("theirs-conflict")
+                        for (var i = 0; i < conflictDialog.conflictFileList.length; i++) {
+                            var filePath = conflictDialog.conflictFileList[i]
+                            syncEngine.resolveConflictForFile(filePath, "theirs-conflict")
+                        }
                         conflictDialog.close()
+                        fileModel.load(currentPath)
                     }
                 }
             }
+        }
+
+        onClosed: {
+            conflictDialog.conflictFileList = []
         }
     }
 }

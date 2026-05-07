@@ -31,6 +31,7 @@ public:
     Q_INVOKABLE QString status() const;
     Q_INVOKABLE QStringList getConflictedFiles() const;
     Q_INVOKABLE void resolveConflict(const QString &accept);
+    Q_INVOKABLE void resolveConflictForFile(const QString &filePath, const QString &accept);
 
 signals:
     void syncStarted();

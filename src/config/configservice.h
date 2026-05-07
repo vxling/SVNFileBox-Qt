@@ -39,6 +39,7 @@ public:
     Q_INVOKABLE void removeRepository(const QString &name);
     Q_INVOKABLE QVariantList repositories() const;
     Q_INVOKABLE void setActiveRepository(const QString &name);
+    Q_INVOKABLE QString activeRepositoryName() const;
 
     // SVN 凭证
     Q_INVOKABLE QString getPassword(const QString &repoName) const;

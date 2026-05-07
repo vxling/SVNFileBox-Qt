@@ -139,6 +139,14 @@ void SyncEngine::resolveConflict(const QString &accept)
     emit filesChanged();
 }
 
+void SyncEngine::resolveConflictForFile(const QString &filePath, const QString &accept)
+{
+    if (!m_svnClient || filePath.isEmpty()) return;
+    QString absPath = filePath.contains(m_localPath) ? filePath : m_localPath + "/" + filePath;
+    m_svnClient->resolveConflict(absPath, accept);
+    qDebug() << "[SyncEngine] Resolved conflict for:" << absPath << "with" << accept;
+}
+
 void SyncEngine::onFileChanged(const QString &path)
 {
     if (!m_syncing) return;
