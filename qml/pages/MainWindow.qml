@@ -1104,31 +1104,44 @@ Item {
 
             RowLayout {
                 spacing: 12
-                Button {
-                    text: "保留我的版本"
-                    implicitHeight: 36
+                Rectangle {
                     Layout.minimumWidth: 130
-                    accentColor: "#1E88E5"
-                    onClicked: {
-                        for (var i = 0; i < conflictDialog.conflictFileList.length; i++) {
-                            var filePath = conflictDialog.conflictFileList[i]
-                            syncEngine.resolveConflictForFile(filePath, "mine-conflict")
+                    implicitHeight: 36
+                    color: "#1E88E5"
+                    radius: 4
+                    Button {
+                        anchors.fill: parent
+                        text: "保留我的版本"
+                        palette.buttonText: "white"
+                        flat: true
+                        onClicked: {
+                            for (var i = 0; i < conflictDialog.conflictFileList.length; i++) {
+                                var filePath = conflictDialog.conflictFileList[i]
+                                syncEngine.resolveConflictForFile(filePath, "mine-conflict")
+                            }
+                            conflictDialog.close()
+                            fileModel.load(currentPath)
                         }
-                        conflictDialog.close()
-                        fileModel.load(currentPath)
                     }
                 }
-                Button {
-                    text: "使用服务器版本"
-                    implicitHeight: 36
+                Rectangle {
                     Layout.minimumWidth: 130
-                    onClicked: {
-                        for (var i = 0; i < conflictDialog.conflictFileList.length; i++) {
-                            var filePath = conflictDialog.conflictFileList[i]
-                            syncEngine.resolveConflictForFile(filePath, "theirs-conflict")
+                    implicitHeight: 36
+                    color: "#E53935"
+                    radius: 4
+                    Button {
+                        anchors.fill: parent
+                        text: "使用服务器版本"
+                        palette.buttonText: "white"
+                        flat: true
+                        onClicked: {
+                            for (var i = 0; i < conflictDialog.conflictFileList.length; i++) {
+                                var filePath = conflictDialog.conflictFileList[i]
+                                syncEngine.resolveConflictForFile(filePath, "theirs-conflict")
+                            }
+                            conflictDialog.close()
+                            fileModel.load(currentPath)
                         }
-                        conflictDialog.close()
-                        fileModel.load(currentPath)
                     }
                 }
             }
