@@ -773,6 +773,9 @@ Item {
     function doAddLocal() {
         var path = localRepoPathInput.text.trim()
         if (!path) { addLocalStatusLabel.text = "请先选择目录"; return }
+        // FolderDialog.folder 返回 file:///... 格式，转为普通路径
+        if (path.startsWith("file://")) path = path.substring(7)
+        if (path.startsWith("file:")) path = path.substring(5)
         if (!svnClient.isValidWorkingCopy(path)) {
             addLocalStatusLabel.text = "这不是一个有效的 SVN 工作副本"
             return
