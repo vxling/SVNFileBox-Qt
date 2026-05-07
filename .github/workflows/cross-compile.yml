@@ -85,22 +85,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Visual Studio 2019 Build Tools
-        run: |
-          choco install visualstudio2019buildtools -y
-
       - name: Install Qt
         run: |
           pip install aqtinstall==3.1
-          aqt install-qt windows desktop 6.5.3 win64_msvc2019_64 -O C:/Qt
+          aqt install-qt windows desktop 6.7.2 win64_msvc2022_64 -O C:/Qt
 
       - name: Build
         shell: cmd
         env:
-          Qt6_DIR: C:/Qt/6.5.3/msvc2019_64/lib/cmake/Qt6
+          Qt6_DIR: C:/Qt/6.7.2/msvc2022_64/lib/cmake/Qt6
         run: |
           cmake -B build ^
-            -G "Visual Studio 16 2019" -A x64 ^
+            -G "Visual Studio 17 2022" -A x64 ^
             -DCMAKE_BUILD_TYPE=Release ^
             -DQt6_DIR=%Qt6_DIR%
           cmake --build build --parallel --config Release
@@ -108,7 +104,7 @@ jobs:
       - name: Package
         shell: pwsh
         env:
-          Qt6_dir: C:/Qt/6.5.3/msvc2019_64
+          Qt6_dir: C:/Qt/6.7.2/msvc2022_64
         run: |
           $env:Path = "$env:Qt6_dir/bin;$env:Path"
           mkdir -p release/bin
