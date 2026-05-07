@@ -5,11 +5,10 @@
 
 #include "svn/svnclient.h"
 #include "sync/syncengine.h"
+#include "sync/syncrecordservice.h"
 #include "config/configservice.h"
 #include "models/filemodel.h"
 
-// 临时前向声明，等价于 QML_IMPORT_MINIMAL
-// 组件在 qrc 里，直接用 qrc URL 加载，不需要 qmldir
 static QUrl qrcUrl(const QString &path) { return QUrl(QStringLiteral("qrc:/") + path); }
 
 int main(int argc, char *argv[])
@@ -19,26 +18,37 @@ int main(int argc, char *argv[])
     app.setOrganizationName("vxling");
     app.setApplicationVersion("1.0.0");
 
-    // 注册 C++ 类型到 QML
+    // Register C++ types to QML
     qmlRegisterType<SVNClient>("SVNFileBox.SVN", 1, 0, "SVNClient");
     qmlRegisterType<SyncEngine>("SVNFileBox.Sync", 1, 0, "SyncEngine");
+    qmlRegisterType<SyncRecord>("SVNFileBox.Sync", 1, 0, "SyncRecord");
     qmlRegisterType<ConfigService>("SVNFileBox.Config", 1, 0, "ConfigService");
     qmlRegisterType<FileModel>("SVNFileBox.Models", 1, 0, "FileModel");
 
-    // Singleton instances for context properties
+    // Singleton instances
     SVNClient svnClient;
-    SyncEngine syncEngine;
     ConfigService configService;
     FileModel fileModel;
     fileModel.setSvnClient(&svnClient);
 
+    // SyncRecordService: use its static instance
+    SyncRecordService *recordService = SyncRecordService::instance();
+
+    // SyncEngine must be constructed after svnClient and recordService are ready
+    SyncEngine syncEngine;
+    syncEngine.setSvnClient(&svnClient);
+    syncEngine.setSyncRecordService(recordService);
+
     QQmlApplicationEngine engine;
+
+    // Context properties available in all QML files
     engine.rootContext()->setContextProperty("svnClient", &svnClient);
-    engine.rootContext()->setContextProperty("syncEngine", &syncEngine);
     engine.rootContext()->setContextProperty("configService", &configService);
     engine.rootContext()->setContextProperty("fileModel", &fileModel);
+    engine.rootContext()->setContextProperty("syncEngine", &syncEngine);
+    engine.rootContext()->setContextProperty("syncRecordService", recordService);
 
-    // qrc:/ 成为可导入路径，这样 import "qml/components" 就能找到组件
+    // qrc:/ becomes an import path
     engine.addImportPath(":/");
 
     const QUrl url(QStringLiteral("qrc:/qml/main.qml"));

@@ -12,6 +12,17 @@ import "../components"
 Item {
     id: mainWindow
 
+    // ---------- SyncEngine 信号连接 ----------
+    Connections {
+        target: syncEngine
+        function onSyncNotification(message) {
+            statusBarText.text = message
+        }
+        function onFilesChanged() {
+            fileModel.load(currentPath)
+        }
+    }
+
     // ---------- 页面路由 ----------
     StackView {
         id: contentStack
@@ -386,7 +397,6 @@ Item {
                     fileModel.load(currentPath)
                 }
             }
-            function deleteFile() { /* TODO */ }
             function manualSync() { syncEngine.syncNow() }
 
             function selectRepo(index) {
@@ -487,7 +497,9 @@ Item {
                 checkoutStatusLabel.text = "正在检出..."
                 var result = svnClient.checkout(url, configService.localPath() + "/" + name, user, pass)
                 if (result.exitCode === 0) {
-                    configService.addRepository({ name: name, url: url, localPath: configService.localPath() + "/" + name, username: user, password: pass, type: "Network" })
+                    var localPath = configService.localPath() + "/" + name
+                    configService.addRepository({ name: name, url: url, localPath: localPath, username: user, password: pass, type: "Network" })
+                    syncEngine.startSync(name, localPath, url, user, pass)
                     contentStack.pop()
                 } else {
                     checkoutStatusLabel.text = "检出失败：" + result.error
@@ -586,6 +598,7 @@ Item {
                 var info = svnClient.info(path)
                 var name = path.substring(path.lastIndexOf("/") + 1)
                 configService.addRepository({ name: name, url: info.url, localPath: path, username: "", password: "", type: "Local" })
+                syncEngine.startSync(name, path, info.url, "", "")
                 contentStack.pop()
             }
         }

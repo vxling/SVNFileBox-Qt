@@ -23,6 +23,13 @@ public:
     Q_INVOKABLE bool move(const QString &src, const QString &dst);
     Q_INVOKABLE QString getInfo(const QString &path);
     Q_INVOKABLE QString getStatus(const QString &path);
+    Q_INVOKABLE int getWorkingCopyRevision(const QString &path);
+    Q_INVOKABLE int getHeadRevision(const QString &url);
+    Q_INVOKABLE bool revert(const QString &path, bool recursive = true);
+    Q_INVOKABLE bool cleanup(const QString &path);
+    Q_INVOKABLE bool unlock(const QString &path);
+    Q_INVOKABLE bool checkout(const QString &url, const QString &localPath);
+    Q_INVOKABLE bool isValidWorkingCopy(const QString &path);
 
 signals:
     void commandFinished(const QString &output);

@@ -15,9 +15,14 @@ set(APP_SOURCES
     src/main.cpp
     src/svn/svnclient.cpp
     src/sync/syncengine.cpp
+    src/sync/syncrecordservice.cpp
+    src/sync/syncrecord.h
     src/config/configservice.cpp
     src/models/filemodel.cpp
 )
+
+# MOC must see Q_OBJECT headers
+set_source_files_properties(src/sync/syncrecord.h PROPERTIES SKIP_MOC OFF)
 
 add_executable(${PROJECT_NAME} WIN32 ${APP_SOURCES})
 

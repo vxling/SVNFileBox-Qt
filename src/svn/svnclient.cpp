@@ -1,6 +1,8 @@
 #include "svnclient.h"
 #include <QDebug>
 #include <QDir>
+#include <QFile>
+#include <QRegularExpression>
 
 SVNClient::SVNClient(QObject *parent) : QObject(parent) {}
 
@@ -88,6 +90,56 @@ QString SVNClient::runSvn(const QStringList &args, const QString &workDir)
 
 bool SVNClient::runSvnBool(const QStringList &args, const QString &workDir)
 {
-    QString output = runSvn(args, workDir);
-    return !output.isEmpty() || true; // 简化判断，实际检查 exit code
+    QProcess p;
+    if (!workDir.isEmpty()) {
+        p.setWorkingDirectory(workDir);
+    }
+    p.start("svn", args);
+    p.waitForFinished(-1);
+    return p.exitCode() == 0;
+}
+
+int SVNClient::getWorkingCopyRevision(const QString &path)
+{
+    QString output = runSvn({"info", "--non-interactive", "--trust-server-cert", path});
+    QRegularExpression re(R"(^Revision:\s*(\d+))", QRegularExpression::MultilineOption);
+    QRegularExpressionMatch m = re.match(output);
+    if (m.hasMatch()) return m.captured(1).toInt();
+    return -1;
+}
+
+int SVNClient::getHeadRevision(const QString &url)
+{
+    QString output = runSvn({"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", url});
+    QRegularExpression re(R"(^Revision:\s*(\d+))", QRegularExpression::MultilineOption);
+    QRegularExpressionMatch m = re.match(output);
+    if (m.hasMatch()) return m.captured(1).toInt();
+    return -1;
+}
+
+bool SVNClient::revert(const QString &path, bool recursive)
+{
+    QStringList args = {"revert", "--non-interactive", "--trust-server-cert", path};
+    if (recursive) args.insert(2, "--recursive");
+    return runSvnBool(args);
+}
+
+bool SVNClient::cleanup(const QString &path)
+{
+    return runSvnBool({"cleanup", "--non-interactive", "--trust-server-cert", path});
+}
+
+bool SVNClient::unlock(const QString &path)
+{
+    return runSvnBool({"unlock", "--non-interactive", "--trust-server-cert", path});
+}
+
+bool SVNClient::checkout(const QString &url, const QString &localPath)
+{
+    return runSvnBool({"checkout", "--non-interactive", "--trust-server-cert", url, localPath});
+}
+
+bool SVNClient::isValidWorkingCopy(const QString &path)
+{
+    return QDir(path).exists() && QFile::exists(path + "/.svn/entries");
 }
