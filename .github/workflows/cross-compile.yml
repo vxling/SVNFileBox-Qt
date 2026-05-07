@@ -147,10 +147,20 @@ jobs:
         with:
           draft: true
           prerelease: false
-          generate_release_notes: true
+          tag_name: v1.0.0-qt
+          name: SVNFileBox-Qt v1.0.0
+          body: |
+            ## SVNFileBox-Qt
+
+            Cross-platform SVN client built with Qt 6.
+
+            ### Downloads
+            - Linux: `svnfilebox-linux.tar.gz`
+            - macOS: `svnfilebox-macos.tar.gz`
+            - Windows: `svnfilebox-win64.zip`
           files: |
-            artifacts/svnfilebox-linux.tar.gz
-            artifacts/svnfilebox-macos.tar.gz
-            artifacts/svnfilebox-win64.zip
+            artifacts/svnfilebox-linux.tar.gz/svnfilebox-linux.tar.gz
+            artifacts/svnfilebox-macos.tar.gz/svnfilebox-macos.tar.gz
+            artifacts/svnfilebox-win64.zip/svnfilebox-win64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
