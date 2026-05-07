@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import QtQuick.Dialogs
+import Qt.labs.platform
 import SVNFileBox.SVN
 import SVNFileBox.Sync
 import SVNFileBox.Config
@@ -740,14 +741,12 @@ Item {
                     }
                 }
 
-                FileDialog {
+                FolderDialog {
                     id: localRepoDialog
                     title: "选择 SVN 工作副本目录"
-                    currentFolder: shortcuts.home
-                    modality: Qt.WindowModal
-                    selectFolder: true
+                    folder: shortcuts.home
                     onAccepted: {
-                        localRepoPathInput.text = currentFolder
+                        localRepoPathInput.text = localRepoDialog.folder
                     }
                 }
 
