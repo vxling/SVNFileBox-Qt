@@ -24,7 +24,7 @@ set(APP_SOURCES
 # MOC must see Q_OBJECT headers
 set_source_files_properties(src/sync/syncrecord.h PROPERTIES SKIP_MOC OFF)
 
-add_executable(${PROJECT_NAME} WIN32 ${APP_SOURCES})
+add_executable(${PROJECT_NAME} ${APP_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
