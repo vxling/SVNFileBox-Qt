@@ -687,6 +687,9 @@ Item {
         if (result.exitCode === 0) {
             var localPath = configService.localPath() + "/" + name
             configService.addRepository({ name: name, url: url, localPath: localPath, username: user, password: pass })
+            var newRepo = { name: name, path: localPath, url: url, username: user, password: pass, type: "Remote", isSelected: false }
+            repoListModel.append(newRepo)
+            selectRepo(repoListModel.count - 1)
             syncEngine.startSync(name, localPath, url, user, pass)
             checkoutDrawer.close()
         } else {
