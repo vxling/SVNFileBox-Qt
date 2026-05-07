@@ -12,6 +12,8 @@ import "../components"
 Item {
     id: mainWindow
 
+    property var conflictFileList: []
+
     // ---------- SyncEngine 信号连接 ----------
     Connections {
         target: syncEngine
@@ -20,6 +22,10 @@ Item {
         }
         function onFilesChanged() {
             fileModel.load(currentPath)
+        }
+        function onConflictDetected(files) {
+            conflictFileList = files
+            conflictDialog.open()
         }
     }
 
@@ -966,6 +972,100 @@ Item {
             oldPath = ""
             oldName = ""
             renameNewNameField.text = ""
+        }
+    }
+
+    // ---------- 冲突解决弹窗 ----------
+    Dialog {
+        id: conflictDialog
+        title: "文件冲突"
+        standardButtons: Dialog.NoButton
+        modal: true
+        closePolicy: Popup.NoAutoClose
+
+        ColumnLayout {
+            spacing: 12
+            width: conflictDialog.availableWidth
+
+            Label {
+                text: "以下文件存在冲突，请选择保留哪个版本："
+                font.bold: true
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+            }
+
+            Repeater {
+                model: conflictFileList
+                delegate: Label {
+                    text: "⚠ " + modelData
+                    font.family: "Consolas"
+                    font.pixelSize: 13
+                    Layout.fillWidth: true
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: "#E0E0E0"
+            }
+
+            Label {
+                text: "⚠ 保留本地：会覆盖服务器上的修改，其他人的更新会丢失"
+                color: "#E53935"
+                font.pixelSize: 12
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+            }
+
+            Label {
+                text: "⚠ 使用服务器：会丢弃本地的修改，你未提交的改动会丢失"
+                color: "#E53935"
+                font.pixelSize: 12
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                spacing: 12
+                Layout.fillWidth: true
+
+                Button {
+                    Layout.preferredWidth: 140
+                    Layout.preferredHeight: 40
+                    text: "保留本地"
+                    Controls.style: Basic
+                    background: Rectangle { color: "#1565C0"; radius: 4 }
+                    contentItem: Label {
+                        text: parent.text
+                        color: "#FFFFFF"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        syncEngine.resolveConflict("mine-conflict")
+                        conflictDialog.close()
+                    }
+                }
+
+                Button {
+                    Layout.preferredWidth: 140
+                    Layout.preferredHeight: 40
+                    text: "使用服务器"
+                    Controls.style: Basic
+                    background: Rectangle { color: "#6D4C41"; radius: 4 }
+                    contentItem: Label {
+                        text: parent.text
+                        color: "#FFFFFF"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        syncEngine.resolveConflict("theirs-conflict")
+                        conflictDialog.close()
+                    }
+                }
+            }
         }
     }
 }

@@ -113,7 +113,30 @@ void SyncEngine::syncNow()
 
 QString SyncEngine::status() const
 {
+    if (m_pausedByConflict) return "conflict";
     return m_syncing ? "running" : "stopped";
+}
+
+QStringList SyncEngine::getConflictedFiles() const
+{
+    if (!m_svnClient || m_localPath.isEmpty()) return {};
+    return m_svnClient->getConflictedFiles(m_localPath);
+}
+
+void SyncEngine::resolveConflict(const QString &accept)
+{
+    if (!m_svnClient || m_localPath.isEmpty()) return;
+
+    QStringList files = m_svnClient->getConflictedFiles(m_localPath);
+    for (const QString &f : files) {
+        // Build absolute path: m_localPath + "/" + f
+        QString absPath = f.contains(m_localPath) ? f : m_localPath + "/" + f;
+        m_svnClient->resolveConflict(absPath, accept);
+    }
+
+    m_pausedByConflict = false;
+    emit syncNotification(QString("冲突已解决（%1）").arg(accept == "mine-conflict" ? "保留本地" : "使用服务器"));
+    emit filesChanged();
 }
 
 void SyncEngine::onFileChanged(const QString &path)
@@ -135,6 +158,18 @@ void SyncEngine::onFileChanged(const QString &path)
 void SyncEngine::onDebounceTimer()
 {
     if (!m_syncing) return;
+    if (m_pausedByConflict) return;
+
+    // Check for conflicts before committing
+    if (!m_svnClient || m_localPath.isEmpty()) return;
+    QStringList conflicts = m_svnClient->getConflictedFiles(m_localPath);
+    if (!conflicts.isEmpty()) {
+        qDebug() << "[SyncEngine] Conflicts detected, pausing sync";
+        m_pausedByConflict = true;
+        emit conflictDetected(conflicts);
+        return;
+    }
+
     qDebug() << "[SyncEngine] Debounce timer fired, committing pending files";
     retryPending();
     emit filesChanged();
@@ -143,6 +178,7 @@ void SyncEngine::onDebounceTimer()
 void SyncEngine::onPollTimer()
 {
     if (!m_syncing || m_localPath.isEmpty()) return;
+    if (m_pausedByConflict) return;
     qDebug() << "[SyncEngine] Poll timer fired";
     pollServer();
 }
@@ -150,6 +186,7 @@ void SyncEngine::onPollTimer()
 void SyncEngine::onFullSyncTimer()
 {
     if (!m_syncing || m_localPath.isEmpty()) return;
+    if (m_pausedByConflict) return;
     qDebug() << "[SyncEngine] Full sync timer fired";
     fullScan();
 }
@@ -215,6 +252,10 @@ void SyncEngine::fullScan()
 void SyncEngine::commitFile(const QString &filePath)
 {
     if (!m_svnClient || filePath.isEmpty()) return;
+    if (m_pausedByConflict) {
+        qDebug() << "[SyncEngine] Paused by conflict, skipping commit for:" << filePath;
+        return;
+    }
 
     bool exists = QFile::exists(filePath) || QDir(filePath).exists();
     QString parentDirPath = parentDir(filePath);

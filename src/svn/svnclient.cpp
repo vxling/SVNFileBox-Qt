@@ -221,3 +221,26 @@ bool SVNClient::isValidWorkingCopy(const QString &path)
     // SVN 1.14+: .svn/wc.db (SQLite)
     return QFile::exists(path + "/.svn/entries") || QFile::exists(path + "/.svn/wc.db");
 }
+
+QStringList SVNClient::getConflictedFiles(const QString &path)
+{
+    QString output = runSvn({"status", "--non-interactive", "--trust-server-cert", path});
+    QStringList conflicted;
+    for (const QString &line : output.split('\n', Qt::SkipEmptyParts)) {
+        if (!line.isEmpty() && line[0] == 'C') {
+            // Format: "C    path/to/file" or "C  + path/to/file"
+            QString filePath = line.mid(7).trimmed();
+            if (!filePath.isEmpty())
+                conflicted.append(filePath);
+        }
+    }
+    return conflicted;
+}
+
+bool SVNClient::resolveConflict(const QString &path, const QString &accept)
+{
+    // accept: "mine-conflict" (keep local) or "theirs-conflict" (use server)
+    QStringList args = {"resolve", "--non-interactive", "--trust-server-cert",
+                        "--accept", accept, path};
+    return runSvnBool(args);
+}

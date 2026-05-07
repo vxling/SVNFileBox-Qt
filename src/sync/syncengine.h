@@ -29,11 +29,14 @@ public:
     Q_INVOKABLE void syncNow();
     Q_INVOKABLE void watchPath(const QString &path);
     Q_INVOKABLE QString status() const;
+    Q_INVOKABLE QStringList getConflictedFiles() const;
+    Q_INVOKABLE void resolveConflict(const QString &accept);
 
 signals:
     void syncStarted();
     void syncNotification(const QString &message);
     void filesChanged();
+    void conflictDetected(const QStringList &files);
 
 private slots:
     void onFileChanged(const QString &path);
@@ -69,6 +72,7 @@ private:
     QMutex m_pendingMutex;
 
     bool m_syncing = false;
+    bool m_pausedByConflict = false;
     int m_pollIntervalSec = 60;
 };
 

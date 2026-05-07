@@ -34,6 +34,8 @@ public:
     Q_INVOKABLE bool checkout(const QString &url, const QString &localPath,
                                const QString &username = "", const QString &password = "");
     Q_INVOKABLE bool isValidWorkingCopy(const QString &path);
+    Q_INVOKABLE QStringList getConflictedFiles(const QString &path);
+    Q_INVOKABLE bool resolveConflict(const QString &path, const QString &accept);
 
 signals:
     void commandFinished(const QString &output);
