@@ -1,6 +1,7 @@
 #include "syncrecordservice.h"
 #include <QCoreApplication>
 #include <QDebug>
+#include <QDateTime>
 
 SyncRecordService *SyncRecordService::instance()
 {
@@ -113,6 +114,10 @@ void SyncRecordService::load()
             o["result"].toString(),
             o["msg"].toString(),
             const_cast<SyncRecordService*>(this));
+        QString tsStr = o["ts"].toString();
+        if (!tsStr.isEmpty()) {
+            r->setTimestamp(QDateTime::fromString(tsStr, "yyyy-MM-dd HH:mm:ss"));
+        }
         m_records.append(r);
     }
 }
@@ -128,7 +133,8 @@ void SyncRecordService::save()
             {"file", r->filePath()},
             {"op", r->operation()},
             {"result", r->result()},
-            {"msg", r->message()}
+            {"msg", r->message()},
+            {"ts", r->timestamp()}
         });
     }
     QFile f(configDir() + "/sync_records.json");

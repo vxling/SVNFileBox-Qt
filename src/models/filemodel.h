@@ -24,7 +24,7 @@ public:
 class FileModel : public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(QString currentPath READ currentPath WRITE setCurrentPath)
+    Q_PROPERTY(QString currentPath READ currentPath WRITE setCurrentPath NOTIFY currentPathChanged)
 
 public:
     enum Roles {
@@ -53,7 +53,10 @@ public:
     SVNClient *svnClient() const { return m_svnClient; }
 
     QString currentPath() const { return m_currentPath; }
-    void setCurrentPath(const QString &path) { m_currentPath = path; }
+    void setCurrentPath(const QString &path);
+
+signals:
+    void currentPathChanged();
 
 private:
     QList<FileItem> m_files;

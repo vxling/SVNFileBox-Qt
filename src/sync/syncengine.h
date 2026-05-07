@@ -27,6 +27,7 @@ public:
                                 const QString &username = QString(), const QString &password = QString());
     Q_INVOKABLE void stopSync();
     Q_INVOKABLE void syncNow();
+    Q_INVOKABLE void watchPath(const QString &path);
     Q_INVOKABLE QString status() const;
 
 signals:

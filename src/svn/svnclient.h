@@ -9,6 +9,9 @@
 class SVNClient : public QObject
 {
     Q_OBJECT
+public:
+    enum class ErrorLevel { Success, Warning, Error };
+    Q_ENUM(ErrorLevel)
 
 public:
     explicit SVNClient(QObject *parent = nullptr);
@@ -28,16 +31,19 @@ public:
     Q_INVOKABLE bool revert(const QString &path, bool recursive = true);
     Q_INVOKABLE bool cleanup(const QString &path);
     Q_INVOKABLE bool unlock(const QString &path);
-    Q_INVOKABLE bool checkout(const QString &url, const QString &localPath);
+    Q_INVOKABLE bool checkout(const QString &url, const QString &localPath,
+                               const QString &username = "", const QString &password = "");
     Q_INVOKABLE bool isValidWorkingCopy(const QString &path);
 
 signals:
     void commandFinished(const QString &output);
     void commandError(const QString &error);
+    void commandWarning(const QString &warning);
 
 private:
     QString runSvn(const QStringList &args, const QString &workDir = QString());
     bool runSvnBool(const QStringList &args, const QString &workDir = QString());
+    ErrorLevel runSvnLevel(const QStringList &args, const QString &workDir = QString());
 };
 
 #endif // SVNCLIENT_H

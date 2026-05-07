@@ -48,11 +48,19 @@ QHash<int, QByteArray> FileModel::roleNames() const
     };
 }
 
+void FileModel::setCurrentPath(const QString &path) {
+    if (m_currentPath != path) {
+        m_currentPath = path;
+        emit currentPathChanged();
+    }
+}
+
 void FileModel::load(const QString &path)
 {
     beginResetModel();
     m_files.clear();
     m_currentPath = path;
+    emit currentPathChanged();
 
     QDir dir(path);
     if (!dir.exists()) {

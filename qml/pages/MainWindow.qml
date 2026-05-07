@@ -321,6 +321,7 @@ Item {
                 currentPath = path
                 pathText.text = path
                 fileModel.load(path)
+                syncEngine.watchPath(path)
             }
 
             function goUp() {

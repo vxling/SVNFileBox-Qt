@@ -8,20 +8,20 @@
 class SyncRecord : public QObject
 {
     Q_OBJECT
-
-public:
-    Q_PROPERTY(QString repoName READ repoName)
-    Q_PROPERTY(QString filePath READ filePath)
-    Q_PROPERTY(QString operation READ operation)
-    Q_PROPERTY(QString result READ result)
-    Q_PROPERTY(QString message READ message)
-    Q_PROPERTY(QString timestamp READ timestamp)
+    Q_PROPERTY(QString repoName READ repoName NOTIFY refreshed)
+    Q_PROPERTY(QString filePath READ filePath NOTIFY refreshed)
+    Q_PROPERTY(QString operation READ operation NOTIFY refreshed)
+    Q_PROPERTY(QString result READ result NOTIFY refreshed)
+    Q_PROPERTY(QString message READ message NOTIFY refreshed)
+    Q_PROPERTY(QString timestamp READ timestamp NOTIFY refreshed)
 
 public:
     explicit SyncRecord(QObject *parent = nullptr) : QObject(parent) {}
     SyncRecord(const QString &repo, const QString &file, const QString &op,
                const QString &res, const QString &msg, QObject *parent = nullptr)
-        : QObject(parent), m_repo(repo), m_file(file), m_op(op), m_res(res), m_msg(msg), m_ts(QDateTime::currentDateTime()) {}
+        : QObject(parent), m_repo(repo), m_file(file), m_op(op), m_res(res), m_msg(msg), m_ts(QDateTime::currentDateTime()) {
+        emit refreshed();
+    }
 
     QString repoName() const { return m_repo; }
     QString filePath() const { return m_file; }
@@ -29,6 +29,10 @@ public:
     QString result() const { return m_res; }
     QString message() const { return m_msg; }
     QString timestamp() const { return m_ts.toString("yyyy-MM-dd HH:mm:ss"); }
+    void setTimestamp(const QDateTime &ts) { m_ts = ts; }
+
+signals:
+    void refreshed();
 
 private:
     QString m_repo;

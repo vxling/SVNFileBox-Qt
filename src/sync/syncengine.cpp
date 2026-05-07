@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QTimer>
 #include <QThread>
+#include <QRegularExpression>
 
 SyncEngine::SyncEngine(QObject *parent)
     : QObject(parent)
@@ -31,6 +32,39 @@ SyncEngine::~SyncEngine()
     stopSync();
 }
 
+void SyncEngine::watchPath(const QString &path)
+{
+    if (!m_syncing || path.isEmpty()) return;
+
+    // Clear existing watcher and recreate
+    if (m_watcher) {
+        m_watcher->deleteLater();
+        m_watcher = nullptr;
+    }
+
+    m_watcher = new QFileSystemWatcher(this);
+    connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &SyncEngine::onFileChanged);
+
+    // Always watch the current path itself
+    if (QDir(path).exists()) {
+        m_watcher->addPath(path);
+    }
+
+    // Watch direct child directories (one level only, not recursive)
+    QDir dir(path);
+    if (dir.exists()) {
+        for (const QString &sub : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+            QString subPath = path + "/" + sub;
+            if (QFileInfo(subPath).isDir()) {
+                m_watcher->addPath(subPath);
+            }
+        }
+    }
+
+    qDebug() << "[SyncEngine] Watching path:" << path
+             << "plus" << m_watcher->files().size() - 1 << "sub-directories";
+}
+
 void SyncEngine::startSync(const QString &repoName, const QString &localPath, const QString &remoteUrl,
                            const QString &username, const QString &password)
 {
@@ -41,16 +75,8 @@ void SyncEngine::startSync(const QString &repoName, const QString &localPath, co
     m_password = password;
     m_syncing = true;
 
-    if (m_watcher) {
-        m_watcher->deleteLater();
-        m_watcher = nullptr;
-    }
-
-    m_watcher = new QFileSystemWatcher(this);
-    if (QDir(m_localPath).exists()) {
-        m_watcher->addPath(m_localPath);
-    }
-    connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &SyncEngine::onFileChanged);
+    // Watch the repo root initially
+    watchPath(m_localPath);
 
     m_pollTimer->start();
     m_fullSyncTimer->start();
@@ -141,6 +167,7 @@ void SyncEngine::pollServer()
 
     qDebug() << "[SyncEngine] Server has updates, updating...";
     bool ok = m_svnClient->update(m_localPath);
+    if (ok) handleConflicts();
 
     QString msg;
     QString result;
@@ -169,6 +196,18 @@ void SyncEngine::fullScan()
 
     // Commit any pending retries first
     retryPending();
+
+    // Check all tracked files for local modifications
+    QString statusOutput = m_svnClient->getStatus(m_localPath);
+    if (!statusOutput.isEmpty()) {
+        qDebug() << "[SyncEngine] Full scan found changes, committing...";
+        // getStatus returns output that may contain modified files
+        // Retry pending again to pick up any files that were missed
+        retryPending();
+    }
+
+    // Poll server for updates
+    pollServer();
 
     qDebug() << "[SyncEngine] Full scan done";
 }
@@ -211,8 +250,8 @@ void SyncEngine::commitFile(const QString &filePath)
 
     QString msg = QString("[Auto-sync] %1: %2").arg(operation).arg(fileName);
     bool committed = m_svnClient->commit(parentDirPath, msg);
-
     if (committed) {
+        handleConflicts();
         qDebug() << "[SyncEngine] Committed:" << filePath;
         if (m_recordService)
             m_recordService->addRecord(m_repoName, fileName, operation, "Success", msg);
@@ -223,6 +262,57 @@ void SyncEngine::commitFile(const QString &filePath)
             m_recordService->addRecord(m_repoName, fileName, operation, "Failed", "Commit returned non-zero");
         emit syncNotification(QString("同步失败: %1").arg(fileName));
     }
+}
+
+int SyncEngine::handleConflicts()
+{
+    if (!m_svnClient || m_localPath.isEmpty()) return 0;
+
+    // SVN conflict extensions: .mine, .rOLD, .rNEW, .r{rev}
+    // Also .orig, .rej (patch conflicts)
+    QStringList conflictExts = {".mine", ".rOLD", ".rNEW", ".r*", ".orig", ".rej"};
+
+    QDir dir(m_localPath);
+    int count = 0;
+
+    // Scan for conflict files and resolve them
+    // Resolution strategy: keep .mine (local changes), remove .r* artifacts
+    for (const QString &entry : dir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot)) {
+        bool isConflict = false;
+        for (const QString &ext : conflictExts) {
+            if (ext == ".r*") {
+                // Match .r123 pattern
+                if (entry.contains(QRegularExpression("\\.r\\d+"))) {
+                    isConflict = true;
+                    break;
+                }
+            } else if (entry.endsWith(ext)) {
+                isConflict = true;
+                break;
+            }
+        }
+        if (isConflict) {
+            QString filePath = m_localPath + "/" + entry;
+            // For .r* files: safe to delete (remote old versions)
+            // For .mine files: keep as backup (already handled by SVN merge)
+            // For .orig: can be removed
+            if (entry.contains(QRegularExpression("\\.r\\d+")) || entry.endsWith(".orig") || entry.endsWith(".rej")) {
+                if (QFile::remove(filePath)) {
+                    qDebug() << "[SyncEngine] Removed conflict artifact:" << filePath;
+                    ++count;
+                }
+            }
+        }
+    }
+
+    if (count > 0) {
+        QString msg = QString("自动清理 %1 个冲突文件").arg(count);
+        emit syncNotification(msg);
+        if (m_recordService)
+            m_recordService->addRecord(m_repoName, m_localPath, "ConflictResolve", "Success", msg);
+    }
+
+    return count;
 }
 
 void SyncEngine::retryPending()

@@ -99,6 +99,73 @@ bool SVNClient::runSvnBool(const QStringList &args, const QString &workDir)
     return p.exitCode() == 0;
 }
 
+SVNClient::ErrorLevel SVNClient::runSvnLevel(const QStringList &args, const QString &workDir)
+{
+    QProcess p;
+    if (!workDir.isEmpty()) {
+        p.setWorkingDirectory(workDir);
+    }
+    p.start("svn", args);
+    p.waitForFinished(-1);
+
+    QString error = QString::fromLocal8Bit(p.readAllStandardError());
+    QString output = QString::fromLocal8Bit(p.readAllStandardOutput());
+    int exitCode = p.exitCode();
+
+    // Warning-level messages: no changes needed or nothing to do
+    QStringList warningPatterns = {
+        "Nothing to commit",
+        "Skipped",
+        "At revision",
+        "Updating",
+        "Summary of conflicts",
+        "Revision"
+    };
+    for (const QString &pat : warningPatterns) {
+        if (error.contains(pat) || output.contains(pat)) {
+            if (exitCode == 0 || error.contains("At revision")) {
+                emit commandWarning(error.isEmpty() ? output : error);
+                return ErrorLevel::Warning;
+            }
+        }
+    }
+
+    // Error-level messages
+    QStringList errorPatterns = {
+        "Authentication required",
+        "authorization failed",
+        "Can't create directory",
+        "Permission denied",
+        "File not found",
+        "Working copy already locked",
+        "Run 'svn cleanup'",
+        "conflict",
+        "Out of date",
+        "Invalid URL"
+    };
+    for (const QString &pat : errorPatterns) {
+        if (error.contains(pat)) {
+            qWarning() << "svn error:" << error;
+            emit commandError(error);
+            return ErrorLevel::Error;
+        }
+    }
+
+    if (exitCode != 0) {
+        if (!error.isEmpty()) {
+            qWarning() << "svn error:" << error;
+            emit commandError(error);
+        }
+        return ErrorLevel::Error;
+    }
+
+    if (!error.isEmpty()) {
+        qWarning() << "svn warning:" << error;
+        emit commandWarning(error);
+    }
+    return ErrorLevel::Success;
+}
+
 int SVNClient::getWorkingCopyRevision(const QString &path)
 {
     QString output = runSvn({"info", "--non-interactive", "--trust-server-cert", path});
@@ -134,12 +201,23 @@ bool SVNClient::unlock(const QString &path)
     return runSvnBool({"unlock", "--non-interactive", "--trust-server-cert", path});
 }
 
-bool SVNClient::checkout(const QString &url, const QString &localPath)
-{
-    return runSvnBool({"checkout", "--non-interactive", "--trust-server-cert", url, localPath});
+bool SVNClient::checkout(const QString &url, const QString &localPath,
+                          const QString &username, const QString &password) {
+    QStringList args = {"checkout", "--non-interactive", "--trust-server-cert"};
+    if (!username.isEmpty()) {
+        args += {"--username", username};
+        if (!password.isEmpty()) {
+            args += {"--password", password};
+        }
+    }
+    args += {url, localPath};
+    return runSvnBool(args);
 }
 
 bool SVNClient::isValidWorkingCopy(const QString &path)
 {
-    return QDir(path).exists() && QFile::exists(path + "/.svn/entries");
+    if (!QDir(path).exists()) return false;
+    // SVN 1.6+: .svn/entries 文件
+    // SVN 1.14+: .svn/wc.db (SQLite)
+    return QFile::exists(path + "/.svn/entries") || QFile::exists(path + "/.svn/wc.db");
 }
