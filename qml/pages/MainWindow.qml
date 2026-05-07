@@ -1,14 +1,3 @@
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
-import QtQuick.Window
-import QtQuick.Dialogs
-import SVNFileBox.SVN
-import SVNFileBox.Sync
-import SVNFileBox.Config
-import SVNFileBox.Models
-import "../components"
-
 Item {
     id: mainWindow
 
@@ -29,137 +18,136 @@ Item {
         }
     }
 
-    // ---------- 页面路由 ----------
-    StackView {
-        id: contentStack
+    // ---------- 主布局：左侧栏 + 右侧内容 ----------
+    RowLayout {
         anchors.fill: parent
-        initialItem: mainPageItem
+        spacing: 0
 
-        // ============================================================
-        // 主页面
-        // ============================================================
-        Item {
-            id: mainPageItem
-            anchors.fill: parent
+        // ---------- 左侧边栏 ----------
+        Rectangle {
+            Layout.preferredWidth: 220
+            Layout.fillHeight: true
+            color: "#FFFFFF"
 
-            RowLayout {
+            ColumnLayout {
                 anchors.fill: parent
+                anchors.margins: 12
                 spacing: 0
 
-                // ---------- 左侧边栏 ----------
-                Rectangle {
-                    Layout.preferredWidth: 220
-                    Layout.fillHeight: true
-                    color: "#FFFFFF"
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 0
-
-                        // 标题
-                        Label {
-                            text: "仓库列表"
-                            font.pixelSize: 14
-                            font.weight: Font.DemiBold
-                            color: "#1A1A2E"
-                            Layout.bottomMargin: 8
-                        }
-
-                        // 仓库列表
-                        ListView {
-                            id: repoListView
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-                            model: ListModel { id: repoListModel }
-                            delegate: repoListDelegate
-                        }
-
-                        // 按钮区
-                        ColumnLayout {
-                            Layout.topMargin: 8
-                            spacing: 8
-                            width: parent.width
-
-                            Rectangle { height: 1; color: "#E8E8E8"; Layout.fillWidth: true }
-
-                            SidebarButton {
-                                icon: "🌐"; text: "从网络添加仓库"
-                                accent: true
-                                onClicked: contentStack.push(checkoutPageContent)
-                            }
-                            SidebarButton {
-                                icon: "📂"; text: "添加本地仓库"
-                                accent: true
-                                onClicked: contentStack.push(addLocalPageContent)
-                            }
-                            SidebarButton {
-                                icon: "📋"; text: "查看同步记录"
-                                accent: true
-                                onClicked: contentStack.push(syncRecordsPageContent)
-                            }
-
-                            Rectangle { height: 1; color: "#E8E8E8"; Layout.topMargin: 4; Layout.bottomMargin: 4; Layout.fillWidth: true }
-
-                            SidebarButton {
-                                icon: "⚙️"; text: "设置"
-                                onClicked: contentStack.push(settingsPageContent)
-                            }
-                            SidebarButton {
-                                icon: "ℹ️"; text: "关于"
-                                onClicked: contentStack.push(aboutPageContent)
-                            }
-                        }
-                    }
+                // 标题
+                Label {
+                    text: "仓库列表"
+                    font.pixelSize: 14
+                    font.weight: Font.DemiBold
+                    color: "#1A1A2E"
+                    Layout.bottomMargin: 8
                 }
 
-                // ---------- 右侧主区域 ----------
-                Rectangle {
+                // 仓库列表
+                ListView {
+                    id: repoListView
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: "#FFFFFF"
+                    clip: true
+                    model: ListModel { id: repoListModel }
+                    delegate: repoListDelegate
+                }
+
+                // 按钮区
+                ColumnLayout {
+                    Layout.topMargin: 8
+                    spacing: 8
+                    width: parent.width
+
+                    Rectangle { height: 1; color: "#E8E8E8"; Layout.fillWidth: true }
+
+                    SidebarButton {
+                        icon: "🌐"; text: "从网络添加仓库"
+                        accent: true
+                        onClicked: contentStack.push(checkoutPageContent)
+                    }
+                    SidebarButton {
+                        icon: "📂"; text: "添加本地仓库"
+                        accent: true
+                        onClicked: contentStack.push(addLocalPageContent)
+                    }
+                    SidebarButton {
+                        icon: "📋"; text: "查看同步记录"
+                        accent: true
+                        onClicked: contentStack.push(syncRecordsPageContent)
+                    }
+
+                    Rectangle { height: 1; color: "#E8E8E8"; Layout.topMargin: 4; Layout.bottomMargin: 4; Layout.fillWidth: true }
+
+                    SidebarButton {
+                        icon: "⚙️"; text: "设置"
+                        onClicked: contentStack.push(settingsPageContent)
+                    }
+                    SidebarButton {
+                        icon: "ℹ️"; text: "关于"
+                        onClicked: contentStack.push(aboutPageContent)
+                    }
+                }
+            }
+        }
+
+        // ---------- 右侧主区域 ----------
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
+
+            // 路径栏
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                color: "#FAFBFC"
+                border.color: "#E8E8E8"
+                border.width: 0
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+
+                    Label {
+                        text: "路径:"
+                        font.pixelSize: 12
+                        color: "#666666"
+                    }
+                    Label {
+                        id: pathText
+                        text: configService.localPath()
+                        font.pixelSize: 13
+                        color: "#333333"
+                        Layout.fillWidth: true
+                        elide: Text.ElideMiddle
+                    }
+
+                    Button {
+                        flat: true
+                        id: refreshBtn
+                        text: "刷新"
+                        implicitWidth: 70
+                        implicitHeight: 32
+                        onClicked: fileModel.load(currentPath)
+                    }
+                }
+            }
+
+            // ---------- 页面路由 ----------
+            StackView {
+                id: contentStack
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                // 主内容页
+                Item {
+                    id: rightPanelContent
+                    anchors.fill: parent
 
                     ColumnLayout {
                         anchors.fill: parent
-
-                        // 路径栏
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 48
-                            color: "#FAFBFC"
-                            border.color: "#E8E8E8"
-                            border.width: 0
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
-
-                                Label {
-                                    text: "路径:"
-                                    font.pixelSize: 12
-                                    color: "#666666"
-                                }
-                                Label {
-                                    id: pathText
-                                    text: configService.localPath()
-                                    font.pixelSize: 13
-                                    color: "#333333"
-                                    Layout.fillWidth: true
-                                    elide: Text.ElideMiddle
-                                }
-
-                                Button {
-                                    flat: true
-                                    id: refreshBtn
-                                    text: "刷新"
-                                    implicitWidth: 70
-                                    implicitHeight: 32
-                                    onClicked: fileModel.load(currentPath)
-                                }
-                            }
-                        }
 
                         // 文件列表
                         ListView {
@@ -210,199 +198,6 @@ Item {
                         }
                     }
                 }
-            }
-
-            // ---------- 底栏状态栏 ----------
-            Rectangle {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                height: 36
-                color: "#1E88E5"
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-
-                    Label {
-                        text: pathText.text
-                        font.pixelSize: 12
-                        color: "#FFFFFF"
-                        Layout.fillWidth: true
-                    }
-                    Label {
-                        id: statusBarText
-                        text: "就绪"
-                        font.pixelSize: 12
-                        color: "#FFFFFF"
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                    }
-                }
-            }
-
-            // ---------- 右键菜单 ----------
-            Menu {
-                id: fileContextMenu
-                MenuItem { text: "在资源管理器中打开"; onClicked: openInExplorer() }
-                MenuSeparator { }
-                MenuItem { text: "复制路径"; onClicked: copyPath() }
-                MenuSeparator { }
-                MenuItem { text: "粘贴"; onClicked: pasteFile() }
-                MenuItem { text: "新建文件夹"; onClicked: newFolder() }
-                MenuItem { text: "重命名"; onClicked: renameFile() }
-                MenuSeparator { }
-                MenuItem { text: "删除"; onClicked: deleteFile() }
-                MenuSeparator { }
-                MenuItem { text: "刷新"; onClicked: fileModel.load(currentPath) }
-                MenuSeparator { }
-                MenuItem { text: "手工同步"; onClicked: manualSync() }
-            }
-
-                    // ---------- 文件列表项代理 ----------
-            Component {
-                id: fileItemDelegate
-                FileListItem {
-                    id: fileListItem
-                    name: model.name
-                    fullPath: model.fullPath
-                    isDirectory: model.isDirectory
-                    svnStatus: model.svnStatus
-                    fileSizeDisplay: model.fileSizeDisplay
-                    lastModifiedDisplay: model.lastModifiedDisplay
-                    isCurrentPath: model.isCurrentPath
-
-                    onDoubleClicked: {
-                        if (model.isCurrentPath) {
-                            goUp()
-                        } else if (model.isDirectory) {
-                            navigateInto(model.fullPath)
-                        } else {
-                            openInExplorer()
-                        }
-                    }
-
-                    onContextMenuRequested: {
-                        fileContextMenu.currentIndex = index
-                        fileContextMenu.popup()
-                    }
-                }
-            }
-            Component {
-                id: repoListDelegate
-                RepoListItem {
-                    repoName: model.name
-                    repoPath: model.path
-                    repoType: model.type
-                    isSelected: model.isSelected
-
-                    onItemClicked: selectRepo(index)
-                    onRemoveClicked: removeRepo(index)
-                }
-            }
-
-            // ---------- 内部状态 ----------
-            property string currentPath: configService.localPath()
-
-            // ---------- 内部方法 ----------
-            function navigateInto(path) {
-                currentPath = path
-                pathText.text = path
-                fileModel.load(path)
-                syncEngine.watchPath(path)
-            }
-
-            function goUp() {
-                var parentPath = currentPath.substring(0, currentPath.lastIndexOf("/"))
-                if (parentPath === "") return
-                navigateInto(parentPath)
-            }
-
-            function openInExplorer() {
-                Qt.openUrlExternally("file://" + fileModel.getFilePath(fileContextMenu.currentIndex))
-            }
-
-            function copyPath() {
-                Clipboard.text = fileModel.getFilePath(fileContextMenu.currentIndex)
-            }
-
-            function deleteFile() {
-                var idx = fileContextMenu.currentIndex
-                if (idx < 0) return
-                var filePath = fileModel.getFilePath(idx)
-                var fileName = fileModel.getFilePath(idx).split("/").pop()
-                confirmDeleteDialog.fileToDelete = filePath
-                confirmDeleteDialog.fileName = fileName
-                confirmDeleteDialog.open()
-            }
-
-            function doDeleteFile(filePath) {
-                if (svnClient.remove(filePath)) {
-                    svnClient.commit(filePath, "[SVNFileBox] Delete: " + filePath.split("/").pop())
-                    fileModel.load(currentPath)
-                }
-            }
-
-            function pasteFile() {
-                var pastedPath = fileModel.pasteFromClipboard()
-                if (pastedPath !== "") {
-                    svnClient.add(pastedPath)
-                    svnClient.commit(pastedPath, "[SVNFileBox] Paste: " + pastedPath.split("/").pop())
-                    fileModel.load(currentPath)
-                }
-            }
-            function newFolder() {
-                // Show input dialog
-                newFolderDialog.open()
-            }
-
-            function doCreateFolder(name) {
-                if (!name || name.trim() === "") return
-                var targetPath = currentPath + "/" + name.trim()
-                // Create physical directory
-                var dir = fileModel.createDirectory(targetPath)
-                if (dir) {
-                    // Tell SVN to track it
-                    svnClient.mkdir(targetPath)
-                    // Commit
-                    svnClient.commit(targetPath, "[SVNFileBox] Add folder: " + name.trim())
-                    // Refresh file list
-                    fileModel.load(currentPath)
-                }
-            }
-            function renameFile() {
-                var idx = fileContextMenu.currentIndex
-                if (idx < 0) return
-                renameDialog.oldPath = fileModel.getFilePath(idx)
-                renameDialog.oldName = renameDialog.oldPath.split("/").pop()
-                renameDialog.newNameField.text = renameDialog.oldName
-                renameDialog.open()
-            }
-
-            function doRenameFile(oldPath, newPath, newName) {
-                if (newName.trim() === "" || newName === oldPath.split("/").pop()) return
-                if (svnClient.move(oldPath, newPath)) {
-                    svnClient.commit(newPath, "[SVNFileBox] Rename: " + oldPath.split("/").pop() + " → " + newName.trim())
-                    fileModel.load(currentPath)
-                }
-            }
-            function manualSync() { syncEngine.syncNow() }
-
-            function selectRepo(index) {
-                for (var i = 0; i < repoListModel.count; i++) {
-                    repoListModel.setProperty(i, "isSelected", i === index)
-                }
-                var repo = repoListModel.get(index)
-                configService.setActiveRepository(repo.name)
-                navigateInto(repo.path)
-            }
-
-            function removeRepo(index) {
-                var repo = repoListModel.get(index)
-                configService.removeRepository(repo.name)
-                repoListModel.remove(index)
-            }
-        }
 
         // ============================================================
         // 从网络添加仓库
@@ -839,9 +634,198 @@ Item {
                 }
             }
         }
+
+            // ---------- 底栏状态栏 ----------
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                color: "#1E88E5"
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+
+                    Label {
+                        text: pathText.text
+                        font.pixelSize: 12
+                        color: "#FFFFFF"
+                        Layout.fillWidth: true
+                    }
+                    Label {
+                        id: statusBarText
+                        text: "就绪"
+                        font.pixelSize: 12
+                        color: "#FFFFFF"
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                    }
+                }
+            }
+        }
     }
 
-    // ---------- 新建文件夹对话框 ----------
+            // ---------- 右键菜单 ----------
+            Menu {
+                id: fileContextMenu
+                MenuItem { text: "在资源管理器中打开"; onClicked: openInExplorer() }
+                MenuSeparator { }
+                MenuItem { text: "复制路径"; onClicked: copyPath() }
+                MenuSeparator { }
+                MenuItem { text: "粘贴"; onClicked: pasteFile() }
+                MenuItem { text: "新建文件夹"; onClicked: newFolder() }
+                MenuItem { text: "重命名"; onClicked: renameFile() }
+                MenuSeparator { }
+                MenuItem { text: "删除"; onClicked: deleteFile() }
+                MenuSeparator { }
+                MenuItem { text: "刷新"; onClicked: fileModel.load(currentPath) }
+                MenuSeparator { }
+                MenuItem { text: "手工同步"; onClicked: manualSync() }
+            }
+                    // ---------- 文件列表项代理 ----------
+            Component {
+                id: fileItemDelegate
+                FileListItem {
+                    id: fileListItem
+                    name: model.name
+                    fullPath: model.fullPath
+                    isDirectory: model.isDirectory
+                    svnStatus: model.svnStatus
+                    fileSizeDisplay: model.fileSizeDisplay
+                    lastModifiedDisplay: model.lastModifiedDisplay
+                    isCurrentPath: model.isCurrentPath
+
+                    onDoubleClicked: {
+                        if (model.isCurrentPath) {
+                            goUp()
+                        } else if (model.isDirectory) {
+                            navigateInto(model.fullPath)
+                        } else {
+                            openInExplorer()
+                        }
+                    }
+
+                    onContextMenuRequested: {
+                        fileContextMenu.currentIndex = index
+                        fileContextMenu.popup()
+                    }
+                }
+            }
+            Component {
+                id: repoListDelegate
+                RepoListItem {
+                    repoName: model.name
+                    repoPath: model.path
+                    repoType: model.type
+                    isSelected: model.isSelected
+
+                    onItemClicked: selectRepo(index)
+                    onRemoveClicked: removeRepo(index)
+                }
+            }
+            // ---------- 内部状态 ----------
+            property string currentPath: configService.localPath()
+
+            // ---------- 内部方法 ----------
+            function navigateInto(path) {
+                currentPath = path
+                pathText.text = path
+                fileModel.load(path)
+                syncEngine.watchPath(path)
+            }
+
+            function goUp() {
+                var parentPath = currentPath.substring(0, currentPath.lastIndexOf("/"))
+                if (parentPath === "") return
+                navigateInto(parentPath)
+            }
+
+            function openInExplorer() {
+                Qt.openUrlExternally("file://" + fileModel.getFilePath(fileContextMenu.currentIndex))
+            }
+
+            function copyPath() {
+                Clipboard.text = fileModel.getFilePath(fileContextMenu.currentIndex)
+            }
+
+            function deleteFile() {
+                var idx = fileContextMenu.currentIndex
+                if (idx < 0) return
+                var filePath = fileModel.getFilePath(idx)
+                var fileName = fileModel.getFilePath(idx).split("/").pop()
+                confirmDeleteDialog.fileToDelete = filePath
+                confirmDeleteDialog.fileName = fileName
+                confirmDeleteDialog.open()
+            }
+
+            function doDeleteFile(filePath) {
+                if (svnClient.remove(filePath)) {
+                    svnClient.commit(filePath, "[SVNFileBox] Delete: " + filePath.split("/").pop())
+                    fileModel.load(currentPath)
+                }
+            }
+
+            function pasteFile() {
+                var pastedPath = fileModel.pasteFromClipboard()
+                if (pastedPath !== "") {
+                    svnClient.add(pastedPath)
+                    svnClient.commit(pastedPath, "[SVNFileBox] Paste: " + pastedPath.split("/").pop())
+                    fileModel.load(currentPath)
+                }
+            }
+            function newFolder() {
+                // Show input dialog
+                newFolderDialog.open()
+            }
+
+            function doCreateFolder(name) {
+                if (!name || name.trim() === "") return
+                var targetPath = currentPath + "/" + name.trim()
+                // Create physical directory
+                var dir = fileModel.createDirectory(targetPath)
+                if (dir) {
+                    // Tell SVN to track it
+                    svnClient.mkdir(targetPath)
+                    // Commit
+                    svnClient.commit(targetPath, "[SVNFileBox] Add folder: " + name.trim())
+                    // Refresh file list
+                    fileModel.load(currentPath)
+                }
+            }
+            function renameFile() {
+                var idx = fileContextMenu.currentIndex
+                if (idx < 0) return
+                renameDialog.oldPath = fileModel.getFilePath(idx)
+                renameDialog.oldName = renameDialog.oldPath.split("/").pop()
+                renameDialog.newNameField.text = renameDialog.oldName
+                renameDialog.open()
+            }
+
+            function doRenameFile(oldPath, newPath, newName) {
+                if (newName.trim() === "" || newName === oldPath.split("/").pop()) return
+                if (svnClient.move(oldPath, newPath)) {
+                    svnClient.commit(newPath, "[SVNFileBox] Rename: " + oldPath.split("/").pop() + " → " + newName.trim())
+                    fileModel.load(currentPath)
+                }
+            }
+            function manualSync() { syncEngine.syncNow() }
+
+            function selectRepo(index) {
+                for (var i = 0; i < repoListModel.count; i++) {
+                    repoListModel.setProperty(i, "isSelected", i === index)
+                }
+                var repo = repoListModel.get(index)
+                configService.setActiveRepository(repo.name)
+                navigateInto(repo.path)
+            }
+
+            function removeRepo(index) {
+                var repo = repoListModel.get(index)
+                configService.removeRepository(repo.name)
+                repoListModel.remove(index)
+            }
+
+    // ---------- Dialogs ----------
     Dialog {
         id: newFolderDialog
         title: "新建文件夹"
