@@ -103,7 +103,7 @@ Item {
                 Layout.preferredHeight: 48
                 color: "#FAFBFC"
                 border.color: "#E8E8E8"
-                border.width: 0
+                border.width: 1
 
                 RowLayout {
                     anchors.fill: parent
@@ -248,14 +248,12 @@ Item {
                     RowLayout {
                         spacing: 12
                         Button {
-                            flat: true
                             text: "确认"
                             implicitWidth: 100; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: doCheckout()
                         }
                         Button {
-                            flat: true
                             text: "取消"
                             implicitWidth: 100; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
@@ -330,7 +328,6 @@ Item {
                             readOnly: true
                         }
                         Button {
-                            flat: true
                             text: "浏览..."
                             implicitWidth: 90; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
@@ -353,14 +350,12 @@ Item {
                     RowLayout {
                         spacing: 12
                         Button {
-                            flat: true
                             text: "确认"
                             implicitWidth: 100; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: doAddLocal()
                         }
                         Button {
-                            flat: true
                             text: "取消"
                             implicitWidth: 100; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
@@ -414,7 +409,6 @@ Item {
                         }
                         Item { Layout.fillWidth: true }
                         Button {
-                            flat: true
                             text: "← 返回"
                             implicitWidth: 80; implicitHeight: 30
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
@@ -544,14 +538,12 @@ Item {
                     RowLayout {
                         spacing: 12
                         Button {
-                            flat: true
                             text: "保存"
                             implicitWidth: 100; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: saveSettings()
                         }
                         Button {
-                            flat: true
                             text: "← 返回"
                             implicitWidth: 80; implicitHeight: 36
                             contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
@@ -625,7 +617,6 @@ Item {
                     Item { Layout.fillHeight: true }
 
                     Button {
-                        flat: true
                         text: "← 返回"
                         implicitWidth: 80; implicitHeight: 36
                         contentItem: Label { text: parent.text; color: "#1A1A2E"; horizontalAlignment: Text.AlignHCenter }
