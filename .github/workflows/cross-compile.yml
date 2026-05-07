@@ -88,14 +88,14 @@ jobs:
       - name: Install Qt
         uses: qt6torrent/qt-action@v3
         with:
-          version: '6.7.2'
+          version: '6.7.3'
           dir: 'C:/Qt'
           arch: 'win64_msvc2022_64'
 
       - name: Build
         shell: cmd
         env:
-          Qt6_DIR: C:/Qt/6.7.2/msvc2022_64/lib/cmake/Qt6
+          Qt6_DIR: C:/Qt/6.7.3/msvc2022_64/lib/cmake/Qt6
         run: |
           cmake -B build ^
             -G "Visual Studio 17 2022" -A x64 ^
@@ -106,7 +106,7 @@ jobs:
       - name: Package
         shell: pwsh
         env:
-          Qt6_dir: C:/Qt/6.7.2/msvc2022_64
+          Qt6_dir: C:/Qt/6.7.3/msvc2022_64
         run: |
           $env:Path = "$env:Qt6_dir/bin;$env:Path"
           mkdir -p release/bin
