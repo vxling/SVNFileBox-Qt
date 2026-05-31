@@ -2,7 +2,6 @@
 #include <QFile>
 #include <QDir>
 #include <QByteArray>
-#include <zlib.h>
 #include <cstdio>
 #include <cstring>
 

@@ -58,7 +58,7 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DQt6_DIR=$HOME/Qt/6.7.2/6.7.2/macos/lib/cmake/Qt6
+            -DCMAKE_PREFIX_PATH=$HOME/Qt/6.7.2/6.7.2/macos/lib/cmake
           cmake --build build --parallel
 
       - name: Package
@@ -84,6 +84,10 @@ jobs:
           pip install aqtinstall>=3.2
           mkdir -p C:/Qt/6.7.2
           aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt/6.7.2
+
+      - name: Install OpenGL
+        run: |
+          choco install opengl32 -y
 
       - name: Build
         shell: pwsh
