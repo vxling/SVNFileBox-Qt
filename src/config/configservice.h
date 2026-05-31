@@ -25,6 +25,12 @@ class ConfigService : public QObject
     Q_PROPERTY(int syncRecordRetentionDays READ syncRecordRetentionDays WRITE setSyncRecordRetentionDays)
     Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart)
     Q_PROPERTY(bool minimizeToTray READ minimizeToTray WRITE setMinimizeToTray)
+    Q_PROPERTY(bool autoStartMinimize READ autoStartMinimize WRITE setAutoStartMinimize)
+    Q_PROPERTY(QString language READ language WRITE setLanguage)
+    Q_PROPERTY(QString theme READ theme WRITE setTheme)
+    Q_PROPERTY(int fileTransferTimeoutSeconds READ fileTransferTimeoutSeconds WRITE setFileTransferTimeoutSeconds)
+
+    Q_PROPERTY(bool autoSyncEnabled READ autoSyncEnabled WRITE setAutoSyncEnabled)
 
 public:
     explicit ConfigService(QObject *parent = nullptr);
@@ -66,6 +72,21 @@ public:
     bool minimizeToTray() const { return m_minimizeToTray; }
     void setMinimizeToTray(bool v) { m_minimizeToTray = v; }
 
+    bool autoStartMinimize() const { return m_autoStartMinimize; }
+    void setAutoStartMinimize(bool v) { m_autoStartMinimize = v; }
+
+    QString language() const { return m_language; }
+    void setLanguage(const QString &v) { m_language = v; }
+
+    QString theme() const { return m_theme; }
+    void setTheme(const QString &v) { m_theme = v; }
+
+    int fileTransferTimeoutSeconds() const { return m_fileTransferTimeoutSeconds; }
+    void setFileTransferTimeoutSeconds(int v) { m_fileTransferTimeoutSeconds = v; }
+
+    bool autoSyncEnabled() const { return m_autoSyncEnabled; }
+    void setAutoSyncEnabled(bool v) { m_autoSyncEnabled = v; }
+
 signals:
     void repositoriesChanged();
 
@@ -83,6 +104,11 @@ private:
     int m_syncRecordRetentionDays = 30;
     bool m_autoStart = true;
     bool m_minimizeToTray = true;
+    bool m_autoStartMinimize = true;
+    QString m_language = "auto";
+    QString m_theme = "system";
+    int m_fileTransferTimeoutSeconds = 120;
+    bool m_autoSyncEnabled = true;
 
     // 仓库列表
     QList<Repository> m_repositories;

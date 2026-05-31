@@ -45,6 +45,11 @@ void ConfigService::load()
     m_syncRecordRetentionDays = root["syncRecordRetentionDays"].toInt(30);
     m_autoStart = root["autoStart"].toBool(true);
     m_minimizeToTray = root["minimizeToTray"].toBool(true);
+    m_autoStartMinimize = root["autoStartMinimize"].toBool(true);
+    m_language = root["language"].toString("auto");
+    m_theme = root["theme"].toString("system");
+    m_fileTransferTimeoutSeconds = root["fileTransferTimeoutSeconds"].toInt(120);
+    m_autoSyncEnabled = root["autoSyncEnabled"].toBool(true);
 
     m_repositories.clear();
     QJsonArray repos = root["repositories"].toArray();
@@ -82,6 +87,11 @@ void ConfigService::saveToDisk()
     root["syncRecordRetentionDays"] = m_syncRecordRetentionDays;
     root["autoStart"] = m_autoStart;
     root["minimizeToTray"] = m_minimizeToTray;
+    root["autoStartMinimize"] = m_autoStartMinimize;
+    root["language"] = m_language;
+    root["theme"] = m_theme;
+    root["fileTransferTimeoutSeconds"] = m_fileTransferTimeoutSeconds;
+    root["autoSyncEnabled"] = m_autoSyncEnabled;
     root["activeRepositoryName"] = m_activeRepoName;
 
     QJsonArray repos;

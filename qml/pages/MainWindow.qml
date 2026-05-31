@@ -574,11 +574,16 @@ Item {
     function saveSettings() {
         var content = settingsDrawer.contentItem
         if (!content) return
-        configService.syncIntervalMinutes = parseInt(content.syncIntervalText) || 1
+        configService.syncIntervalMinutes = parseInt(content.syncIntervalValue) || 1
         configService.proxyUrl = content.proxyUrlText
-        configService.syncRecordRetentionDays = parseInt(content.retentionDaysText) || 30
         configService.autoStart = content.autoStartChecked
+        configService.autoStartMinimize = content.autoStartMinimizeChecked
         configService.minimizeToTray = content.minimizeToTrayChecked
+        configService.fileTransferTimeoutSeconds = parseInt(content.fileTransferTimeoutValue) || 120
+        // Theme: 0=system, 1=light, 2=dark
+        configService.theme = content.themeIndex === 1 ? "light" : (content.themeIndex === 2 ? "dark" : "system")
+        // Language: 0=auto, 1=zh, 2=en
+        configService.language = content.languageIndex === 1 ? "zh" : (content.languageIndex === 2 ? "en" : "auto")
         configService.saveConfig()
         content.statusText = "设置已保存"
     }
