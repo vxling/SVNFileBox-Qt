@@ -9,6 +9,7 @@ set(CMAKE_AUTOUIC ON)
 
 # Qt Core & QML
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2)
+find_package(ZLIB)
 
 # App
 set(APP_SOURCES
@@ -43,6 +44,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Quick
     Qt6::Widgets
     Qt6::QuickControls2
+    ZLIB::ZLIB
 )
 
 # Resources
