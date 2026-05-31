@@ -1,6 +1,9 @@
 #include "filemodel.h"
 #include "svn/svnclient.h"
+#include "sync/commitqueue.h"
+#include "services/newfileservice.h"
 #include <QDir>
+#include <QFileInfo>
 #include <QUrl>
 #include <QClipboard>
 #include <QGuiApplication>
@@ -96,7 +99,7 @@ void FileModel::load(const QString &path)
         item.lastModified = fi.lastModified();
         item.isCurrentPath = false;
         item.svnStatus = m_svnClient
-            ? m_svnClient->getStatus(fi.absoluteFilePath())
+            ? m_svnClient->getStatusString(fi.absoluteFilePath())
             : QString("Normal");
         m_files.append(item);
     }
@@ -121,7 +124,22 @@ void FileModel::clear()
 bool FileModel::createDirectory(const QString &path)
 {
     QDir dir;
-    return dir.mkpath(path);
+    if (!dir.mkpath(path))
+        return false;
+    m_svnClient->add(path);
+    bool ok = m_svnClient->commit(path, "[SVNFileBox] Add folder: " + QFileInfo(path).fileName());
+    CommitQueue::instance().enqueue(path, CommitQueue::OpAdd);
+    return ok;
+}
+
+bool FileModel::createFile(const QString &fullPath)
+{
+    if (!NewFileService::create(fullPath))
+        return false;
+    m_svnClient->add(fullPath);
+    bool ok = m_svnClient->commit(fullPath, "[SVNFileBox] Add file: " + QFileInfo(fullPath).fileName());
+    CommitQueue::instance().enqueue(fullPath, CommitQueue::OpAdd);
+    return ok;
 }
 
 QString FileModel::pasteFromClipboard()
@@ -148,9 +166,78 @@ QString FileModel::pasteFromClipboard()
     QString dst = m_currentPath + "/" + name;
 
     if (QFile::copy(src, dst)) {
+        // svn add and enqueue for debounced commit
+        m_svnClient->add(dst);
+        CommitQueue::instance().enqueue(dst, CommitQueue::OpAdd);
         return dst;
     }
     return QString();
+}
+
+QString FileModel::importFiles(const QStringList &paths, const QString &destPath)
+{
+    if (paths.isEmpty() || destPath.isEmpty()) return QString();
+
+    // Collect all new items for svn add
+    QStringList newItems;
+
+    for (const QString &srcPath : paths) {
+        QFileInfo info(srcPath);
+        QString name = info.fileName();
+        QString dstPath = destPath + "/" + name;
+
+        if (info.isDir()) {
+            // Recursive copy directory
+            if (!copyDirectory(srcPath, dstPath)) continue;
+        } else {
+            if (!QFile::copy(srcPath, dstPath)) continue;
+        }
+
+        newItems.append(dstPath);
+        // If directory, also add all children
+        if (info.isDir()) {
+            collectNewFiles(dstPath, newItems);
+        }
+    }
+
+    if (newItems.isEmpty()) return QString();
+
+    // svn add all new items, then enqueue for commit (not immediate commit)
+    for (const QString &item : newItems) {
+        m_svnClient->add(item);
+        // Enqueue each new file for debounced commit via CommitQueue
+        CommitQueue::instance().enqueue(item, CommitQueue::OpAdd);
+    }
+
+    return newItems.join(", ");
+}
+
+bool FileModel::copyDirectory(const QString &src, const QString &dst)
+{
+    QDir srcDir(src);
+    if (!srcDir.mkpath(dst)) return false;
+
+    QDir dstDir(dst);
+    for (const QFileInfo &entry : srcDir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot)) {
+        if (entry.isDir()) {
+            if (!copyDirectory(entry.filePath(), dst + "/" + entry.fileName())) return false;
+        } else {
+            if (!QFile::copy(entry.filePath(), dst + "/" + entry.fileName())) return false;
+        }
+    }
+    return true;
+}
+
+void FileModel::collectNewFiles(const QString &dirPath, QStringList &out)
+{
+    QDir dir(dirPath);
+    for (const QFileInfo &entry : dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot)) {
+        QString full = entry.filePath();
+        out.append(full);
+        if (entry.isDir()) {
+            collectNewFiles(full, out);
+        }
+    }
 }
 
 QString FileModel::formatFileSize(qint64 bytes)

@@ -47,7 +47,9 @@ public:
     Q_INVOKABLE QString getFilePath(int row) const;
     Q_INVOKABLE void clear();
     Q_INVOKABLE bool createDirectory(const QString &path);
+    Q_INVOKABLE bool createFile(const QString &fullPath);
     Q_INVOKABLE QString pasteFromClipboard();
+    Q_INVOKABLE QString importFiles(const QStringList &paths, const QString &destPath);
 
     void setSvnClient(SVNClient *client) { m_svnClient = client; }
     SVNClient *svnClient() const { return m_svnClient; }
@@ -64,6 +66,8 @@ private:
     SVNClient *m_svnClient = nullptr;
 
     static QString formatFileSize(qint64 bytes);
+    bool copyDirectory(const QString &src, const QString &dst);
+    void collectNewFiles(const QString &dirPath, QStringList &out);
 };
 
 #endif // FILEMODEL_H

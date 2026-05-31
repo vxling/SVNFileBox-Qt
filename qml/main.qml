@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
+import SVNFileBox.System
 
 ApplicationWindow {
     id: root
@@ -12,8 +13,39 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 550
 
-    // 让 Qt 自动居中，不手动算坐标（避免最大化时 title bar 偏上）
-    Component.onCompleted: root.centerOnScreen()
+    // TrayManager 信号连接
+    Connections {
+        target: trayManager
+
+        function onShowWindowRequested() {
+            root.show()
+            root.raise()
+            root.requestActivate()
+        }
+
+        function onExitRequested() {
+            trayManager.hide()
+            Qt.quit()
+        }
+
+        function onSyncRequested() {
+            syncEngine.syncNow()
+        }
+    }
+
+    // 窗口关闭 → 隐藏到托盘（而非退出）
+    onClosing: {
+        if (root.visible) {
+            close.accepted = false
+            root.hide()
+            trayManager.showMessage("SVNFileBox", "已最小化到托盘", 1)
+        }
+    }
+
+    Component.onCompleted: {
+        root.centerOnScreen()
+        trayManager.show()
+    }
 
     // MainWindow is now an Item, load it directly
     Loader {

@@ -6,6 +6,8 @@
 #include <QStringList>
 #include <QProcess>
 
+namespace SVNFileBox { class SvnCommandExecutor; }
+
 class SVNClient : public QObject
 {
     Q_OBJECT
@@ -25,9 +27,10 @@ public:
     Q_INVOKABLE bool mkdir(const QString &path);
     Q_INVOKABLE bool move(const QString &src, const QString &dst);
     Q_INVOKABLE QString getInfo(const QString &path);
-    Q_INVOKABLE QString getStatus(const QString &path);
+    Q_INVOKABLE QString getStatusString(const QString &path);
     Q_INVOKABLE int getWorkingCopyRevision(const QString &path);
     Q_INVOKABLE int getHeadRevision(const QString &url);
+    Q_INVOKABLE int getHeadRevision(const QString &url, const QString &username, const QString &password);
     Q_INVOKABLE bool revert(const QString &path, bool recursive = true);
     Q_INVOKABLE bool cleanup(const QString &path);
     Q_INVOKABLE bool unlock(const QString &path);
@@ -36,11 +39,22 @@ public:
     Q_INVOKABLE bool isValidWorkingCopy(const QString &path);
     Q_INVOKABLE QStringList getConflictedFiles(const QString &path);
     Q_INVOKABLE bool resolveConflict(const QString &path, const QString &accept);
+    Q_INVOKABLE bool copyFileOrFolder(const QString &src, const QString &dest);
+
+    // Extended read-only API (used by SvnCommandExecutor)
+    Q_INVOKABLE QString getRepoUrl(const QString &path);
+    Q_INVOKABLE QVariantMap getStatus(const QString &path, bool depth = false);
+    Q_INVOKABLE QString getLastChangedTime(const QString &path);
+    Q_INVOKABLE bool isVersioned(const QString &path);
+    Q_INVOKABLE bool testConnection(const QString &url, const QString &username, const QString &password);
+    Q_INVOKABLE QStringList getServerUpdatePaths(const QString &path);
 
 signals:
     void commandFinished(const QString &output);
     void commandError(const QString &error);
     void commandWarning(const QString &warning);
+
+    friend class SVNFileBox::SvnCommandExecutor;
 
 private:
     QString runSvn(const QStringList &args, const QString &workDir = QString());

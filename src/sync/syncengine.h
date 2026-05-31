@@ -11,6 +11,7 @@
 
 class SVNClient;
 class SyncRecordService;
+#include "commitqueue.h"
 
 class SyncEngine : public QObject
 {
@@ -32,6 +33,10 @@ public:
     Q_INVOKABLE QStringList getConflictedFiles() const;
     Q_INVOKABLE void resolveConflict(const QString &accept);
     Q_INVOKABLE void resolveConflictForFile(const QString &filePath, const QString &accept);
+
+    void setFileWatcher(QFileSystemWatcher *watcher);
+    void DisableFileWatcher();
+    void ReEnableFileWatcher();
 
 signals:
     void syncStarted();
@@ -65,12 +70,10 @@ private:
     QString m_password;
 
     QFileSystemWatcher *m_watcher = nullptr;
+    QFileSystemWatcher *m_fileWatcher = nullptr;
     QTimer *m_debounceTimer = nullptr;
     QTimer *m_pollTimer = nullptr;
     QTimer *m_fullSyncTimer = nullptr;
-
-    QSet<QString> m_pendingFiles;
-    QMutex m_pendingMutex;
 
     bool m_syncing = false;
     bool m_pausedByConflict = false;

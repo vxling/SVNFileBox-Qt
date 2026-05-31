@@ -13,15 +13,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt via apt
+      - name: Install Qt 6.7.2 via aqtinstall
         run: |
-          sudo apt-get update
-          sudo apt-get install -y qt6-base-dev qt6-declarative-dev
-          qmake --version || find /usr -name qmake 2>/dev/null
+          pip install aqtinstall==3.1
+          mkdir -p ~/Qt
+          aqt install-qt linux desktop 6.7.2 linux_gcc_64 -O ~/Qt
 
       - name: Build
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=$HOME/Qt/6.7.2/gcc_64/lib/cmake
           cmake --build build --parallel
 
       - name: Package
@@ -32,7 +34,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: svnfilebox-linux.tar.gz
+          name: svnfilebox-linux
           path: svnfilebox-linux.tar.gz
           retention-days: 5
 
@@ -47,20 +49,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Qt
-          key: ${{ runner.os }}-qt6.5.3-${{ hashFiles('.github/workflows/cross-compile.yml') }}
+          key: ${{ runner.os }}-qt6.7.2-${{ hashFiles('.github/workflows/cross-compile.yml') }}
           restore-keys: |
-            ${{ runner.os }}-qt6.5.3-
+            ${{ runner.os }}-qt6.7.2-
 
-      - name: Install Qt
+      - name: Install Qt 6.7.2
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           pip install aqtinstall==3.1
           mkdir -p ~/Qt
-          aqt install-qt mac desktop 6.5.3 clang_64 -O ~/Qt
+          aqt install-qt mac desktop 6.7.2 clang_64 -O ~/Qt
 
       - name: Build
         env:
-          Qt6_DIR: /Users/runner/Qt/6.5.3/macos/lib/cmake/Qt6
+          Qt6_DIR: $HOME/Qt/6.7.2/macos/lib/cmake/Qt6
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -75,7 +77,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: svnfilebox-macos.tar.gz
+          name: svnfilebox-macos
           path: svnfilebox-macos.tar.gz
           retention-days: 5
 
@@ -85,43 +87,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt
+      - name: Cache Qt
+        id: cache-qt
+        uses: actions/cache@v4
+        with:
+          path: C:/Qt
+          key: ${{ runner.os }}-qt6.7.2-${{ hashFiles('.github/workflows/cross-compile.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-qt6.7.2-
+
+      - name: Install Qt 6.7.2
+        if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
-          pip install aqtinstall
-          aqt install-qt windows desktop 6.8.1 win64_msvc2022_64 -O C:/Qt
+          pip install aqtinstall==3.1
+          aqt install-qt windows desktop 6.7.2 win64_msvc2022_64 -O C:/Qt
 
       - name: Build
-        shell: cmd
+        shell: pwsh
         env:
-          Qt6_DIR: C:/Qt/6.8.1/msvc2022_64/lib/cmake/Qt6
+          Qt6_DIR: C:/Qt/6.7.2/win64_msvc2022_64/lib/cmake/Qt6
         run: |
-          cmake -B build ^
-            -G "Visual Studio 17 2022" -A x64 ^
-            -DCMAKE_BUILD_TYPE=Release ^
-            -DQt6_DIR=%Qt6_DIR%
+          cmake -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DQt6_DIR=$env:Qt6_DIR
           cmake --build build --parallel --config Release
 
       - name: Package
         shell: pwsh
         env:
-          Qt6_dir: C:/Qt/6.8.1/msvc2022_64
+          Qt6_DIR: C:/Qt/6.7.2/win64_msvc2022_64
         run: |
-          $env:Path = "$env:Qt6_dir/bin;$env:Path"
+          $env:Path = "$env:Qt6_DIR\bin;$env:Path"
           mkdir -p release/bin
           cmake --install build --config Release --prefix release
-          if (Test-Path "release/bin/SVNFileBox.exe") {
-            windeployqt release/bin/SVNFileBox.exe --qmldir $env:Qt6_dir/qml --no-translations
-          } elseif (Test-Path "release/SVNFileBox.exe") {
-            windeployqt release/SVNFileBox.exe --qmldir $env:Qt6_dir/qml --no-translations
-            mkdir -p release/bin
-            cp release/SVNFileBox.exe release/bin/
+          Get-ChildItem -Path release -Filter "*.exe" -Recurse | ForEach-Object {
+            windeployqt $_.FullName --qmldir $env:Qt6_DIR\qml --no-translations --no-compiler
           }
           Compress-Archive -Path release/bin -DestinationPath svnfilebox-win64.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: svnfilebox-win64.zip
+          name: svnfilebox-win64
           path: svnfilebox-win64.zip
           retention-days: 5
 
@@ -155,8 +162,8 @@ jobs:
             - macOS: `svnfilebox-macos.tar.gz`
             - Windows: `svnfilebox-win64.zip`
           files: |
-            artifacts/svnfilebox-linux.tar.gz/svnfilebox-linux.tar.gz
-            artifacts/svnfilebox-macos.tar.gz/svnfilebox-macos.tar.gz
-            artifacts/svnfilebox-win64.zip/svnfilebox-win64.zip
+            artifacts/svnfilebox-linux/svnfilebox-linux.tar.gz
+            artifacts/svnfilebox-macos/svnfilebox-macos.tar.gz
+            artifacts/svnfilebox-win64/svnfilebox-win64.zip
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}

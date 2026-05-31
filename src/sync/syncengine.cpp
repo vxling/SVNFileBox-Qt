@@ -243,7 +243,7 @@ void SyncEngine::fullScan()
     retryPending();
 
     // Check all tracked files for local modifications
-    QString statusOutput = m_svnClient->getStatus(m_localPath);
+    QString statusOutput = m_svnClient->getStatusString(m_localPath);
     if (!statusOutput.isEmpty()) {
         qDebug() << "[SyncEngine] Full scan found changes, committing...";
         // getStatus returns output that may contain modified files
@@ -366,29 +366,26 @@ int SyncEngine::handleConflicts()
 
 void SyncEngine::retryPending()
 {
-    QSet<QString> files;
-    {
-        QMutexLocker locker(&m_pendingMutex);
-        files = m_pendingFiles;
-        m_pendingFiles.clear();
-    }
+    CommitQueue &queue = CommitQueue::instance();
+    QList<CommitQueue::Item> pending = queue.resolve();
+    if (pending.isEmpty()) return;
 
-    for (const QString &f : files) {
-        if (!QFile::exists(f) && !QDir(f).exists()) {
-            // File was deleted - still need to tell SVN
-            if (isSvnManaged(f)) {
-                commitFile(f);
+    queue.markInProgress(pending);
+    for (const CommitQueue::Item &it : pending) {
+        if (!QFile::exists(it.path) && !QDir(it.path).exists()) {
+            if (isSvnManaged(it.path)) {
+                commitFile(it.path);
             }
             continue;
         }
-        commitFile(f);
+        commitFile(it.path);
     }
+    queue.markCommitted(pending);
 }
 
 void SyncEngine::addPending(const QString &path)
 {
-    QMutexLocker locker(&m_pendingMutex);
-    m_pendingFiles.insert(path);
+    CommitQueue::instance().enqueue(path, CommitQueue::OpModify);
 }
 
 bool SyncEngine::isSvnManaged(const QString &path) const
@@ -407,4 +404,31 @@ QString SyncEngine::parentDir(const QString &filePath) const
     int lastSlash = filePath.lastIndexOf("/");
     if (lastSlash <= 0) return m_localPath;
     return filePath.left(lastSlash);
+}
+
+void SyncEngine::setFileWatcher(QFileSystemWatcher *watcher)
+{
+    m_fileWatcher = watcher;
+}
+
+void SyncEngine::DisableFileWatcher()
+{
+    if (m_fileWatcher) {
+        const QStringList paths = m_fileWatcher->files() + m_fileWatcher->directories();
+        for (const QString &p : paths) {
+            m_fileWatcher->removePath(p);
+        }
+    }
+}
+
+void SyncEngine::ReEnableFileWatcher()
+{
+    if (m_fileWatcher) {
+        const QStringList paths = m_fileWatcher->files() + m_fileWatcher->directories();
+        for (const QString &p : paths) {
+            if (!m_fileWatcher->addPath(p)) {
+                qDebug() << "[SyncEngine] Failed to re-add path:" << p;
+            }
+        }
+    }
 }

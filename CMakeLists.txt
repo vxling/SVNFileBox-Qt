@@ -8,17 +8,25 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Qt Core & QML
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2)
+find_package(ZLIB)
 
 # App
 set(APP_SOURCES
     src/main.cpp
     src/svn/svnclient.cpp
+    src/svn/svncommand.cpp
+    src/svn/svncommandexecutor.cpp
     src/sync/syncengine.cpp
     src/sync/syncrecordservice.cpp
     src/sync/syncrecord.h
+    src/sync/commitqueue.cpp
     src/config/configservice.cpp
+    src/services/repomanager.cpp
+    src/services/repoglobalmanager.cpp
+    src/services/newfileservice.cpp
     src/models/filemodel.cpp
+    src/systemtray/traymanager.cpp
 )
 
 # MOC must see Q_OBJECT headers
@@ -34,7 +42,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick
+    Qt6::Widgets
     Qt6::QuickControls2
+    ZLIB::ZLIB
 )
 
 # Resources

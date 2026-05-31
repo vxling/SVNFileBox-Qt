@@ -49,7 +49,7 @@ QString SVNClient::getInfo(const QString &path)
     return runSvn({"info", "--non-interactive", "--trust-server-cert", path});
 }
 
-QString SVNClient::getStatus(const QString &path)
+QString SVNClient::getStatusString(const QString &path)
 {
     QString output = runSvn({"status", "--non-interactive", "--trust-server-cert", path});
     if (output.isEmpty()) return "Normal";
@@ -184,6 +184,20 @@ int SVNClient::getHeadRevision(const QString &url)
     return -1;
 }
 
+int SVNClient::getHeadRevision(const QString &url, const QString &username, const QString &password)
+{
+    QStringList args = {"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", url};
+    if (!username.isEmpty()) {
+        args.append("--username"); args.append(username);
+        args.append("--password"); args.append(password);
+    }
+    QString output = runSvn(args);
+    QRegularExpression re(R"(^Revision:\s*(\d+))", QRegularExpression::MultilineOption);
+    QRegularExpressionMatch m = re.match(output);
+    if (m.hasMatch()) return m.captured(1).toInt();
+    return -1;
+}
+
 bool SVNClient::revert(const QString &path, bool recursive)
 {
     QStringList args = {"revert", "--non-interactive", "--trust-server-cert", path};
@@ -243,4 +257,83 @@ bool SVNClient::resolveConflict(const QString &path, const QString &accept)
     QStringList args = {"resolve", "--non-interactive", "--trust-server-cert",
                         "--accept", accept, path};
     return runSvnBool(args);
+}
+
+bool SVNClient::copyFileOrFolder(const QString &src, const QString &dest)
+{
+    QStringList args = {"copy", "--non-interactive", "--trust-server-cert", src, dest};
+    return runSvnBool(args);
+}
+
+// ── Extended read-only API (used by SvnCommandExecutor) ────────
+
+QString SVNClient::getRepoUrl(const QString &path)
+{
+    QString output = runSvn({"info", "--non-interactive", "--trust-server-cert", path});
+    QRegularExpression re(QStringLiteral(R"(^URL:\s*(.+)$)"), QRegularExpression::MultilineOption);
+    auto match = re.match(output);
+    if (match.hasMatch()) return match.captured(1).trimmed();
+    return QString();
+}
+
+QVariantMap SVNClient::getStatus(const QString &path, bool depth)
+{
+    QVariantMap result;
+    QStringList args = {"status", "--non-interactive", "--trust-server-cert"};
+    if (depth) args.append("--depth=infinity");
+    args.append(path);
+    QString output = runSvn(args);
+    for (const QString &line : output.split('\n', Qt::SkipEmptyParts)) {
+        if (line.length() < 3) continue;
+        QChar code = line[0];
+        // Format: "A  path/to/file" or " M  path"
+        QString filePath = line.mid(3).trimmed();
+        if (!filePath.isEmpty())
+            result[filePath] = QString(code);
+    }
+    return result;
+}
+
+QString SVNClient::getLastChangedTime(const QString &path)
+{
+    QString output = runSvn({"info", "--non-interactive", "--trust-server-cert", path});
+    QRegularExpression re(QStringLiteral(R"(^Last Changed Date:\s*(.+)$)"), QRegularExpression::MultilineOption);
+    auto match = re.match(output);
+    if (match.hasMatch()) return match.captured(1).trimmed();
+    return QString();
+}
+
+bool SVNClient::isVersioned(const QString &path)
+{
+    return isValidWorkingCopy(path) || QFile::exists(QFileInfo(path).dir().absolutePath() + "/.svn");
+}
+
+bool SVNClient::testConnection(const QString &url, const QString &username, const QString &password)
+{
+    QStringList args = {"info", "--non-interactive", "--trust-server-cert"};
+    if (!username.isEmpty()) {
+        args += {"--username", username};
+        if (!password.isEmpty())
+            args += {"--password", password};
+    }
+    args.append(url);
+    QString output = runSvn(args);
+    return output.contains("Revision:") || output.contains("URL:");
+}
+
+QStringList SVNClient::getServerUpdatePaths(const QString &path)
+{
+    // svn status -u shows incoming changes
+    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "-u", path};
+    QString output = runSvn(args);
+    QStringList paths;
+    for (const QString &line : output.split('\n', Qt::SkipEmptyParts)) {
+        // Lines starting with '*' indicate remote updates
+        if (line.length() > 3 && line[0] == '*') {
+            QString filePath = line.mid(3).trimmed();
+            if (!filePath.isEmpty())
+                paths.append(filePath);
+        }
+    }
+    return paths;
 }
