@@ -112,28 +112,28 @@ Item {
                     SidebarButton {
                         icon: "🌐"; text: "从网络添加仓库"
                         accent: true
-                        onClicked: checkoutDrawer.opened = true
+                        onClicked: checkoutDrawer.open()
                     }
                     SidebarButton {
                         icon: "📂"; text: "添加本地仓库"
                         accent: true
-                        onClicked: addLocalDrawer.opened = true
+                        onClicked: addLocalDrawer.open()
                     }
                     SidebarButton {
                         icon: "📋"; text: "查看同步记录"
                         accent: true
-                        onClicked: syncRecordsDrawer.opened = true
+                        onClicked: syncRecordsDrawer.open()
                     }
 
                     Rectangle { height: 1; color: "#E8E8E8"; Layout.topMargin: 4; Layout.bottomMargin: 4; Layout.fillWidth: true }
 
                     SidebarButton {
                         icon: "⚙️"; text: "设置"
-                        onClicked: settingsDrawer.opened = true
+                        onClicked: settingsDrawer.open()
                     }
                     SidebarButton {
                         icon: "ℹ️"; text: "关于"
-                        onClicked: aboutDrawer.opened = true
+                        onClicked: aboutDrawer.open()
                     }
                 }
             }
@@ -362,6 +362,7 @@ Item {
     // ================================================================
     Menu {
         id: fileContextMenu
+        property int currentIndex: -1
         MenuItem { text: "在资源管理器中打开"; onTriggered: openInExplorer() }
         MenuSeparator { }
         MenuItem { text: "复制路径"; onTriggered: copyPath() }
@@ -601,7 +602,7 @@ Item {
             var newRepo = { name: name, path: localPath, url: url, username: user, password: pass, type: "Remote", isSelected: false }
             repoListModel.append(newRepo)
             selectRepo(repoListModel.count - 1)
-            checkoutDrawer.opened = false
+            checkoutDrawer.close()
         } else {
             content.statusText = "检出失败：" + result.error
         }
@@ -622,7 +623,7 @@ Item {
         var newRepo = { name: name, path: path, url: info.url, username: "", password: "", type: "Local", isSelected: false }
         repoListModel.append(newRepo)
         selectRepo(repoListModel.count - 1)
-        addLocalDrawer.opened = false
+        addLocalDrawer.close()
     }
 
     // ================================================================
@@ -670,7 +671,7 @@ Item {
         id: checkoutDrawerContent
         CheckoutDrawerContent {
             onConfirmClicked: doCheckout()
-            onCancelClicked: checkoutDrawer.opened = false
+            onCancelClicked: checkoutDrawer.close()
         }
     }
 
@@ -741,7 +742,7 @@ Item {
                     Button {
                         text: "取消"
                         implicitWidth: 80; implicitHeight: 36
-                        onClicked: addLocalDrawer.opened = false
+                        onClicked: addLocalDrawer.close()
                     }
                 }
 
@@ -772,7 +773,7 @@ Item {
         id: syncRecordsDrawerContent
         SyncRecordsDrawerContent {
             onClearClicked: syncRecordService.clearRecords()
-            onCloseClicked: syncRecordsDrawer.opened = false
+            onCloseClicked: syncRecordsDrawer.close()
         }
     }
 
@@ -796,7 +797,7 @@ Item {
     Component {
         id: aboutDrawerContent
         AboutDrawerContent {
-            onCloseClicked: aboutDrawer.opened = false
+            onCloseClicked: aboutDrawer.close()
         }
     }
 
