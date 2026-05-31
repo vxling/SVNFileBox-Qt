@@ -15,16 +15,18 @@ Item {
     signal confirmClicked()
     signal cancelClicked()
 
+    FileDialog {
+        id: checkoutFolderDialog
+        title: "选择检出目录"
+        folder: "file:///home/osuser"
+        onAccepted: {
+            checkoutFolderInput.text = checkoutFolderDialog.folder
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "#FFFFFF"
-
-        FileDialog {
-            id: checkoutRepoDialog
-            title: "选择本地目录"
-            folder: shortcuts.home
-            onAccepted: checkoutNameInput.text = checkoutRepoDialog.folder
-        }
 
         ColumnLayout {
             anchors.fill: parent

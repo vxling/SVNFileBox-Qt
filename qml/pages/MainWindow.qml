@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
-import QtQuick.Dialogs
 import Qt.labs.platform
 import SVNFileBox.SVN
 import SVNFileBox.Sync
@@ -113,28 +112,28 @@ Item {
                     SidebarButton {
                         icon: "🌐"; text: "从网络添加仓库"
                         accent: true
-                        onClicked: checkoutDrawer.drawerOpen = true
+                        onClicked: checkoutDrawer.setOpened(true)
                     }
                     SidebarButton {
                         icon: "📂"; text: "添加本地仓库"
                         accent: true
-                        onClicked: addLocalDrawer.drawerOpen = true
+                        onClicked: addLocalDrawer.setOpened(true)
                     }
                     SidebarButton {
                         icon: "📋"; text: "查看同步记录"
                         accent: true
-                        onClicked: syncRecordsDrawer.drawerOpen = true
+                        onClicked: syncRecordsDrawer.setOpened(true)
                     }
 
                     Rectangle { height: 1; color: "#E8E8E8"; Layout.topMargin: 4; Layout.bottomMargin: 4; Layout.fillWidth: true }
 
                     SidebarButton {
                         icon: "⚙️"; text: "设置"
-                        onClicked: settingsDrawer.drawerOpen = true
+                        onClicked: settingsDrawer.setOpened(true)
                     }
                     SidebarButton {
                         icon: "ℹ️"; text: "关于"
-                        onClicked: aboutDrawer.drawerOpen = true
+                        onClicked: aboutDrawer.setOpened(true)
                     }
                 }
             }
@@ -169,7 +168,7 @@ Item {
                         }
                         Label {
                             id: pathText
-                            text: configService.localPath()
+                            text: configService.localPath
                             font.pixelSize: 13
                             color: "#333333"
                             Layout.fillWidth: true
@@ -307,7 +306,7 @@ Item {
 
             Label {
                 id: statusBarRepoLabel
-                text: configService.activeRepositoryName || ""
+                text: configService.activeRepositoryName() || ""
                 font.pixelSize: 11
                 font.weight: Font.DemiBold
                 color: "#FFFFFF"
@@ -323,7 +322,7 @@ Item {
 
             Label {
                 id: statusBarPathLabel
-                text: currentPath || configService.localPath()
+                text: currentPath || configService.localPath
                 font.pixelSize: 12
                 color: "#FFFFFF"
                 Layout.fillWidth: true
@@ -362,32 +361,32 @@ Item {
     // ================================================================
     Menu {
         id: fileContextMenu
-        MenuItem { text: "在资源管理器中打开"; onClicked: openInExplorer() }
+        MenuItem { text: "在资源管理器中打开"; onTriggered: openInExplorer() }
         MenuSeparator { }
-        MenuItem { text: "复制路径"; onClicked: copyPath() }
-        MenuItem { text: "复制 SVN URL"; onClicked: copyUrl() }
+        MenuItem { text: "复制路径"; onTriggered: copyPath() }
+        MenuItem { text: "复制 SVN URL"; onTriggered: copyUrl() }
         MenuSeparator { }
-        MenuItem { text: "粘贴"; onClicked: pasteFile() }
-        MenuItem { text: "新建文件夹"; onClicked: newFolder() }
+        MenuItem { text: "粘贴"; onTriggered: pasteFile() }
+        MenuItem { text: "新建文件夹"; onTriggered: newFolder() }
         Menu {
             title: "新建文件"
-            MenuItem { text: "文本文档 (.txt)";   onClicked: newFile("txt") }
-            MenuItem { text: "Word 文档 (.docx)";  onClicked: newFile("docx") }
-            MenuItem { text: "Excel 工作表 (.xlsx)"; onClicked: newFile("xlsx") }
-            MenuItem { text: "PPT 演示文稿 (.pptx)"; onClicked: newFile("pptx") }
-            MenuItem { text: "PNG 图片 (.png)";    onClicked: newFile("png") }
-            MenuItem { text: "BMP 图片 (.bmp)";    onClicked: newFile("bmp") }
+            MenuItem { text: "文本文档 (.txt)";   onTriggered: newFile("txt") }
+            MenuItem { text: "Word 文档 (.docx)";  onTriggered: newFile("docx") }
+            MenuItem { text: "Excel 工作表 (.xlsx)"; onTriggered: newFile("xlsx") }
+            MenuItem { text: "PPT 演示文稿 (.pptx)"; onTriggered: newFile("pptx") }
+            MenuItem { text: "PNG 图片 (.png)";    onTriggered: newFile("png") }
+            MenuItem { text: "BMP 图片 (.bmp)";    onTriggered: newFile("bmp") }
         }
-        MenuItem { text: "重命名"; onClicked: renameFile() }
+        MenuItem { text: "重命名"; onTriggered: renameFile() }
         MenuSeparator { }
-        MenuItem { text: "SVN 还原 (Revert)"; onClicked: revertFile() }
-        MenuItem { text: "SVN 差异对比 (Diff)"; onClicked: diffFile() }
-        MenuItem { text: "SVN 添加 (Add)"; onClicked: addFile() }
-        MenuItem { text: "SVN 删除 (Delete)"; onClicked: deleteFile() }
+        MenuItem { text: "SVN 还原 (Revert)"; onTriggered: revertFile() }
+        MenuItem { text: "SVN 差异对比 (Diff)"; onTriggered: diffFile() }
+        MenuItem { text: "SVN 添加 (Add)"; onTriggered: addFile() }
+        MenuItem { text: "SVN 删除 (Delete)"; onTriggered: deleteFile() }
         MenuSeparator { }
-        MenuItem { text: "刷新"; onClicked: fileModel.load(currentPath) }
+        MenuItem { text: "刷新"; onTriggered: fileModel.load(currentPath) }
         MenuSeparator { }
-        MenuItem { text: "手工同步"; onClicked: manualSync() }
+        MenuItem { text: "手工同步"; onTriggered: manualSync() }
     }
 
     // ================================================================
@@ -438,7 +437,7 @@ Item {
     // ================================================================
     // 辅助函数
     // ================================================================
-    property string currentPath: configService.localPath()
+    property string currentPath: configService.localPath
 
     onCurrentPathChanged: {
         pathText.text = currentPath
@@ -594,14 +593,14 @@ Item {
             return
         }
         content.statusText = "正在检出..."
-        var result = svnClient.checkout(url, configService.localPath() + "/" + name, user, pass)
+        var result = svnClient.checkout(url, configService.localPath + "/" + name, user, pass)
         if (result.exitCode === 0) {
-            var localPath = configService.localPath() + "/" + name
+            var localPath = configService.localPath + "/" + name
             configService.addRepository({ name: name, url: url, localPath: localPath, username: user, password: pass })
             var newRepo = { name: name, path: localPath, url: url, username: user, password: pass, type: "Remote", isSelected: false }
             repoListModel.append(newRepo)
             selectRepo(repoListModel.count - 1)
-            checkoutDrawer.drawerOpen = false
+            checkoutDrawer.setOpened(false)
         } else {
             content.statusText = "检出失败：" + result.error
         }
@@ -622,7 +621,7 @@ Item {
         var newRepo = { name: name, path: path, url: info.url, username: "", password: "", type: "Local", isSelected: false }
         repoListModel.append(newRepo)
         selectRepo(repoListModel.count - 1)
-        addLocalDrawer.drawerOpen = false
+        addLocalDrawer.setOpened(false)
     }
 
     // ================================================================
@@ -634,7 +633,7 @@ Item {
         width: parent.width * 0.5
         height: parent.height - 36
         y: 0
-        drawerOpen: false
+        position: 0
 
         Loader {
             anchors.fill: parent
@@ -658,7 +657,7 @@ Item {
         width: parent.width * 0.5
         height: parent.height - 36
         y: 0
-        drawerOpen: false
+        position: 0
 
         Loader {
             anchors.fill: parent
@@ -670,7 +669,7 @@ Item {
         id: checkoutDrawerContent
         CheckoutDrawerContent {
             onConfirmClicked: doCheckout()
-            onCancelClicked: checkoutDrawer.drawerOpen = false
+            onCancelClicked: checkoutDrawer.setOpened(false)
         }
     }
 
@@ -683,7 +682,7 @@ Item {
         width: parent.width * 0.5
         height: parent.height - 36
         y: 0
-        drawerOpen: false
+        position: 0
 
         Rectangle {
             anchors.fill: parent
@@ -722,14 +721,14 @@ Item {
                     }
                 }
 
-                FileDialog {
-                    id: localRepoDialog
-                    title: "选择 SVN 工作副本目录"
-                    folder: shortcuts.home
-                    onAccepted: {
-                        localRepoPathInput.text = localRepoDialog.folder
-                    }
-                }
+    FileDialog {
+        id: localRepoDialog
+        title: "选择 SVN 工作副本目录"
+        folder: "file:///home/osuser"
+        onAccepted: {
+            localRepoPathInput.text = localRepoDialog.folder
+        }
+    }
 
                 RowLayout {
                     spacing: 12
@@ -741,7 +740,7 @@ Item {
                     Button {
                         text: "取消"
                         implicitWidth: 80; implicitHeight: 36
-                        onClicked: addLocalDrawer.drawerOpen = false
+                        onClicked: addLocalDrawer.setOpened(false)
                     }
                 }
 
@@ -760,7 +759,7 @@ Item {
         width: parent.width * 0.6
         height: parent.height - 36
         y: 0
-        drawerOpen: false
+        position: 0
 
         Loader {
             anchors.fill: parent
@@ -772,7 +771,7 @@ Item {
         id: syncRecordsDrawerContent
         SyncRecordsDrawerContent {
             onClearClicked: syncRecordService.clearRecords()
-            onCloseClicked: syncRecordsDrawer.drawerOpen = false
+            onCloseClicked: syncRecordsDrawer.setOpened(false)
         }
     }
 
@@ -785,7 +784,7 @@ Item {
         width: parent.width * 0.5
         height: parent.height - 36
         y: 0
-        drawerOpen: false
+        position: 0
 
         Loader {
             anchors.fill: parent
@@ -796,113 +795,220 @@ Item {
     Component {
         id: aboutDrawerContent
         AboutDrawerContent {
-            onCloseClicked: aboutDrawer.drawerOpen = false
+            onCloseClicked: aboutDrawer.setOpened(false)
         }
     }
 
     // ================================================================
-    // Dialogs（保持不变）
-    // ================================================================
-    Dialog {
+    // confirmDeleteDialog
+    Popup {
         id: confirmDeleteDialog
         property string fileToDelete: ""
         property string fileName: ""
-        title: "确认删除"
-        standardButtons: Dialog.Yes | Dialog.Cancel
-        Label {
-            text: "确定要删除 \"" + confirmDeleteDialog.fileName + "\" 吗？此操作不可撤销。"
-            wrapMode: Text.WordWrap
-        }
-        onAccepted: {
-            globalManager.activeManager.activeExecutor().executeLocalWrite(6, confirmDeleteDialog.fileToDelete)
-        }
-    }
-
-    Dialog {
-        id: newFolderDialog
-        title: "新建文件夹"
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        property alias newNameField: newFolderNameInput
-        ColumnLayout {
-            spacing: 8
-            Label { text: "文件夹名称:" }
-            TextField {
-                id: newFolderNameInput
-                placeholderText: "新文件夹"
-                Layout.minimumWidth: 300
+        anchors.centerIn: parent
+        width: 360
+        height: confirmDeleteDialogContent.height + 40
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        padding: 20
+        Column {
+            id: confirmDeleteDialogContent
+            spacing: 16
+            Label {
+                text: "确认删除"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
             }
-        }
-        onAccepted: {
-            if (newFolderNameInput.text.trim() !== "") {
-                var newPath = currentPath + "/" + newFolderNameInput.text.trim()
-                if (fileModel.createDirectory(newPath)) {
-                    globalManager.activeManager.activeExecutor().executeLocalWrite(8, newPath)
+            Label {
+                text: "确定要删除 \"" + confirmDeleteDialog.fileName + "\" 吗？此操作不可撤销。"
+                wrapMode: Text.WordWrap
+                width: 300
+            }
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: "取消"
+                    onClicked: confirmDeleteDialog.close()
+                }
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    onClicked: {
+                        confirmDeleteDialog.close()
+                        globalManager.activeManager.activeExecutor().executeLocalWrite(6, confirmDeleteDialog.fileToDelete)
+                    }
                 }
             }
         }
     }
 
-    Dialog {
+    // newFolderDialog
+    Popup {
+        id: newFolderDialog
+        anchors.centerIn: parent
+        width: 360
+        height: newFolderDialogContent.height + 40
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        padding: 20
+        property alias newNameField: newFolderNameInput
+        Column {
+            id: newFolderDialogContent
+            spacing: 16
+            Label {
+                text: "新建文件夹"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+            }
+            TextField {
+                id: newFolderNameInput
+                placeholderText: "新文件夹"
+                width: 300
+            }
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: "取消"
+                    onClicked: newFolderDialog.close()
+                }
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    onClicked: {
+                        if (newFolderNameInput.text.trim() !== "") {
+                            var newPath = currentPath + "/" + newFolderNameInput.text.trim()
+                            if (fileModel.createDirectory(newPath)) {
+                                globalManager.activeManager.activeExecutor().executeLocalWrite(8, newPath)
+                            }
+                        }
+                        newFolderDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    // newFileDialog
+    Popup {
         id: newFileDialog
-        title: "新建文件"
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        anchors.centerIn: parent
+        width: 360
+        height: newFileDialogContent.height + 40
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        padding: 20
         property string ext: "txt"
         property alias newNameField: newFileNameInput
-        ColumnLayout {
-            spacing: 8
-            Label { text: "文件名称:" }
+        Column {
+            id: newFileDialogContent
+            spacing: 16
+            Label {
+                text: "新建文件"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+            }
             TextField {
                 id: newFileNameInput
                 placeholderText: "新建文件"
-                Layout.minimumWidth: 300
+                width: 300
             }
-            Label { text: "类型: ." + newFileDialog.ext; color: "#666" }
-        }
-        onAccepted: {
-            var name = newFileNameInput.text.trim()
-            if (name === "") return
-            if (!name.endsWith("." + newFileDialog.ext))
-                name += "." + newFileDialog.ext
-            var fullPath = currentPath + "/" + name
-            if (fileModel.createFile(fullPath)) {
-                globalManager.activeManager.activeExecutor().executeLocalWrite(4, fullPath)
+            Label {
+                text: "类型: ." + newFileDialog.ext
+                color: "#666"
+            }
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: "取消"
+                    onClicked: newFileDialog.close()
+                }
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    onClicked: {
+                        var name = newFileNameInput.text.trim()
+                        if (name === "") { newFileDialog.close(); return }
+                        if (!name.endsWith("." + newFileDialog.ext))
+                            name += "." + newFileDialog.ext
+                        var fullPath = currentPath + "/" + name
+                        if (fileModel.createFile(fullPath)) {
+                            globalManager.activeManager.activeExecutor().executeLocalWrite(4, fullPath)
+                        }
+                        newFileDialog.close()
+                    }
+                }
             }
         }
     }
 
-    Dialog {
+    // renameDialog
+    Popup {
         id: renameDialog
-        title: "重命名"
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        anchors.centerIn: parent
+        width: 360
+        height: renameDialogContent.height + 40
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        padding: 20
         property string oldPath: ""
         property string oldName: ""
         property alias newNameField: renameNameInput
-        ColumnLayout {
-            spacing: 8
-            Label { text: "新名称:" }
+        Column {
+            id: renameDialogContent
+            spacing: 16
+            Label {
+                text: "重命名"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+            }
             TextField {
                 id: renameNameInput
                 placeholderText: "新名称"
-                Layout.minimumWidth: 300
+                width: 300
             }
-        }
-        onAccepted: {
-            if (renameNameInput.text.trim() !== "" && renameNameInput.text !== renameDialog.oldName) {
-                var newPath = currentPath + "/" + renameNameInput.text.trim()
-                globalManager.activeManager.activeExecutor().executeLocalWrite(5, newPath, renameDialog.oldPath)
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: "取消"
+                    onClicked: renameDialog.close()
+                }
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    onClicked: {
+                        if (renameNameInput.text.trim() !== "" && renameNameInput.text !== renameDialog.oldName) {
+                            var newPath = currentPath + "/" + renameNameInput.text.trim()
+                            globalManager.activeManager.activeExecutor().executeLocalWrite(5, newPath, renameDialog.oldPath)
+                        }
+                        renameDialog.close()
+                    }
+                }
             }
         }
     }
 
-    Dialog {
+    // conflictDialog
+    Popup {
         id: conflictDialog
-        property var conflictFileList: []
-        title: "冲突检测"
-        standardButtons: Dialog.Ok
-        modal: true
+        anchors.centerIn: parent
         width: 500
-        ColumnLayout {
+        height: 320
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        padding: 20
+        property var conflictFileList: []
+        Column {
+            anchors.fill: parent
             spacing: 12
+            Label {
+                text: "冲突检测"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+            }
             Label {
                 text: "检测到文件冲突，请手动解决："
                 font.pixelSize: 13
@@ -910,8 +1016,10 @@ Item {
             }
             ListView {
                 id: conflictList
-                anchors.fill: parent
-                anchors.margins: 8
+                height: 180
+                width: parent.width
+                anchors.left: parent.left
+                anchors.right: parent.right
                 model: conflictDialog.conflictFileList
                 interactive: false
                 clip: true
@@ -922,8 +1030,14 @@ Item {
                     wrapMode: Text.WordWrap
                 }
             }
+            Button {
+                text: "确定"
+                anchors.horizontalCenter: parent.horizontalCenter
+                highlighted: true
+                onClicked: conflictDialog.close()
+            }
         }
-        Component.onCompleted: conflictDialog.visible = false
-        Component.onDestruction: conflictDialog.visible = false
+        Component.onCompleted: conflictDialog.close()
+        Component.onDestruction: conflictDialog.close()
     }
 }
