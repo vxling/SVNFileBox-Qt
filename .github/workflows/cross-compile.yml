@@ -108,7 +108,7 @@ jobs:
           mkdir -p release/bin
           cmake --install build --config Release --prefix release
           Get-ChildItem -Path release -Filter "*.exe" -Recurse | ForEach-Object {
-            windeployqt $_.FullName --qmldir C:/Qt/6.7.2/6.7.2/msvc2019_64/qml --no-translations --no-compiler
+            windeployqt $_.FullName --qmldir C:/Qt/6.7.2/6.7.2/msvc2019_64/qml --no-translations
           }
           Compress-Archive -Path release/bin -DestinationPath svnfilebox-win64.zip
 
