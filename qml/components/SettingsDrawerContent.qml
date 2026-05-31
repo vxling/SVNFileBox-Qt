@@ -14,6 +14,7 @@ Item {
     property alias statusText: settingsStatusLabel.text
 
     signal saveClicked()
+    signal closeClicked()
 
     Rectangle {
         anchors.fill: parent
@@ -85,7 +86,7 @@ Item {
                 Button {
                     text: "关闭"
                     implicitWidth: 80; implicitHeight: 36
-                    onClicked: parent.parent.parent.close()
+                    onClicked: root.closeClicked()
                 }
             }
 

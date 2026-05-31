@@ -572,7 +572,7 @@ Item {
     }
 
     function saveSettings() {
-        var content = settingsLoader.item
+        var content = settingsDrawer.contentItem
         if (!content) return
         configService.syncIntervalMinutes = parseInt(content.syncIntervalText) || 1
         configService.proxyUrl = content.proxyUrlText
@@ -647,6 +647,7 @@ Item {
         id: settingsDrawerContent
         SettingsDrawerContent {
             onSaveClicked: saveSettings()
+            onCloseClicked: settingsDrawer.close()
         }
     }
 
