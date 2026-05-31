@@ -613,6 +613,15 @@ Item {
         if (!path) { addLocalStatusLabel.text = "请先选择目录"; return }
         if (path.startsWith("file:///")) path = path.substring(8)
         if (path.startsWith("file:")) path = path.substring(5)
+
+        // Check duplicate by local path
+        for (var i = 0; i < repoListModel.count; i++) {
+            if (repoListModel.get(i).path === path) {
+                addLocalStatusLabel.text = "本地路径已存在，不能重复添加"
+                return
+            }
+        }
+
         if (!svnClient.isValidWorkingCopy(path)) {
             addLocalStatusLabel.text = "这不是一个有效的 SVN 工作副本"
             return
