@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <cstdio>
 #include <cstring>
+#include <zlib.h>
 
 // ─── CRC32 (PNG / zlib polynomial 0xEDB88320) ──────────────────────────────────
 static quint32 crc32_table[256];
