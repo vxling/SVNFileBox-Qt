@@ -18,7 +18,7 @@
 
 int main(int argc, char *argv[])
 {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
     app.setApplicationName("SVNFileBox");
     app.setOrganizationName("vxling");
     app.setApplicationVersion("1.0.0");
