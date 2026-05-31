@@ -4,7 +4,6 @@
 #include <QByteArray>
 #include <cstdio>
 #include <cstring>
-#include <zlib.h>
 
 // ─── CRC32 (PNG / zlib polynomial 0xEDB88320) ──────────────────────────────────
 static quint32 crc32_table[256];
@@ -286,35 +285,8 @@ static QByteArray createPptx()
 // ─── Create PNG (1x1 transparent pixel) ────────────────────────────────────────
 static QByteArray createPng()
 {
-    QByteArray out;
-    // PNG signature
-    out.append("\x89\x50\x4E\x47\x0D\x0A\x1A\x0A");
-
-    // IHDR: 1x1 px, 8-bit RGB
-    QByteArray ihdrData;
-    ihdrData.append("\x00\x00\x00\x01");  // width=1
-    ihdrData.append("\x00\x00\x00\x01");  // height=1
-    ihdrData.append("\x08");               // bit depth=8
-    ihdrData.append("\x02");               // color type=2 (RGB)
-    ihdrData.append("\x00");               // compression=deflate
-    ihdrData.append("\x00");               // filter=standard
-    ihdrData.append("\x00");               // interlace=none
-    out.append(pngChunk("IHDR", ihdrData));
-
-    // IDAT: deflate with filter byte 0 (none) + 3 RGB bytes (black)
-    unsigned char rawScanline[4] = { 0, 0, 0, 0 }; // filter=none, R=0,G=0,B=0
-    uLongf destLen = compressBound(4);
-    QByteArray compressed(destLen, 0);
-    if (compress(reinterpret_cast<Bytef*>(compressed.data()), &destLen,
-                 reinterpret_cast<const Bytef*>(rawScanline), 4) != Z_OK) {
-        return QByteArray();
-    }
-    compressed.truncate(destLen);
-    out.append(pngChunk("IDAT", compressed));
-
-    // IEND
-    out.append(pngChunk("IEND", QByteArray()));
-    return out;
+    // PNG requires zlib deflate — not available without zlib dependency
+    return QByteArray();
 }
 
 // ─── Create BMP (1x1 white pixel) ──────────────────────────────────────────────
