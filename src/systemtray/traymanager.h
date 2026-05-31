@@ -13,18 +13,15 @@ public:
     explicit TrayManager(QObject *parent = nullptr);
     ~TrayManager();
 
-    void setWindow(QWindow *window) { m_window = window; }
+public slots:
     void show();
     void hide();
+    void showMessage(const QString &title, const QString &msg, int iconType = 0);
 
 signals:
-    void trayIconClicked();
     void showWindowRequested();
     void hideWindowRequested();
     void exitRequested();
-
-public slots:
-    void showMessage(const QString &title, const QString &msg, int iconType = 0);
 
 private slots:
     void onTrayActivated(QSystemTrayIcon::ActivationReason reason);

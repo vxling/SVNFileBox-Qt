@@ -27,10 +27,6 @@ ApplicationWindow {
             trayManager.hide()
             Qt.quit()
         }
-
-        function onSyncRequested() {
-            syncEngine.syncNow()
-        }
     }
 
     // 窗口关闭 → 隐藏到托盘（而非退出）
