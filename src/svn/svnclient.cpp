@@ -2,15 +2,25 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QXmlStreamReader>
 #include <QRegularExpression>
 
 SVNClient::SVNClient(QObject *parent) : QObject(parent) {}
 
 QStringList SVNClient::list(const QString &path)
 {
-    QStringList args = {"list", "--non-interactive", "--trust-server-cert", path};
+    QStringList args = {"list", "--non-interactive", "--trust-server-cert", "--xml", path};
     QString output = runSvn(args);
-    return output.split('\n', Qt::SkipEmptyParts);
+    QStringList result;
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
+            QString name = xml.attributes().value("name").toString();
+            if (!name.isEmpty())
+                result.append(name);
+        }
+    }
+    return result;
 }
 
 bool SVNClient::add(const QString &path)
@@ -46,29 +56,30 @@ bool SVNClient::move(const QString &src, const QString &dst)
 
 QString SVNClient::getInfo(const QString &path)
 {
-    return runSvn({"info", "--non-interactive", "--trust-server-cert", path});
+    QStringList args = {"info", "--non-interactive", "--trust-server-cert", "--xml", path};
+    return runSvn(args);
 }
 
 QString SVNClient::getStatusString(const QString &path)
 {
-    QString output = runSvn({"status", "--non-interactive", "--trust-server-cert", path});
-    if (output.isEmpty()) return "Normal";
-    // Parse first character of first line
-    QChar statusChar = output[0];
-    switch (statusChar.unicode()) {
-        case 'A': return "Added";
-        case 'D': return "Deleted";
-        case 'M': return "Modified";
-        case 'R': return "Replaced";
-        case 'C': return "Conflicted";
-        case 'G': return "Merged";
-        case 'U': return "Updated";
-        case '?': return "Unversioned";
-        case '!': return "Missing";
-        case '~': return "Obstructed";
-        case 'I': return "Ignored";
-        default:  return "Normal";
+    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml", path};
+    QString output = runSvn(args);
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("wc-status")) {
+            QString item = xml.attributes().value("item").toString();
+            if (!item.isEmpty() && item != "normal") {
+                // Title-case: first char upper, rest lower
+                if (!item.isEmpty()) {
+                    item[0] = item[0].toUpper();
+                    for (int i = 1; i < item.size(); ++i)
+                        item[i] = item[i].toLower();
+                }
+                return item;
+            }
+        }
     }
+    return "Normal";
 }
 
 QString SVNClient::runSvn(const QStringList &args, const QString &workDir)
@@ -168,33 +179,50 @@ SVNClient::ErrorLevel SVNClient::runSvnLevel(const QStringList &args, const QStr
 
 int SVNClient::getWorkingCopyRevision(const QString &path)
 {
-    QString output = runSvn({"info", "--non-interactive", "--trust-server-cert", path});
-    QRegularExpression re(R"(^Revision:\s*(\d+))", QRegularExpression::MultilineOption);
-    QRegularExpressionMatch m = re.match(output);
-    if (m.hasMatch()) return m.captured(1).toInt();
+    QStringList args = {"info", "--non-interactive", "--trust-server-cert", "--xml", path};
+    QString output = runSvn(args);
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
+            QString rev = xml.attributes().value("revision").toString();
+            if (!rev.isEmpty())
+                return rev.toInt();
+        }
+    }
     return -1;
 }
 
 int SVNClient::getHeadRevision(const QString &url)
 {
-    QString output = runSvn({"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", url});
-    QRegularExpression re(R"(^Revision:\s*(\d+))", QRegularExpression::MultilineOption);
-    QRegularExpressionMatch m = re.match(output);
-    if (m.hasMatch()) return m.captured(1).toInt();
+    QStringList args = {"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", "--xml", url};
+    QString output = runSvn(args);
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
+            QString rev = xml.attributes().value("revision").toString();
+            if (!rev.isEmpty())
+                return rev.toInt();
+        }
+    }
     return -1;
 }
 
 int SVNClient::getHeadRevision(const QString &url, const QString &username, const QString &password)
 {
-    QStringList args = {"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", url};
+    QStringList args = {"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", "--xml", url};
     if (!username.isEmpty()) {
         args.append("--username"); args.append(username);
         args.append("--password"); args.append(password);
     }
     QString output = runSvn(args);
-    QRegularExpression re(R"(^Revision:\s*(\d+))", QRegularExpression::MultilineOption);
-    QRegularExpressionMatch m = re.match(output);
-    if (m.hasMatch()) return m.captured(1).toInt();
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
+            QString rev = xml.attributes().value("revision").toString();
+            if (!rev.isEmpty())
+                return rev.toInt();
+        }
+    }
     return -1;
 }
 
@@ -238,14 +266,25 @@ bool SVNClient::isValidWorkingCopy(const QString &path)
 
 QStringList SVNClient::getConflictedFiles(const QString &path)
 {
-    QString output = runSvn({"status", "--non-interactive", "--trust-server-cert", path});
+    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml", path};
+    QString output = runSvn(args);
     QStringList conflicted;
-    for (const QString &line : output.split('\n', Qt::SkipEmptyParts)) {
-        if (!line.isEmpty() && line[0] == 'C') {
-            // Format: "C    path/to/file" or "C  + path/to/file"
-            QString filePath = line.mid(7).trimmed();
-            if (!filePath.isEmpty())
-                conflicted.append(filePath);
+    QXmlStreamReader xml(output);
+    QString curPath;
+    bool isConflicted = false;
+    while (!xml.atEnd()) {
+        QXmlStreamReader::TokenType tok = xml.readNext();
+        if (tok == QXmlStreamReader::StartElement) {
+            QStringView name = xml.name();
+            if (name == QStringLiteral("entry")) {
+                curPath = xml.attributes().value("path").toString();
+                isConflicted = false;
+            } else if (name == QStringLiteral("wc-status") && xml.attributes().value("item") == QStringLiteral("conflicted")) {
+                isConflicted = true;
+            }
+        } else if (tok == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("entry")) {
+            if (isConflicted && !curPath.isEmpty())
+                conflicted.append(curPath);
         }
     }
     return conflicted;
@@ -269,37 +308,57 @@ bool SVNClient::copyFileOrFolder(const QString &src, const QString &dest)
 
 QString SVNClient::getRepoUrl(const QString &path)
 {
-    QString output = runSvn({"info", "--non-interactive", "--trust-server-cert", path});
-    QRegularExpression re(QStringLiteral(R"(^URL:\s*(.+)$)"), QRegularExpression::MultilineOption);
-    auto match = re.match(output);
-    if (match.hasMatch()) return match.captured(1).trimmed();
+    QStringList args = {"info", "--non-interactive", "--trust-server-cert", "--xml", path};
+    QString output = runSvn(args);
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("url")) {
+            return xml.readElementText();
+        }
+    }
     return QString();
 }
 
 QVariantMap SVNClient::getStatus(const QString &path, bool depth)
 {
     QVariantMap result;
-    QStringList args = {"status", "--non-interactive", "--trust-server-cert"};
+    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml"};
     if (depth) args.append("--depth=infinity");
     args.append(path);
     QString output = runSvn(args);
-    for (const QString &line : output.split('\n', Qt::SkipEmptyParts)) {
-        if (line.length() < 3) continue;
-        QChar code = line[0];
-        // Format: "A  path/to/file" or " M  path"
-        QString filePath = line.mid(3).trimmed();
-        if (!filePath.isEmpty())
-            result[filePath] = QString(code);
+    QXmlStreamReader xml(output);
+    QString curPath;
+    QString curItem;
+    while (!xml.atEnd()) {
+        QXmlStreamReader::TokenType tok = xml.readNext();
+        if (tok == QXmlStreamReader::StartElement) {
+            QStringView name = xml.name();
+            if (name == QStringLiteral("entry")) {
+                curPath = xml.attributes().value("path").toString();
+                curItem.clear();
+            } else if (name == QStringLiteral("wc-status")) {
+                QString item = xml.attributes().value("item").toString();
+                if (!item.isEmpty())
+                    curItem = item;
+            }
+        } else if (tok == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("entry")) {
+            if (!curPath.isEmpty() && !curItem.isEmpty())
+                result[curPath] = curItem;
+        }
     }
     return result;
 }
 
 QString SVNClient::getLastChangedTime(const QString &path)
 {
-    QString output = runSvn({"info", "--non-interactive", "--trust-server-cert", path});
-    QRegularExpression re(QStringLiteral(R"(^Last Changed Date:\s*(.+)$)"), QRegularExpression::MultilineOption);
-    auto match = re.match(output);
-    if (match.hasMatch()) return match.captured(1).trimmed();
+    QStringList args = {"info", "--non-interactive", "--trust-server-cert", "--xml", path};
+    QString output = runSvn(args);
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("date")) {
+            return xml.readElementText();
+        }
+    }
     return QString();
 }
 
@@ -323,14 +382,15 @@ bool SVNClient::testConnection(const QString &url, const QString &username, cons
 
 QStringList SVNClient::getServerUpdatePaths(const QString &path)
 {
-    // svn status -u shows incoming changes
-    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "-u", path};
+    // svn status -u --xml shows incoming changes with '*' marker
+    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml", "-u", path};
     QString output = runSvn(args);
     QStringList paths;
-    for (const QString &line : output.split('\n', Qt::SkipEmptyParts)) {
-        // Lines starting with '*' indicate remote updates
-        if (line.length() > 3 && line[0] == '*') {
-            QString filePath = line.mid(3).trimmed();
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
+            // Only include entries that have remote updates (status="hidden" or has 'r'* marker)
+            QString filePath = xml.attributes().value("path").toString();
             if (!filePath.isEmpty())
                 paths.append(filePath);
         }

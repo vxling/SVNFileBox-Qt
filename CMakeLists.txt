@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Qt Core & QML
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml)
 
 # App
 set(APP_SOURCES
@@ -44,6 +44,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/s
 
 # Qt linking
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    Qt6::Xml
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
