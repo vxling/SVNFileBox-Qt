@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Qt Core & QML
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql)
 
 # App
 set(APP_SOURCES
@@ -19,6 +19,8 @@ set(APP_SOURCES
     src/sync/syncengine.cpp
     src/sync/syncrecordservice.cpp
     src/sync/syncrecord.h
+    src/sync/sqlitesyncrecordstore.h
+    src/sync/sqlitesyncrecordstore.cpp
     src/sync/commitqueue.cpp
     src/config/configservice.cpp
     src/services/repomanager.cpp
@@ -51,6 +53,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Quick
     Qt6::Widgets
     Qt6::QuickControls2
+    Qt6::Sql
 )
 
 # Resources

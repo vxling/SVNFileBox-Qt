@@ -8,6 +8,7 @@
 class SyncRecord : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(long id READ id NOTIFY refreshed)
     Q_PROPERTY(QString repoName READ repoName NOTIFY refreshed)
     Q_PROPERTY(QString filePath READ filePath NOTIFY refreshed)
     Q_PROPERTY(QString operation READ operation NOTIFY refreshed)
@@ -30,11 +31,14 @@ public:
     QString message() const { return m_msg; }
     QString timestamp() const { return m_ts.toString("yyyy-MM-dd HH:mm:ss"); }
     void setTimestamp(const QDateTime &ts) { m_ts = ts; }
+    long id() const { return m_id; }
+    void setId(long id) { m_id = id; }
 
 signals:
     void refreshed();
 
 private:
+    long m_id = 0;
     QString m_repo;
     QString m_file;
     QString m_op;

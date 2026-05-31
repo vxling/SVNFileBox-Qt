@@ -1,7 +1,7 @@
 #include "syncrecordservice.h"
+#include "sqlitesyncrecordstore.h"
 #include <QCoreApplication>
 #include <QDebug>
-#include <QDateTime>
 
 SyncRecordService *SyncRecordService::instance()
 {
@@ -11,8 +11,36 @@ SyncRecordService *SyncRecordService::instance()
 
 SyncRecordService::SyncRecordService(QObject *parent)
     : QAbstractListModel(parent)
+    , m_store(SqliteSyncRecordStore::instance())
 {
-    load();
+    // Connect to store's recordsChanged to refresh our in-memory list
+    connect(m_store, &SqliteSyncRecordStore::recordsChanged,
+            this, &SyncRecordService::refreshAll, Qt::QueuedConnection);
+}
+
+void SyncRecordService::refreshAll()
+{
+    // Reload all records from SQLite into memory
+    beginResetModel();
+    qDeleteAll(m_records);
+    m_records.clear();
+    QList<SyncRecord*> recs = m_store->getAllRecords(1000);
+    for (SyncRecord *r : recs) {
+        m_records.append(r);
+    }
+    endResetModel();
+}
+
+void SyncRecordService::loadRecordsForRepo(const QString &repoName)
+{
+    beginResetModel();
+    qDeleteAll(m_records);
+    m_records.clear();
+    QList<SyncRecord*> recs = m_store->getRecords(repoName, 1000);
+    for (SyncRecord *r : recs) {
+        m_records.append(r);
+    }
+    endResetModel();
 }
 
 int SyncRecordService::rowCount(const QModelIndex &parent) const
@@ -27,6 +55,7 @@ QVariant SyncRecordService::data(const QModelIndex &index, int role) const
 
     SyncRecord *r = m_records.at(index.row());
     switch (role) {
+        case IdRole:          return QVariant::fromValue(r->id());
         case RepoNameRole:    return r->repoName();
         case FilePathRole:    return r->filePath();
         case OperationRole:   return r->operation();
@@ -40,11 +69,12 @@ QVariant SyncRecordService::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> SyncRecordService::roleNames() const
 {
     return {
-        { RepoNameRole, "repoName" },
-        { FilePathRole, "filePath" },
+        { IdRole,        "id" },
+        { RepoNameRole,  "repoName" },
+        { FilePathRole,  "filePath" },
         { OperationRole, "operation" },
-        { ResultRole, "result" },
-        { MessageRole, "message" },
+        { ResultRole,    "result" },
+        { MessageRole,   "message" },
         { TimestampRole, "timestamp" }
     };
 }
@@ -53,14 +83,19 @@ void SyncRecordService::addRecord(const QString &repo, const QString &file,
                                   const QString &op, const QString &result,
                                   const QString &message)
 {
+    // Insert into SQLite
+    m_store->addRecord(repo, QDateTime::currentMSecsSinceEpoch(),
+                       file, op, result, message);
+
+    // Also insert into in-memory list at front (capped at 1000)
     beginInsertRows(QModelIndex(), 0, 0);
     SyncRecord *r = new SyncRecord(repo, file, op, result, message, this);
+    r->setTimestamp(QDateTime::currentDateTime());
     m_records.prepend(r);
-    if (m_records.size() > 500) {
+    if (m_records.size() > 1000) {
         delete m_records.takeLast();
     }
     endInsertRows();
-    save();
     emit recordAdded();
 }
 
@@ -70,7 +105,6 @@ void SyncRecordService::clear()
     qDeleteAll(m_records);
     m_records.clear();
     endResetModel();
-    save();
 }
 
 QVariantList SyncRecordService::recordsAsList() const
@@ -93,53 +127,17 @@ SyncRecord *SyncRecordService::getRecord(int index) const
     return m_records.at(index);
 }
 
-QString SyncRecordService::configDir() const
+QVariantList SyncRecordService::getRecordsForRepo(const QString &repoName, int limit) const
 {
-    return QDir::home().filePath(".svnfilebox");
+    QVariantList list;
+    QList<SyncRecord*> recs = m_store->getRecords(repoName, limit);
+    for (SyncRecord *r : recs) {
+        list.append(QVariant::fromValue(r));
+    }
+    return list;
 }
 
-void SyncRecordService::load()
+void SyncRecordService::deleteRepoRecords(const QString &repoName)
 {
-    QFile f(configDir() + "/sync_records.json");
-    if (!f.open(QIODevice::ReadOnly)) return;
-    QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-    f.close();
-    QJsonArray arr = doc.array();
-    for (const QJsonValue &v : arr) {
-        QJsonObject o = v.toObject();
-        SyncRecord *r = new SyncRecord(
-            o["repo"].toString(),
-            o["file"].toString(),
-            o["op"].toString(),
-            o["result"].toString(),
-            o["msg"].toString(),
-            const_cast<SyncRecordService*>(this));
-        QString tsStr = o["ts"].toString();
-        if (!tsStr.isEmpty()) {
-            r->setTimestamp(QDateTime::fromString(tsStr, "yyyy-MM-dd HH:mm:ss"));
-        }
-        m_records.append(r);
-    }
-}
-
-void SyncRecordService::save()
-{
-    QDir d(configDir());
-    if (!d.exists()) d.mkpath(configDir());
-    QJsonArray arr;
-    for (SyncRecord *r : m_records) {
-        arr.append(QJsonObject{
-            {"repo", r->repoName()},
-            {"file", r->filePath()},
-            {"op", r->operation()},
-            {"result", r->result()},
-            {"msg", r->message()},
-            {"ts", r->timestamp()}
-        });
-    }
-    QFile f(configDir() + "/sync_records.json");
-    if (f.open(QIODevice::WriteOnly)) {
-        f.write(QJsonDocument(arr).toJson());
-        f.close();
-    }
+    m_store->deleteRepo(repoName);
 }

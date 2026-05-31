@@ -4,12 +4,10 @@
 #include <QObject>
 #include <QAbstractListModel>
 #include <QList>
-#include <QFile>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QDir>
+#include <QVariantList>
 #include "syncrecord.h"
+
+class SqliteSyncRecordStore;
 
 class SyncRecordService : public QAbstractListModel
 {
@@ -17,7 +15,8 @@ class SyncRecordService : public QAbstractListModel
 
 public:
     enum Roles {
-        RepoNameRole = Qt::UserRole + 1,
+        IdRole = Qt::UserRole + 1,
+        RepoNameRole,
         FilePathRole,
         OperationRole,
         ResultRole,
@@ -41,14 +40,21 @@ public:
     Q_INVOKABLE SyncRecord *getRecord(int index) const;
     Q_INVOKABLE int recordCount() const { return m_records.size(); }
 
+    /// Load records for a specific repo into the in-memory collection
+    Q_INVOKABLE void loadRecordsForRepo(const QString &repoName);
+    /// Get records for a specific repo from SQLite
+    Q_INVOKABLE QVariantList getRecordsForRepo(const QString &repoName, int limit = 1000) const;
+    /// Delete all records for a repository
+    Q_INVOKABLE void deleteRepoRecords(const QString &repoName);
+
 signals:
     void recordAdded();
 
 private:
-    void load();
-    void save();
-    QString configDir() const;
+    void loadFromSqlite(const QString &repoName);
+    void refreshAll();
 
+    SqliteSyncRecordStore *m_store;
     QList<SyncRecord *> m_records;
 };
 
