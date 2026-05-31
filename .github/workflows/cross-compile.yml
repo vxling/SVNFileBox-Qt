@@ -17,7 +17,7 @@ jobs:
         run: |
           pip install aqtinstall==3.1
           mkdir -p ~/Qt
-          aqt install-qt linux desktop 6.7.2 gcc_64 -O ~/Qt
+          aqt install-qt linux desktop 6.7.2 linux_gcc_64 -O ~/Qt
 
       - name: Build
         run: |
@@ -100,12 +100,13 @@ jobs:
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           pip install aqtinstall==3.1
-          aqt install-qt windows desktop 6.7.2 win64_msvc2022_64 -O C:/Qt
+          mkdir -p ~/Qt
+          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt
 
       - name: Build
         shell: pwsh
         env:
-          Qt6_DIR: C:/Qt/6.7.2/win64_msvc2022_64/lib/cmake/Qt6
+          Qt6_DIR: C:/Qt/6.7.2/win64_msvc2019_64/lib/cmake/Qt6
         run: |
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
@@ -115,7 +116,7 @@ jobs:
       - name: Package
         shell: pwsh
         env:
-          Qt6_DIR: C:/Qt/6.7.2/win64_msvc2022_64
+          Qt6_DIR: C:/Qt/6.7.2/win64_msvc2019_64
         run: |
           $env:Path = "$env:Qt6_DIR\bin;$env:Path"
           mkdir -p release/bin
