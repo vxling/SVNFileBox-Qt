@@ -584,7 +584,7 @@ Item {
     }
 
     function doCheckout() {
-        var content = checkoutLoader.item
+        var content = checkoutDrawer.contentItem
         if (!content) return
         var name = content.nameText.trim()
         var url = content.urlText.trim()
@@ -594,10 +594,30 @@ Item {
             content.statusText = "请填写仓库名称和 URL"
             return
         }
+
+        // Check duplicate by URL
+        for (var i = 0; i < repoListModel.count; i++) {
+            if (repoListModel.get(i).url === url) {
+                content.statusText = "该网络仓库地址已存在，不能重复添加"
+                return
+            }
+        }
+
+        var localPath = configService.localPath + "/" + name
+        if (File.exists(localPath)) {
+            content.statusText = "本地路径已存在，请换一个仓库名称"
+            return
+        }
+
+        // Create parent directory
+        var parentDir = localPath.substring(0, localPath.lastIndexOf("/"))
+        if (!File.exists(parentDir)) {
+            fileModel.createDirectory(parentDir)
+        }
+
         content.statusText = "正在检出..."
-        var result = svnClient.checkout(url, configService.localPath + "/" + name, user, pass)
+        var result = svnClient.checkout(url, localPath, user, pass)
         if (result.exitCode === 0) {
-            var localPath = configService.localPath + "/" + name
             configService.addRepository({ name: name, url: url, localPath: localPath, username: user, password: pass })
             var newRepo = { name: name, path: localPath, url: url, username: user, password: pass, type: "Remote", isSelected: false }
             repoListModel.append(newRepo)
@@ -605,6 +625,10 @@ Item {
             checkoutDrawer.close()
         } else {
             content.statusText = "检出失败：" + result.error
+            // Clean up on failure
+            if (File.exists(localPath)) {
+                svnClient.removeDirectory(localPath)
+            }
         }
     }
 
