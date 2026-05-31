@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
+import Qt.labs.platform
 
 Item {
     id: root
@@ -22,9 +22,8 @@ Item {
         FileDialog {
             id: checkoutRepoDialog
             title: "选择本地目录"
-            selectFolder: true
-            currentFolder: shortcuts.home
-            onAccepted: checkoutNameInput.text = checkoutRepoDialog.currentFolder
+            folder: shortcuts.home
+            onAccepted: checkoutNameInput.text = checkoutRepoDialog.folder
         }
 
         ColumnLayout {

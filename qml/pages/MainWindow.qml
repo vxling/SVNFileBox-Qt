@@ -725,10 +725,9 @@ Item {
                 FileDialog {
                     id: localRepoDialog
                     title: "选择 SVN 工作副本目录"
-                    selectFolder: true
-                    currentFolder: shortcuts.home
+                    folder: shortcuts.home
                     onAccepted: {
-                        localRepoPathInput.text = localRepoDialog.currentFolder
+                        localRepoPathInput.text = localRepoDialog.folder
                     }
                 }
 
