@@ -58,7 +58,7 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH=$HOME/Qt/6.7.2/macos/lib/cmake
+            -DCMAKE_PREFIX_PATH=$HOME/Qt/6.7.2/6.7.2/macos/lib/cmake
           cmake --build build --parallel
 
       - name: Package
@@ -82,25 +82,25 @@ jobs:
       - name: Install Qt 6.7.2
         run: |
           pip install aqtinstall>=3.2
-          mkdir -p C:/Qt
-          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt
+          mkdir -p C:/Qt/6.7.2
+          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt/6.7.2
 
       - name: Build
         shell: pwsh
         run: |
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_PREFIX_PATH=C:/Qt/6.7.2/win64_msvc2019_64/lib/cmake
+            -DCMAKE_PREFIX_PATH=C:/Qt/6.7.2/6.7.2/win64_msvc2019_64/lib/cmake
           cmake --build build --parallel --config Release
 
       - name: Package
         shell: pwsh
         run: |
-          $env:Path = "C:/Qt/6.7.2/win64_msvc2019_64/bin;$env:Path"
+          $env:Path = "C:/Qt/6.7.2/6.7.2/win64_msvc2019_64/bin;$env:Path"
           mkdir -p release/bin
           cmake --install build --config Release --prefix release
           Get-ChildItem -Path release -Filter "*.exe" -Recurse | ForEach-Object {
-            windeployqt $_.FullName --qmldir C:/Qt/6.7.2/win64_msvc2019_64/qml --no-translations --no-compiler
+            windeployqt $_.FullName --qmldir C:/Qt/6.7.2/6.7.2/win64_msvc2019_64/qml --no-translations --no-compiler
           }
           Compress-Archive -Path release/bin -DestinationPath svnfilebox-win64.zip
 
