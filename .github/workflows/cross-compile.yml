@@ -58,7 +58,7 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DQt6_DIR=$HOME/Qt/6.7.2/6.7.2/macos/lib/cmake/Qt6
+            -DQt6_DIR=$HOME/Qt/6.7.2/macos/lib/cmake/Qt6
           cmake --build build --parallel
 
       - name: Package
