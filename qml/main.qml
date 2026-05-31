@@ -43,7 +43,6 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        root.centerOnScreen()
         trayManager.show()
     }
 
