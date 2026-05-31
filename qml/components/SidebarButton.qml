@@ -53,7 +53,7 @@ Rectangle {
             font.pixelSize: 13
             font.weight: Font.Medium
             color: {
-                if (selected) return "#FFFFFF"
+                if (root.selected) return "#FFFFFF"
                 if (mouseArea.containsMouse) return "#FFFFFF"
                 return "#1A1A2E"
             }

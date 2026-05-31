@@ -27,7 +27,7 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: itemClicked()
+        onClicked: root.itemClicked()
     }
 
     RowLayout {
@@ -37,7 +37,7 @@ Rectangle {
         spacing: 10
 
         Label {
-            text: repoType === "Network" ? "🌐" : "📂"
+            text: root.repoType === "Network" ? "🌐" : "📂"
             font.pixelSize: 20
             Layout.alignment: Qt.AlignVCenter
         }
@@ -48,7 +48,7 @@ Rectangle {
             spacing: 2
 
             Label {
-                text: repoName
+                text: root.repoName
                 font.pixelSize: 13
                 font.weight: Font.Medium
                 color: "#1A1A2E"
@@ -56,7 +56,7 @@ Rectangle {
             }
 
             Label {
-                text: repoPath
+                text: root.repoPath
                 font.pixelSize: 10
                 color: "#888888"
                 Layout.fillWidth: true
@@ -71,14 +71,14 @@ Rectangle {
             implicitHeight: 24
             background: Rectangle { color: "transparent" }
             contentItem: Label {
-                text: parent.text
+                text: control.text
                 color: "#E53935"
                 font.pixelSize: 11
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
             hoverEnabled: true
-            onClicked: removeClicked()
+            onClicked: root.removeClicked()
             Layout.alignment: Qt.AlignVCenter
         }
     }

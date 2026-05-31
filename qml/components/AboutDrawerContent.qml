@@ -55,7 +55,7 @@ Item {
             Button {
                 text: "关闭"
                 implicitWidth: 80; implicitHeight: 36
-                onClicked: closeClicked()
+                onClicked: root.closeClicked()
             }
         }
     }

@@ -80,7 +80,7 @@ Item {
                 Button {
                     text: "保存"
                     implicitWidth: 100; implicitHeight: 36
-                    onClicked: saveClicked()
+                    onClicked: root.saveClicked()
                 }
                 Button {
                     text: "关闭"

@@ -79,12 +79,12 @@ Item {
                 Button {
                     text: "确认"
                     implicitWidth: 100; implicitHeight: 36
-                    onClicked: confirmClicked()
+                    onClicked: root.confirmClicked()
                 }
                 Button {
                     text: "取消"
                     implicitWidth: 80; implicitHeight: 36
-                    onClicked: cancelClicked()
+                    onClicked: root.cancelClicked()
                 }
             }
 

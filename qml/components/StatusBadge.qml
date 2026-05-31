@@ -11,7 +11,7 @@ Rectangle {
     visible: svnStatus !== "Hidden"
 
     color: {
-        switch (svnStatus) {
+        switch (root.svnStatus) {
             case "Modified":   return "#1E88E5"
             case "Added":      return "#00A650"
             case "Deleted":   return "#E53935"
@@ -26,7 +26,7 @@ Rectangle {
     Label {
         anchors.centerIn: parent
         text: {
-            switch (svnStatus) {
+            switch (root.svnStatus) {
                 case "Modified":    return "M"
                 case "Added":       return "A"
                 case "Deleted":     return "D"

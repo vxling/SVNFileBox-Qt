@@ -33,12 +33,12 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onClicked: {
+        onClicked: function(mouse) {
             if (mouse.button === Qt.RightButton) {
-                contextMenuRequested(mouse.x, mouse.y)
+                root.contextMenuRequested(mouse.x, mouse.y)
             }
         }
-        onDoubleClicked: if (!isCurrentPath) doubleClicked()
+        onDoubleClicked: if (!root.isCurrentPath) doubleClicked()
     }
 
     RowLayout {
@@ -48,38 +48,38 @@ Rectangle {
         spacing: 0
 
         // 类型图标
-        Item { width: 40; Layout.alignment: Qt.AlignVCenter; Layout.minimumWidth: 40
+        Item { implicitWidth: 40; implicitHeight: 44; Layout.alignment: Qt.AlignVCenter; Layout.minimumWidth: 40
             FileTypeIcon {
                 anchors.centerIn: parent
-                fileName: name
-                isDirectory: isDirectory
+                fileName: root.name
+                isDirectory: root.isDirectory
             }
         }
 
         // 名称
         Label {
-            text: isCurrentPath ? "← 返回上级目录" : name
+            text: root.isCurrentPath ? "← 返回上级目录" : root.name
             font.pixelSize: 13
-            font.weight: isCurrentPath ? Font.Normal : Font.Medium
-            color: isCurrentPath ? "#1E88E5" : "#1A1A2E"
+            font.weight: root.isCurrentPath ? Font.Normal : Font.Medium
+            color: root.isCurrentPath ? "#1E88E5" : "#1A1A2E"
             Layout.fillWidth: true
             Layout.minimumWidth: 280
             Layout.preferredWidth: 280
             elide: Text.ElideMiddle
-            leftPadding: name === ".." ? 0 : 8
+            leftPadding: root.name === ".." ? 0 : 8
         }
 
         // 状态徽章
-        Item { width: 70; Layout.alignment: Qt.AlignVCenter; Layout.minimumWidth: 70
+        Item { implicitWidth: 70; implicitHeight: 44; Layout.alignment: Qt.AlignVCenter; Layout.minimumWidth: 70
             StatusBadge {
                 anchors.horizontalCenter: parent.horizontalCenter
-                svnStatus: isCurrentPath ? "Hidden" : svnStatus
+                svnStatus: root.isCurrentPath ? "Hidden" : root.svnStatus
             }
         }
 
         // 大小
         Label {
-            text: fileSizeDisplay
+            text: root.fileSizeDisplay
             font.pixelSize: 12
             color: "#666666"
             Layout.minimumWidth: 90
@@ -89,7 +89,7 @@ Rectangle {
 
         // 修改时间
         Label {
-            text: lastModifiedDisplay
+            text: root.lastModifiedDisplay
             font.pixelSize: 12
             color: "#666666"
             Layout.minimumWidth: 140
