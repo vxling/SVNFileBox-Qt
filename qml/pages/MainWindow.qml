@@ -727,7 +727,7 @@ Item {
     FileDialog {
         id: localRepoDialog
         title: "选择 SVN 工作副本目录"
-        fileMode: FileDialog.Folder
+        fileMode: FileDialog.Directory
         folder: "file:///home/osuser"
         onAccepted: {
             localRepoPathInput.text = localRepoDialog.folder
