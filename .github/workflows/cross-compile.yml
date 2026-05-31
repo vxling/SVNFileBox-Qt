@@ -75,7 +75,7 @@ jobs:
         run: |
           cmake --install build --prefix release
           # macdeployqt: 复制 Qt 运行时和 QML，修复 @rpath
-          ~/Qt/6.7.2/macos/bin/macdeployqt release/bin/SVNFileBox.app --no-strip
+          ~/Qt/6.7.2/macos/bin/macdeployqt release/bin/SVNFileBox.app
           # 打包 .app 目录
           tar -C release -czvf svnfilebox-macos.tar.gz .
 
