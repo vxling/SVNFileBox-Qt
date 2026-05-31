@@ -19,6 +19,10 @@ jobs:
           mkdir -p ~/Qt
           aqt install-qt linux desktop 6.7.2 linux_gcc_64 -O ~/Qt
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get install -y libgl1-mesa-dev
+
       - name: Build
         run: |
           cmake -B build \
@@ -62,7 +66,7 @@ jobs:
 
       - name: Build
         env:
-          Qt6_DIR: $HOME/Qt/6.7.2/clang_64/lib/cmake/Qt6
+          Qt6_DIR: $HOME/Qt/6.7.2/macos/lib/cmake/Qt6
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
