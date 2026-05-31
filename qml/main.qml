@@ -30,7 +30,7 @@ ApplicationWindow {
     }
 
     // 窗口关闭 → 隐藏到托盘（而非退出）
-    onClosing: {
+    onClosing: function(close) {
         if (root.visible) {
             close.accepted = false
             root.hide()
