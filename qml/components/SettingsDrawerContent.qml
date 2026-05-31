@@ -85,7 +85,7 @@ Item {
                 Button {
                     text: "关闭"
                     implicitWidth: 80; implicitHeight: 36
-                    onClicked: parent.parent.parent.drawerOpen = false
+                    onClicked: parent.parent.parent.close()
                 }
             }
 
