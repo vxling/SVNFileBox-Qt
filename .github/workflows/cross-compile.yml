@@ -85,8 +85,16 @@ jobs:
           mkdir -p C:/Qt/6.7.2
           aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt/6.7.2
 
+      - name: Install vcpkg and zlib
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git C:/vcpkg
+          C:/vcpkg/bootstrap-vcpkg.bat
+          C:/vcpkg/vcpkg install zlib:x64-windows
+
       - name: Build
         shell: pwsh
+        env:
+          CMAKE_TOOLCHAIN_FILE: C:/vcpkg/scripts/buildsystems/vcpkg.cmake
         run: |
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
