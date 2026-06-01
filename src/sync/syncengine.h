@@ -26,6 +26,14 @@ public:
 
     Q_INVOKABLE void startSync(const QString &repoName, const QString &localPath, const QString &remoteUrl,
                                 const QString &username = QString(), const QString &password = QString());
+    // P3 #2: per-repo ignore patterns (glob style, e.g. "*.tmp", "build/",
+    // ".DS_Store"). Compared as a QRegularExpression wildcard. Empty = no
+    // filtering. Patterns are matched against the full file path relative
+    // to m_localPath (basename match for plain names, full path match for
+    // patterns containing "/"). Mirrors WPF's SyncService filter at
+    // SyncService.cs:284-308.
+    void setIgnorePatterns(const QStringList &patterns) { m_ignorePatterns = patterns; m_ignoreRegexes = compileIgnorePatterns(patterns); }
+    QStringList ignorePatterns() const { return m_ignorePatterns; }
     Q_INVOKABLE void stopSync();
     Q_INVOKABLE void syncNow();
     Q_INVOKABLE void scanAndCommit();
@@ -98,6 +106,15 @@ private:
     // FileWatcher reconnection: when watcher fails, try to rebuild it
     // with exponential backoff (5s, 10s, then give up).
     int m_watcherRetryCount = 0;
+    // P3 #2: ignore patterns
+    QStringList m_ignorePatterns;
+    QList<QRegularExpression> m_ignoreRegexes;
+    // Compile glob patterns (with support for * and ?) to anchored regexes.
+    QList<QRegularExpression> compileIgnorePatterns(const QStringList &patterns) const;
+    // Returns true if any ignore pattern matches the path. Path should be
+    // the full local file path; we compare against both basename and the
+    // path relative to m_localPath.
+    bool isPathIgnored(const QString &path) const;
 };
 
 #endif // SYNCENGINE_H

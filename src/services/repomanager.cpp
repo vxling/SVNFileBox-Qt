@@ -35,6 +35,7 @@ void RepoManager::focus()
     qDebug() << "[RepoManager] focus:" << repository.name;
 
     m_state = RepoState::Focused;
+    syncEngine->setIgnorePatterns(repository.ignorePatterns);
     syncEngine->watchPath(repository.path);
     syncEngine->startSync(repository.name, repository.path, repository.url,
                           repository.username, repository.password);

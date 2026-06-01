@@ -596,6 +596,10 @@ void SyncEngine::commitFile(const QString &filePath)
         qDebug() << "[SyncEngine] Paused by conflict, skipping commit for:" << filePath;
         return;
     }
+    if (isPathIgnored(filePath)) {
+        qDebug() << "[SyncEngine] Ignored by pattern, skipping commit for:" << filePath;
+        return;
+    }
 
     bool exists = QFile::exists(filePath) || QDir(filePath).exists();
     QString parentDirPath = parentDir(filePath);
@@ -789,5 +793,60 @@ bool SyncEngine::isTempFile(const QString &path) const
     if (name.endsWith(QLatin1String(".temp"))) return true;
     // Unix core dumps
     if (name.startsWith(QLatin1String("core.")) && name.mid(5).toLongLong() > 0) return true;
+    return false;
+}
+
+// P3 #2: glob → anchored regex. Supports * and ? wildcards, escapes regex
+// metachars. Patterns containing "/" are matched against the full relative
+// path; patterns without "/" are matched against the basename only (so
+// "*.tmp" ignores any .tmp file in any subdirectory).
+QList<QRegularExpression> SyncEngine::compileIgnorePatterns(const QStringList &patterns) const
+{
+    QList<QRegularExpression> out;
+    for (const QString &p : patterns) {
+        QString pat = p.trimmed();
+        if (pat.isEmpty() || pat.startsWith(QLatin1String("#"))) continue;
+        QString rx = QStringLiteral("^");
+        for (QChar c : pat) {
+            if (c == QLatin1Char('*'))      rx += QStringLiteral(".*");
+            else if (c == QLatin1Char('?')) rx += QStringLiteral(".");
+            else if (c == QLatin1Char('.')) rx += QStringLiteral("\\.");
+            else if (c == QLatin1Char('\\')) rx += QStringLiteral("\\\\");
+            else if (c == QLatin1Char('+')
+                  || c == QLatin1Char('(')
+                  || c == QLatin1Char(')')
+                  || c == QLatin1Char('[')
+                  || c == QLatin1Char(']')
+                  || c == QLatin1Char('{')
+                  || c == QLatin1Char('}')
+                  || c == QLatin1Char('|')
+                  || c == QLatin1Char('^')
+                  || c == QLatin1Char('$')) rx += QStringLiteral("\\") + c;
+            else rx += c;
+        }
+        rx += QStringLiteral("$");
+        out.append(QRegularExpression(rx, QRegularExpression::CaseInsensitiveOption));
+    }
+    return out;
+}
+
+bool SyncEngine::isPathIgnored(const QString &path) const
+{
+    if (m_ignoreRegexes.isEmpty()) return false;
+    if (path.isEmpty()) return false;
+
+    QString name = QFileInfo(path).fileName();
+    QString relPath = path;
+    if (!m_localPath.isEmpty() && relPath.startsWith(m_localPath)) {
+        relPath = relPath.mid(m_localPath.size());
+        if (relPath.startsWith(QLatin1Char('/'))) relPath = relPath.mid(1);
+    }
+
+    for (const QRegularExpression &rx : m_ignoreRegexes) {
+        // Basename match (no "/" in pattern) — match against file name
+        if (rx.match(name).hasMatch()) return true;
+        // Full path match (with "/") — match against relative path
+        if (rx.match(relPath).hasMatch()) return true;
+    }
     return false;
 }

@@ -62,6 +62,14 @@ void ConfigService::load()
         r.username = o["username"].toString();
         r.password = o["password"].toString();
         r.type = o["type"].toString("Local");
+        // P3 #2: optional ignore patterns. Older config files won't have
+        // this key, so default to empty list.
+        QJsonValue igVal = o["ignorePatterns"];
+        if (igVal.isArray()) {
+            for (const QJsonValue &p : igVal.toArray()) {
+                r.ignorePatterns.append(p.toString());
+            }
+        }
         m_repositories.append(r);
     }
     m_activeRepoName = root["activeRepositoryName"].toString();
@@ -103,6 +111,12 @@ void ConfigService::saveToDisk()
         o["username"] = r.username;
         o["password"] = r.password;
         o["type"] = r.type;
+        // P3 #2: persist ignore patterns
+        if (!r.ignorePatterns.isEmpty()) {
+            QJsonArray ig;
+            for (const QString &p : r.ignorePatterns) ig.append(p);
+            o["ignorePatterns"] = ig;
+        }
         repos.append(o);
     }
     root["repositories"] = repos;
@@ -120,6 +134,10 @@ void ConfigService::addRepository(const QVariantMap &repo)
     r.username = repo["username"].toString();
     r.password = repo["password"].toString();
     r.type = repo["type"].canConvert<QString>() ? repo["type"].toString() : QString("Local");
+    // P3 #2: ignore patterns from QML/QVariant
+    if (repo.contains("ignorePatterns") && repo["ignorePatterns"].canConvert<QVariantList>()) {
+        r.ignorePatterns = repo["ignorePatterns"].toStringList();
+    }
     m_repositories.append(r);
     saveToDisk();
     emit repositoriesChanged();
@@ -147,6 +165,8 @@ QVariantList ConfigService::repositories() const
         map["password"] = r.password;
         map["type"] = r.type;
         map["isSelected"] = (r.name == m_activeRepoName);
+        // P3 #2: expose ignore patterns to QML for sidebar
+        map["ignorePatterns"] = r.ignorePatterns;
         list.append(map);
     }
     return list;
@@ -190,6 +210,21 @@ bool ConfigService::updateRepositoryUrl(const QString &name, const QString &newU
         if (r.name == name) {
             if (r.url == newUrl) return false;
             r.url = newUrl;
+            saveToDisk();
+            emit repositoriesChanged();
+            return true;
+        }
+    }
+    return false;
+}
+
+// P3 #2: set ignore patterns for a repo. Mirrors updateRepositoryUrl pattern.
+bool ConfigService::setRepositoryIgnorePatterns(const QString &name, const QStringList &patterns)
+{
+    for (Repository &r : m_repositories) {
+        if (r.name == name) {
+            if (r.ignorePatterns == patterns) return false;
+            r.ignorePatterns = patterns;
             saveToDisk();
             emit repositoriesChanged();
             return true;

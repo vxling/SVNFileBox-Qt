@@ -15,6 +15,8 @@ struct Repository {
     QString password;  // deprecated: passwords now stored in CredentialStore
                        // (kept here for in-memory cache + load migration)
     QString type;  // "Local" or "Network"
+    // P3 #2: glob-style ignore patterns applied to SyncEngine.
+    QStringList ignorePatterns;
 };
 
 class ConfigService : public QObject
@@ -56,6 +58,8 @@ public:
     // Edit a repository's URL in-place (e.g. server moved). Returns true
     // if a row was actually updated.
     Q_INVOKABLE bool updateRepositoryUrl(const QString &name, const QString &newUrl);
+    // P3 #2: persist per-repo ignore patterns (glob style).
+    Q_INVOKABLE bool setRepositoryIgnorePatterns(const QString &name, const QStringList &patterns);
 
     // SVN 凭证
     Q_INVOKABLE QString getPassword(const QString &repoName) const;

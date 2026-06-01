@@ -18,6 +18,8 @@ struct Repository {
     QString password;
     QString type; // "Local" or "Network"
     bool isActive = false;
+    // P3 #2: glob-style ignore patterns applied to SyncEngine.
+    QStringList ignorePatterns;
 
     bool isValid() const { return !name.isEmpty() && !path.isEmpty(); }
 
