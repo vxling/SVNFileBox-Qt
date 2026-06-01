@@ -9,6 +9,7 @@
 #include <QThread>
 #include <QRegularExpression>
 #include <QDateTime>
+#include <QSet>
 
 SyncEngine::SyncEngine(QObject *parent)
     : QObject(parent)
@@ -265,15 +266,54 @@ void SyncEngine::pollServer()
     if (serverRev <= localRev || serverRev < 0) return;
 
     qDebug() << "[SyncEngine] Server has updates, updating...";
-    bool ok = m_svnClient->update(m_localPath);
-    if (ok) handleConflicts();
+
+    // P1-8: UpdateInChunks — get remote-changed paths, group by parent dir, update per dir
+    QStringList remotePaths = m_svnClient->getServerUpdatePaths(m_localPath);
+    qDebug() << "[SyncEngine] GetServerUpdatePaths returned" << remotePaths.size() << "paths";
+
+    QSet<QString> dirs;
+    for (const QString &p : remotePaths) {
+        QString normalized = p;
+        // Strip repo root prefix if present (relative path)
+        if (normalized.startsWith(m_localPath + "/")) {
+            normalized = normalized.mid(m_localPath.length() + 1);
+        }
+        // Get parent dir; root file maps to repo root
+        int lastSlash = normalized.lastIndexOf("/");
+        QString parent = lastSlash > 0 ? normalized.left(lastSlash) : QString();
+        // Collect unique dirs (store relative to repo root), repo root itself is ""
+        dirs.insert(parent);
+    }
+
+    bool allSuccess = true;
+    QStringList sortedDirs = dirs.values();
+    // Sort deepest-first (more files first reduces redundant updates)
+    std::sort(sortedDirs.begin(), sortedDirs.end(), [](const QString &a, const QString &b) {
+        return a.count('/') > b.count('/');
+    });
+
+    // Always update repo root first
+    bool rootOk = m_svnClient->update(m_localPath);
+    if (!rootOk) allSuccess = false;
+
+    // Then update each unique subdirectory
+    for (const QString &relDir : sortedDirs) {
+        QString absDir = relDir.isEmpty() ? m_localPath : m_localPath + "/" + relDir;
+        qDebug() << "[SyncEngine] Updating chunk:" << absDir;
+        if (!m_svnClient->update(absDir)) {
+            allSuccess = false;
+            qWarning() << "[SyncEngine] Update chunk failed:" << absDir;
+        }
+    }
+
+    if (allSuccess) handleConflicts();
 
     // Successful update resets stale counter
     m_staleCounter = 1;
 
     QString msg;
     QString result;
-    if (ok) {
+    if (allSuccess) {
         int updated = serverRev - localRev;
         msg = QString("从服务器更新 %1 个版本").arg(updated);
         result = "Success";

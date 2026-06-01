@@ -42,6 +42,10 @@ void RepoManager::dismiss()
 
     m_state = RepoState::Dismissed;
     syncEngine->stopSync();
+    if (executor) {
+        executor->stop();
+        executor->waitForDrained(35000);
+    }
     emit stateChanged(m_state);
 }
 
@@ -50,6 +54,10 @@ void RepoManager::shutdown()
     qDebug() << "[RepoManager] shutdown:" << repository.name;
     m_state = RepoState::None;
     syncEngine->stopSync();
+    if (executor) {
+        executor->stop();           // drain pending operations (max 30s)
+        executor->waitForDrained(35000); // safety net
+    }
 }
 
 void RepoManager::emitFilesChanged()
