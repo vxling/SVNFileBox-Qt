@@ -243,12 +243,22 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
         return;
     }
 
-    // Capture commandError for auth detection
+    // Capture commandError for auth detection. processItem runs on the
+    // SvnCommandExecutor worker thread, but SVNClient::commandError is
+    // emitted on the thread that owns SVNClient (typically the main thread).
+    // The default AutoConnection would queue the slot cross-thread, but
+    // the QObject `tmp` lives only on the stack of this call — the queued
+    // slot would be discarded when the event loop tries to dispatch it
+    // after `tmp` is destroyed. DirectConnection makes the slot fire
+    // synchronously on the emitter thread, capturing the error before
+    // processItem returns. We accept the cross-thread QString copy
+    // because (a) the signal payload is small, (b) it's the only way to
+    // reliably read the error from this worker.
     QString capturedError;
     QObject tmp;
     connect(m_svnClient, &SVNClient::commandError, &tmp, [&capturedError](const QString &err) {
         capturedError = err;
-    });
+    }, Qt::DirectConnection);
 
     bool success = false;
     QString error;

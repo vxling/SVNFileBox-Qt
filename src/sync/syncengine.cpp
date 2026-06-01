@@ -89,11 +89,17 @@ void SyncEngine::addPathRecursive(const QString &rootPath)
 void SyncEngine::startSync(const QString &repoName, const QString &localPath, const QString &remoteUrl,
                            const QString &username, const QString &password)
 {
-    m_repoName = repoName;
-    m_localPath = localPath;
-    m_remoteUrl = remoteUrl;
-    m_username = username;
-    m_password = password;
+    // P3 review fix (M5): all writes to m_repoName/m_localPath/m_remoteUrl
+    // are serialized through m_stateMutex so a concurrent setRepoName()
+    // from the main thread can't tear the QString's COW pointer.
+    {
+        QMutexLocker locker(&m_stateMutex);
+        m_repoName = repoName;
+        m_localPath = localPath;
+        m_remoteUrl = remoteUrl;
+        m_username = username;
+        m_password = password;
+    }
     m_syncing = true;
 
     // Watch the repo root initially
@@ -862,4 +868,13 @@ bool SyncEngine::isPathIgnored(const QString &path) const
         if (relPath.startsWith(QLatin1Char('/'))) relPath = relPath.mid(1);
     }
     return SVNFileBox::matchIgnore(m_ignoreRegexes, name, relPath);
+}
+
+void SyncEngine::setRepoName(const QString &name)
+{
+    // P3 review fix (M5): update the cached name so subsequent sync records
+    // and notifications are tagged with the new repo name. Lock guards the
+    // QString's COW pointer against concurrent reads from the worker.
+    QMutexLocker locker(&m_stateMutex);
+    m_repoName = name;
 }

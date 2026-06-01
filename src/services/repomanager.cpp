@@ -76,6 +76,15 @@ void RepoManager::renameRepo(const QString &newName)
         return;
     }
     qDebug() << "[RepoManager] renameRepo:" << oldName << "->" << repository.name;
+    // P3 review fix (M5): the per-repo SyncEngine cached the repo name at
+    // startSync() time. If we don't update it, all subsequent sync records
+    // and notifications will be logged under the OLD name, even though
+    // every other surface (sidebar, config.json, signals) uses the NEW
+    // name. setRepoName() takes the S2 mutex so it's safe to call from
+    // the main thread while the worker is mid-cycle.
+    if (syncEngine) {
+        syncEngine->setRepoName(repository.name);
+    }
     emit repositoryChanged(oldName, repository.name, repository.url, repository.url);
     // State doesn't change here, but emit stateChanged-equivalent: callers
     // re-render on repositoryChanged. We deliberately do NOT call

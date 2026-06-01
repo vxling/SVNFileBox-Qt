@@ -34,6 +34,10 @@ public:
     // patterns containing "/"). Mirrors WPF's SyncService filter at
     // SyncService.cs:284-308.
     void setIgnorePatterns(const QStringList &patterns) { m_ignorePatterns = patterns; m_ignoreRegexes = SVNFileBox::compileIgnorePatterns(patterns); }
+    // P3 review fix (M5): rename a live repo without restarting the engine.
+    // Takes m_stateMutex (same lock as startSync/stopSync) so a worker in
+    // mid-cycle that reads m_repoName after this returns gets the new name.
+    void setRepoName(const QString &name);
     QStringList ignorePatterns() const { return m_ignorePatterns; }
     Q_INVOKABLE void stopSync();
     Q_INVOKABLE void syncNow();
