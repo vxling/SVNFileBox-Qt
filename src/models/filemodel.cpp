@@ -119,6 +119,22 @@ QString FileModel::getFilePath(int row) const
     return QString();
 }
 
+QVariantMap FileModel::get(int row) const
+{
+    QVariantMap m;
+    if (row < 0 || row >= m_files.size()) return m;
+    const FileItem &f = m_files.at(row);
+    m["name"] = f.name;
+    m["fullPath"] = f.fullPath;
+    m["isDirectory"] = f.isDirectory;
+    m["svnStatus"] = f.svnStatus;
+    m["isCurrentPath"] = f.isCurrentPath;
+    m["fileSize"] = f.fileSize;
+    m["lastModified"] = f.lastModified;
+    m["typeDisplay"] = getTypeDisplay(f.name, f.isDirectory, f.isCurrentPath);
+    return m;
+}
+
 void FileModel::clear()
 {
     beginResetModel();

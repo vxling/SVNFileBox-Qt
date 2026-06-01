@@ -47,6 +47,11 @@ public:
 
     Q_INVOKABLE void load(const QString &path);
     Q_INVOKABLE QString getFilePath(int row) const;
+    // Return all role values for a row as a JS-friendly map. Used by the
+    // right-click context menu to inspect the selected file's svnStatus /
+    // isDirectory / isCurrentPath without indexing into the model directly.
+    // Returns an empty map for out-of-range rows.
+    Q_INVOKABLE QVariantMap get(int row) const;
     Q_INVOKABLE void clear();
     Q_INVOKABLE bool createDirectory(const QString &path);
     Q_INVOKABLE bool createFile(const QString &fullPath);

@@ -222,7 +222,11 @@ Item {
                         }
                         Label {
                             id: pathText
-                            text: configService.localPath
+                            // P3 review fix: bind to currentPath (the live
+                            // navigation state) rather than configService.localPath
+                            // (the persisted repo root). Sub-directory navigation
+                            // would otherwise leave this label stale.
+                            text: mainWindow.currentPath
                             font.pixelSize: 13
                             color: "#333333"
                             Layout.fillWidth: true
@@ -413,19 +417,68 @@ Item {
 
     // ================================================================
     // 右键菜单
+    //
+    // enabled 状态绑定（P3 review fix）：
+    //   hasRepo        — 是否有 active 仓库（SVN 类操作的前置）
+    //   hasSelection   — 右键命中了某一行（不是空白处）
+    //   isRealFile     — 排除了 "返回上级目录" 行（用 model 拿 isCurrentPath）
+    //   isTracked      — svnStatus 是已跟踪（Normal/Modified/Conflicted/...），
+    //                    Untracked/Added/Normal 之外的状态决定 Add 按钮是否启用
+    //
+    // 注意：使用 fileModel.get(idx) 而非 listModel.get(idx) — FileModel 是
+    // C++ QAbstractListModel，没有 ListModel::get() 那种 JS 友好方法。
     // ================================================================
     Menu {
         id: fileContextMenu
         property int currentIndex: -1
-        MenuItem { text: qsTr("在资源管理器中打开"); onTriggered: openInExplorer() }
+        readonly property var currentItem: fileModel.get(currentIndex)
+        readonly property bool hasSelection: currentItem && currentItem.fullPath !== undefined
+        readonly property bool isRealFile: hasSelection && !currentItem.isCurrentPath
+        readonly property bool hasRepo: globalManager.activeManager !== null
+        readonly property bool isTracked: hasSelection
+            && !currentItem.isCurrentPath
+            && currentItem.svnStatus !== ""
+            && currentItem.svnStatus !== "Untracked"
+            && currentItem.svnStatus !== "?"
+            && currentItem.svnStatus !== "Added"
+        // P3 #2 review fix: '?' is what svn status emits for newly created
+        // untracked files (in addition to "Untracked"). Treat both as
+        // "needs to be added to SVN".
+        readonly property bool canAdd: hasSelection
+            && !currentItem.isCurrentPath
+            && (currentItem.svnStatus === "Untracked"
+             || currentItem.svnStatus === "?")
+
+        MenuItem {
+            text: qsTr("在资源管理器中打开")
+            enabled: fileContextMenu.hasRepo
+            onTriggered: openInExplorer()
+        }
         MenuSeparator { }
-        MenuItem { text: qsTr("复制路径"); onTriggered: copyPath() }
-        MenuItem { text: qsTr("复制 SVN URL"); onTriggered: copyUrl() }
+        MenuItem {
+            text: qsTr("复制路径")
+            enabled: fileContextMenu.isRealFile
+            onTriggered: copyPath()
+        }
+        MenuItem {
+            text: qsTr("复制 SVN URL")
+            enabled: fileContextMenu.isRealFile
+            onTriggered: copyUrl()
+        }
         MenuSeparator { }
-        MenuItem { text: qsTr("粘贴"); onTriggered: pasteFile() }
-        MenuItem { text: qsTr("新建文件夹"); onTriggered: newFolder() }
+        MenuItem {
+            text: qsTr("粘贴")
+            enabled: fileContextMenu.hasRepo
+            onTriggered: pasteFile()
+        }
+        MenuItem {
+            text: qsTr("新建文件夹")
+            enabled: fileContextMenu.hasRepo
+            onTriggered: newFolder()
+        }
         Menu {
             title: qsTr("新建文件")
+            enabled: fileContextMenu.hasRepo
             MenuItem { text: qsTr("文本文档 (.txt)");   onTriggered: newFile("txt") }
             MenuItem { text: qsTr("Word 文档 (.docx)");  onTriggered: newFile("docx") }
             MenuItem { text: qsTr("Excel 工作表 (.xlsx)"); onTriggered: newFile("xlsx") }
@@ -433,16 +486,44 @@ Item {
             MenuItem { text: qsTr("PNG 图片 (.png)");    onTriggered: newFile("png") }
             MenuItem { text: qsTr("BMP 图片 (.bmp)");    onTriggered: newFile("bmp") }
         }
-        MenuItem { text: qsTr("重命名"); onTriggered: renameFile() }
+        MenuItem {
+            text: qsTr("重命名")
+            enabled: fileContextMenu.isRealFile
+            onTriggered: renameFile()
+        }
         MenuSeparator { }
-        MenuItem { text: qsTr("SVN 还原 (Revert)"); onTriggered: revertFile() }
-        MenuItem { text: qsTr("SVN 差异对比 (Diff)"); onTriggered: diffFile() }
-        MenuItem { text: qsTr("SVN 添加 (Add)"); onTriggered: addFile() }
-        MenuItem { text: qsTr("SVN 删除 (Delete)"); onTriggered: deleteFile() }
+        MenuItem {
+            text: qsTr("SVN 还原 (Revert)")
+            enabled: fileContextMenu.isTracked
+            onTriggered: revertFile()
+        }
+        MenuItem {
+            text: qsTr("SVN 差异对比 (Diff)")
+            enabled: fileContextMenu.isTracked
+            onTriggered: diffFile()
+        }
+        MenuItem {
+            text: qsTr("SVN 添加 (Add)")
+            enabled: fileContextMenu.canAdd
+            onTriggered: addFile()
+        }
+        MenuItem {
+            text: qsTr("SVN 删除 (Delete)")
+            enabled: fileContextMenu.isRealFile
+            onTriggered: deleteFile()
+        }
         MenuSeparator { }
-        MenuItem { text: qsTr("刷新"); onTriggered: fileModel.load(currentPath) }
+        MenuItem {
+            text: qsTr("刷新")
+            enabled: fileContextMenu.hasRepo
+            onTriggered: fileModel.load(currentPath)
+        }
         MenuSeparator { }
-        MenuItem { text: qsTr("手工同步"); onTriggered: manualSync() }
+        MenuItem {
+            text: qsTr("手工同步")
+            enabled: fileContextMenu.hasRepo
+            onTriggered: manualSync()
+        }
     }
 
     // ================================================================
@@ -507,48 +588,92 @@ Item {
     // ================================================================
     property string currentPath: configService.localPath
 
-    onCurrentPathChanged: {
-        pathText.text = currentPath
-        statusBarPathLabel.text = currentPath
-    }
+    // P3 review fix: pathText and statusBarPathLabel bind directly to
+    // currentPath. The original onCurrentPathChanged handler did the same
+    // thing by hand, and navigateInto() used to set them in triplicate.
+    // Bindings make the data flow obvious: assign currentPath → everything
+    // else updates automatically.
 
     function navigateInto(path) {
+        // P3 review fix: currentPath change is the single source of truth.
+        // pathText and statusBarPathLabel are bindings on currentPath
+        // (declared below), so we don't need to set them here.
         currentPath = path
-        pathText.text = path
-        statusBarPathLabel.text = path
         fileModel.load(path)
         syncEngine.watchPath(path)
     }
 
     function goUp() {
-        var parentPath = currentPath.substring(0, currentPath.lastIndexOf("/"))
-        if (parentPath === "") return
-        navigateInto(parentPath)
+        // P3 review fix: handle both POSIX ('/') and Windows ('\\') path
+        // separators. On Windows the native separator is '\\' but
+        // QString::lastIndexOf('/') would still work for paths returned by
+        // QDir/QFileInfo (which keep forward slashes). We still guard
+        // against the case where neither is present.
+        var path = currentPath
+        var idxSlash = path.lastIndexOf("/")
+        var idxBack  = path.lastIndexOf("\\")
+        var idx = idxSlash > idxBack ? idxSlash : idxBack
+        if (idx <= 0) return
+        navigateInto(path.substring(0, idx))
     }
 
     function openInExplorer() {
-        Qt.openUrlExternally("file:" + currentPath)
+        // P3 review fix: respect the row the user actually right-clicked.
+        // - For the "返回上级目录" row (isCurrentPath) keep the old behavior
+        //   of opening the current directory in the file manager.
+        // - For any other row, reveal that file's parent folder.
+        var idx = fileContextMenu.currentIndex
+        if (idx < 0) {
+            Qt.openUrlExternally("file:" + currentPath)
+            return
+        }
+        var item = fileModel.get(idx)
+        if (!item || item.isCurrentPath) {
+            Qt.openUrlExternally("file:" + currentPath)
+            return
+        }
+        // item.fullPath is a file: open its parent directory
+        var parent = item.fullPath.substring(0,
+            Math.max(item.fullPath.lastIndexOf("/"),
+                     item.fullPath.lastIndexOf("\\")))
+        Qt.openUrlExternally("file:" + parent)
     }
 
     function copyPath() {
-        Clipboard.text = fileModel.getFilePath(fileContextMenu.currentIndex)
+        // P3 review fix: was using getFilePath which returns "" for the
+        // currentPath row. Use fileModel.get() so we get a sane fallback
+        // or refuse the call.
+        var idx = fileContextMenu.currentIndex
+        if (idx < 0) return
+        var item = fileModel.get(idx)
+        if (!item || item.isCurrentPath) return
+        Clipboard.text = item.fullPath
     }
 
     function deleteFile() {
         var idx = fileContextMenu.currentIndex
         if (idx < 0) return
-        var filePath = fileModel.getFilePath(idx)
-        var fileName = filePath.split("/").pop()
+        var item = fileModel.get(idx)
+        if (!item || item.isCurrentPath) return
+        var filePath = item.fullPath
+        var fileName = filePath.split(/[\\/]/).pop()
         confirmDeleteDialog.fileToDelete = filePath
         confirmDeleteDialog.fileName = fileName
         confirmDeleteDialog.open()
     }
 
     function pasteFile() {
+        // P3 review fix: require an active repository before pasting.
+        // fileModel.pasteFromClipboard() will copy into the current dir
+        // and queue an svn add — but it has no activeManager check.
+        if (!fileContextMenu.hasRepo) {
+            statusBarText.text = qsTr("未选择仓库，无法粘贴")
+            return
+        }
         var pastedPath = fileModel.pasteFromClipboard()
         if (pastedPath !== "") {
             globalManager.activeManager.activeExecutor().executeLocalWrite(4, pastedPath)
-            globalManager.activeManager.activeExecutor().executeHeavyWrite(2, pastedPath, "", "[SVNFileBox] Paste: " + pastedPath.split("/").pop())
+            globalManager.activeManager.activeExecutor().executeHeavyWrite(2, pastedPath, "", "[SVNFileBox] Paste: " + pastedPath.split(/[\\/]/).pop())
         }
     }
 
@@ -574,50 +699,72 @@ Item {
     function renameFile() {
         var idx = fileContextMenu.currentIndex
         if (idx < 0) return
-        renameDialog.oldPath = fileModel.getFilePath(idx)
-        renameDialog.oldName = renameDialog.oldPath.split("/").pop()
+        var item = fileModel.get(idx)
+        if (!item || item.isCurrentPath) return
+        renameDialog.oldPath = item.fullPath
+        renameDialog.oldName = item.fullPath.split(/[\\/]/).pop()
         renameDialog.newNameField.text = renameDialog.oldName
         renameDialog.open()
     }
 
     function manualSync() {
+        if (!fileContextMenu.hasRepo) return
         globalManager.activeManager.syncEngine.syncNow()
     }
 
     function revertFile() {
         var idx = fileContextMenu.currentIndex
         if (idx < 0) return
-        var filePath = fileModel.getFilePath(idx)
+        var item = fileModel.get(idx)
+        if (!item || item.isCurrentPath) return
+        var filePath = item.fullPath
         globalManager.activeManager.activeExecutor().executeLocalWrite(15, filePath)
-        statusBarText.text = "已还原: " + filePath.split("/").pop()
+        statusBarText.text = "已还原: " + filePath.split(/[\\/]/).pop()
     }
 
     function diffFile() {
+        // P3 review fix: handle the non-zero exitCode path and missing
+        // activeManager / svnClient. The original silently ignored errors.
         var idx = fileContextMenu.currentIndex
         if (idx < 0) return
-        var filePath = fileModel.getFilePath(idx)
+        var item = fileModel.get(idx)
+        if (!item || item.isCurrentPath) return
+        if (!fileContextMenu.hasRepo) {
+            statusBarText.text = qsTr("未选择仓库")
+            return
+        }
+        var filePath = item.fullPath
         var result = svnClient.diff(filePath)
-        if (result.exitCode === 0) {
-            statusBarText.text = "差异已生成: " + filePath.split("/").pop()
+        if (result && result.exitCode === 0) {
+            statusBarText.text = "差异已生成: " + filePath.split(/[\\/]/).pop()
+        } else {
+            statusBarText.text = "差异对比失败: "
+                + (result && result.error ? result.error : "未知错误")
         }
     }
 
     function addFile() {
         var idx = fileContextMenu.currentIndex
         if (idx < 0) return
-        var filePath = fileModel.getFilePath(idx)
+        var item = fileModel.get(idx)
+        if (!item || item.isCurrentPath) return
+        var filePath = item.fullPath
         globalManager.activeManager.activeExecutor().executeLocalWrite(4, filePath)
-        statusBarText.text = "已添加: " + filePath.split("/").pop()
+        statusBarText.text = "已添加: " + filePath.split(/[\\/]/).pop()
     }
 
     function copyUrl() {
         var idx = fileContextMenu.currentIndex
         if (idx < 0) return
-        var filePath = fileModel.getFilePath(idx)
+        var item = fileModel.get(idx)
+        if (!item || item.isCurrentPath) return
+        var filePath = item.fullPath
         var info = svnClient.info(filePath)
         if (info && info.url) {
             Clipboard.text = info.url
             statusBarText.text = "已复制 SVN URL"
+        } else {
+            statusBarText.text = qsTr("获取 SVN URL 失败")
         }
     }
 
@@ -928,7 +1075,11 @@ Item {
                 font.weight: Font.DemiBold
             }
             Label {
-                text: qsTr("确定要删除 \")" + confirmDeleteDialog.fileName + "\" 吗？此操作不可撤销。"
+                // Pre-existing string-concat bug fix: qsTr(...) returns a
+                // translated string but applying '+' to its result is fine
+                // since it's a regular JS string. We translate the prefix
+                // and append the file name without re-translation.
+                text: qsTr("确定要删除 \"") + confirmDeleteDialog.fileName + qsTr("\" 吗？此操作不可撤销。")
                 wrapMode: Text.WordWrap
                 width: 300
             }
@@ -1208,7 +1359,11 @@ Item {
                 selectByMouse: true
             }
             Label {
-                text: qsTr("注：仅修改本地记录的 URL；如需重新定位工作副本，请使用 \")svn switch --relocate\"。"
+                // Pre-existing escape bug fix: the original used \" inside a
+                // qsTr() string but the trailing \" svn switch --relocate\"
+                // was unbalanced. Use single quotes / Chinese quotes to
+                // avoid escaping headaches.
+                text: qsTr("注：仅修改本地记录的 URL；如需重新定位工作副本，请使用 svn switch --relocate。")
                 font.pixelSize: 10
                 color: "#999999"
                 wrapMode: Text.WordWrap
