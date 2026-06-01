@@ -2,6 +2,8 @@
 #include "svn/svnclient.h"
 #include "sync/commitqueue.h"
 #include "services/newfileservice.h"
+#include "services/fileanalyzer.h"
+#include "services/filecopier.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QUrl>
@@ -9,6 +11,7 @@
 #include <QGuiApplication>
 #include <QFile>
 #include <QMimeData>
+#include <QDebug>
 
 FileModel::FileModel(QObject *parent) : QAbstractListModel(parent) {}
 
@@ -240,6 +243,63 @@ void FileModel::collectNewFiles(const QString &dirPath, QStringList &out)
             collectNewFiles(full, out);
         }
     }
+}
+
+void FileModel::importFilesAsync(const QStringList &paths, const QString &destPath)
+{
+    if (paths.isEmpty() || destPath.isEmpty()) return;
+
+    // Lazy-init copier
+    if (!m_copier) {
+        m_copier = new FileCopier(this);
+        connect(m_copier, &FileCopier::copyProgress, this,
+                [this](const CopyProgress &p) {
+            emit copyProgress(p.currentIndex, p.totalCount, p.bytesCopied,
+                              p.totalBytes, p.currentFile);
+        });
+        connect(m_copier, &FileCopier::copyCompleted, this,
+                [this, destPath](const CopyResult &r) {
+            if (!r.wasCancelled && r.copiedCount > 0 && m_svnClient) {
+                // svn add all newly-copied paths + enqueue commit
+                for (const QString &p : r.svnAddedPaths) {
+                    m_svnClient->add(p);
+                    CommitQueue::instance().enqueue(p, CommitQueue::OpAdd);
+                }
+            }
+            emit copyCompleted(r.copiedCount, r.skippedCount, r.overwrittenCount,
+                               r.errorMessage);
+        });
+    }
+
+    // Phase 1: analyze → plan
+    FileCopyPlan plan = FileAnalyzer::analyze(paths, destPath);
+    if (plan.isSameLocation) {
+        CopyResult r;
+        r.errorMessage = "源和目标位置相同";
+        emit copyCompleted(0, 0, 0, r.errorMessage);
+        return;
+    }
+    if (plan.items.isEmpty()) {
+        emit copyCompleted(0, 0, 0, QString());
+        return;
+    }
+
+    // Phase 2: async copy. svnAddPaths = all dest paths (incl. dirs)
+    QStringList allDest;
+    for (const FileCopyItem &it : plan.items) {
+        allDest.append(it.destPath);
+    }
+    m_copier->copyPlanAsync(plan, allDest);
+}
+
+void FileModel::cancelCopy()
+{
+    if (m_copier) m_copier->cancel();
+}
+
+QString FileModel::formatBytes(qint64 bytes) const
+{
+    return FileCopyPlan::formatBytes(bytes);
 }
 
 QString FileModel::formatFileSize(qint64 bytes)

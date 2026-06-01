@@ -5,12 +5,15 @@
 #include <QString>
 #include <QVariantList>
 
+class CredentialStore;
+
 struct Repository {
     QString name;
     QString url;
     QString localPath;
     QString username;
-    QString password;
+    QString password;  // deprecated: passwords now stored in CredentialStore
+                       // (kept here for in-memory cache + load migration)
     QString type;  // "Local" or "Network"
 };
 

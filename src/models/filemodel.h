@@ -8,6 +8,7 @@
 #include <QString>
 
 class SVNClient;
+class FileCopier;
 
 class FileItem
 {
@@ -52,6 +53,12 @@ public:
     Q_INVOKABLE QString pasteFromClipboard();
     Q_INVOKABLE QString importFiles(const QStringList &paths, const QString &destPath);
 
+    // New: plan + async copy with progress. Returns immediately; emits
+    // copyProgress + copyCompleted. UI displays progress via signals.
+    Q_INVOKABLE void importFilesAsync(const QStringList &paths, const QString &destPath);
+    Q_INVOKABLE void cancelCopy();
+    Q_INVOKABLE QString formatBytes(qint64 bytes) const;
+
     void setSvnClient(SVNClient *client) { m_svnClient = client; }
     SVNClient *svnClient() const { return m_svnClient; }
 
@@ -60,11 +67,15 @@ public:
 
 signals:
     void currentPathChanged();
+    // Copy progress (UI can show progress bar / file count)
+    void copyProgress(int currentIndex, int totalCount, qint64 bytesCopied, qint64 totalBytes, const QString &currentFile);
+    void copyCompleted(int copiedCount, int skippedCount, int overwrittenCount, const QString &errorMessage);
 
 private:
     QList<FileItem> m_files;
     QString m_currentPath;
     SVNClient *m_svnClient = nullptr;
+    FileCopier *m_copier = nullptr;
 
     static QString formatFileSize(qint64 bytes);
     static QString getTypeDisplay(const QString &fileName, bool isDir, bool isCurrentPath);

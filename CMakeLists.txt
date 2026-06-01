@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Qt Core & QML
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql Concurrent)
 
 # App
 set(APP_SOURCES
@@ -26,6 +26,8 @@ set(APP_SOURCES
     src/services/repomanager.cpp
     src/services/repoglobalmanager.cpp
     src/services/newfileservice.cpp
+    src/services/fileanalyzer.cpp
+    src/services/filecopier.cpp
     src/models/filemodel.cpp
     src/systemtray/traymanager.cpp
 )
@@ -48,6 +50,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/s
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Xml
     Qt6::Core
+    Qt6::Concurrent
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick

@@ -46,6 +46,31 @@ Item {
     }
 
     // ================================================================
+    // fileModel.copyProgress / copyCompleted
+    // ================================================================
+    Connections {
+        target: fileModel
+        function onCopyProgress(currentIndex, totalCount, bytesCopied, totalBytes, currentFile) {
+            copyProgressDialog.currentIndex = currentIndex
+            copyProgressDialog.totalCount = totalCount
+            copyProgressDialog.bytesCopied = bytesCopied
+            copyProgressDialog.totalBytes = totalBytes
+            copyProgressDialog.currentFile = currentFile
+        }
+        function onCopyCompleted(copiedCount, skippedCount, overwrittenCount, errorMessage) {
+            copyProgressDialog.close()
+            if (errorMessage) {
+                statusBarText.text = "导入失败: " + errorMessage
+            } else {
+                statusBarText.text = "已导入 " + copiedCount + " 项，跳过 " + skippedCount + " 项，覆盖 " + overwrittenCount + " 项"
+                // Trigger svn add (fileModel has already done it async)
+                // Just reload the list to show new files
+                fileModel.load(currentPath)
+            }
+        }
+    }
+
+    // ================================================================
     // 启动时加载仓库列表
     // ================================================================
     Component.onCompleted: {
@@ -225,15 +250,15 @@ Item {
                                 if (url.startsWith("file:///")) url = url.substring(8)
                                 paths.push(url)
                             }
-                            var imported = fileModel.importFiles(paths, dest)
-                            if (imported) {
-                                var count = paths.length
-                                statusBarText.text = "已导入 " + count + " 项，正在提交..."
-                                for (var j = 0; j < paths.length; j++) {
-                                    globalManager.activeManager.activeExecutor().executeLocalWrite(4, paths[j])
-                                }
-                                globalManager.activeManager.activeExecutor().executeHeavyWrite(2, dest, "", "[SVNFileBox] Import: " + paths.map(function(p) { return p.split("/").pop() }).join(", "))
-                            }
+                            // Reset progress dialog and open
+                            copyProgressDialog.wasCancelled = false
+                            copyProgressDialog.currentIndex = 0
+                            copyProgressDialog.totalCount = 0
+                            copyProgressDialog.bytesCopied = 0
+                            copyProgressDialog.totalBytes = 0
+                            copyProgressDialog.currentFile = ""
+                            copyProgressDialog.open()
+                            fileModel.importFilesAsync(paths, dest)
                         }
                     }
 
@@ -1027,6 +1052,72 @@ Item {
                             globalManager.activeManager.activeExecutor().executeLocalWrite(5, newPath, renameDialog.oldPath)
                         }
                         renameDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    // copyProgressDialog — shows async file copy progress
+    Popup {
+        id: copyProgressDialog
+        anchors.centerIn: parent
+        width: 400
+        height: copyProgressColumn.height + 40
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        padding: 20
+        property int totalCount: 0
+        property int currentIndex: 0
+        property real bytesCopied: 0
+        property real totalBytes: 0
+        property string currentFile: ""
+        property bool wasCancelled: false
+
+        Column {
+            id: copyProgressColumn
+            spacing: 12
+            width: 360
+
+            Label {
+                text: "正在导入文件"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+            }
+
+            Label {
+                text: copyProgressDialog.currentIndex + " / " + copyProgressDialog.totalCount
+                color: "#666"
+            }
+
+            ProgressBar {
+                id: copyProgressBar
+                width: 360
+                from: 0
+                to: copyProgressDialog.totalBytes > 0 ? copyProgressDialog.totalBytes : 1
+                value: copyProgressDialog.bytesCopied
+            }
+
+            Label {
+                text: copyProgressDialog.currentFile
+                elide: Text.ElideMiddle
+                width: 360
+                color: "#999"
+                font.pixelSize: 12
+            }
+
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: copyProgressDialog.wasCancelled ? "关闭" : "取消"
+                    onClicked: {
+                        if (!copyProgressDialog.wasCancelled) {
+                            fileModel.cancelCopy()
+                            copyProgressDialog.wasCancelled = true
+                        } else {
+                            copyProgressDialog.close()
+                        }
                     }
                 }
             }
