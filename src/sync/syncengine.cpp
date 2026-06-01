@@ -252,7 +252,14 @@ void SyncEngine::scanAndCommit()
 
 QString SyncEngine::status() const
 {
-    if (m_pausedByConflict) return "conflict";
+    // P3 review fix (S2): lock for one-line read of m_pausedByConflict.
+    // Called from QML binding, may run concurrently with onDebounceTimer().
+    bool paused;
+    {
+        QMutexLocker locker(&m_stateMutex);
+        paused = m_pausedByConflict;
+    }
+    if (paused) return "conflict";
     return m_syncing ? "running" : "stopped";
 }
 
@@ -327,7 +334,11 @@ void SyncEngine::resolveConflict(const QString &accept)
         }
     }
 
-    m_pausedByConflict = false;
+    // P3 review fix (S2): lock for write of m_pausedByConflict.
+    {
+        QMutexLocker locker(&m_stateMutex);
+        m_pausedByConflict = false;
+    }
     QString msg = accept == "keep-both" ? "保留两者（备份后接受服务器）"
                   : accept == "mine-conflict" ? "保留本地" : "使用服务器";
     emit syncNotification(QString("冲突已解决（%1）").arg(msg));
@@ -415,14 +426,22 @@ void SyncEngine::reconnectWatcher()
 void SyncEngine::onDebounceTimer()
 {
     if (!m_syncing) return;
-    if (m_pausedByConflict) return;
+    // P3 review fix (S2): lock for read of m_pausedByConflict.
+    {
+        QMutexLocker locker(&m_stateMutex);
+        if (m_pausedByConflict) return;
+    }
 
     // Check for conflicts before committing
     if (!m_svnClient || m_localPath.isEmpty()) return;
     QStringList conflicts = m_svnClient->getConflictedFiles(m_localPath);
     if (!conflicts.isEmpty()) {
         qDebug() << "[SyncEngine] Conflicts detected, pausing sync";
-        m_pausedByConflict = true;
+        // P3 review fix (S2): lock for write of m_pausedByConflict.
+        {
+            QMutexLocker locker(&m_stateMutex);
+            m_pausedByConflict = true;
+        }
         emit conflictDetected(conflicts);
         return;
     }
@@ -435,7 +454,11 @@ void SyncEngine::onDebounceTimer()
 void SyncEngine::onPollTimer()
 {
     if (!m_syncing || m_localPath.isEmpty()) return;
-    if (m_pausedByConflict) return;
+    // P3 review fix (S2): lock for read of m_pausedByConflict.
+    {
+        QMutexLocker locker(&m_stateMutex);
+        if (m_pausedByConflict) return;
+    }
     qDebug() << "[SyncEngine] Poll timer fired";
     pollServer();
 }
@@ -443,7 +466,11 @@ void SyncEngine::onPollTimer()
 void SyncEngine::onFullSyncTimer()
 {
     if (!m_syncing || m_localPath.isEmpty()) return;
-    if (m_pausedByConflict) return;
+    // P3 review fix (S2): lock for read of m_pausedByConflict.
+    {
+        QMutexLocker locker(&m_stateMutex);
+        if (m_pausedByConflict) return;
+    }
     qDebug() << "[SyncEngine] Full sync timer fired";
     scanAndCommit();
     pollServer();
@@ -593,9 +620,13 @@ void SyncEngine::fullScan()
 void SyncEngine::commitFile(const QString &filePath)
 {
     if (!m_svnClient || filePath.isEmpty()) return;
-    if (m_pausedByConflict) {
-        qDebug() << "[SyncEngine] Paused by conflict, skipping commit for:" << filePath;
-        return;
+    // P3 review fix (S2): lock for read of m_pausedByConflict.
+    {
+        QMutexLocker locker(&m_stateMutex);
+        if (m_pausedByConflict) {
+            qDebug() << "[SyncEngine] Paused by conflict, skipping commit for:" << filePath;
+            return;
+        }
     }
     if (isPathIgnored(filePath)) {
         qDebug() << "[SyncEngine] Ignored by pattern, skipping commit for:" << filePath;
@@ -658,6 +689,13 @@ int SyncEngine::handleConflicts()
     // Also .orig, .rej (patch conflicts)
     QStringList conflictExts = {".mine", ".rOLD", ".rNEW", ".r*", ".orig", ".rej"};
 
+    // P3 review fix (M3): back up local .mine files before removing them.
+    // After resolution, .mine holds the user's pre-conflict edits; deleting
+    // silently is data loss if the user later realises they need it. Keep
+    // copies in ~/.svnfilebox/conflict_backups/<basename>-<ts>.mine.
+    QString backupDir = QDir::homePath() + "/.svnfilebox/conflict_backups";
+    QDir().mkpath(backupDir);
+
     QDir dir(m_localPath);
     int count = 0;
 
@@ -680,12 +718,27 @@ int SyncEngine::handleConflicts()
         if (isConflict) {
             QString filePath = m_localPath + "/" + entry;
             // For .r* files: safe to delete (remote old versions)
-            // For .mine files: keep as backup (already handled by SVN merge)
-            // For .orig: can be removed
+            // For .mine files: back up then delete (preserve user's edits)
+            // For .orig/.rej: can be removed
             if (entry.contains(QRegularExpression("\\.r\\d+")) || entry.endsWith(".orig") || entry.endsWith(".rej")) {
                 if (QFile::remove(filePath)) {
                     qDebug() << "[SyncEngine] Removed conflict artifact:" << filePath;
                     ++count;
+                }
+            } else if (entry.endsWith(".mine")) {
+                QString backupPath = QString("%1/%2-%3.mine")
+                    .arg(backupDir, entry.left(entry.length() - 5),  // strip ".mine"
+                         QDateTime::currentDateTimeUtc().toString("yyyyMMddHHmmsszzz"));
+                if (QFile::copy(filePath, backupPath)) {
+                    if (QFile::remove(filePath)) {
+                        qDebug() << "[SyncEngine] Backed up .mine and removed:" << filePath << "->" << backupPath;
+                        ++count;
+                    } else {
+                        qWarning() << "[SyncEngine] Backed up but failed to remove .mine:" << filePath;
+                    }
+                } else {
+                    qWarning() << "[SyncEngine] Failed to back up .mine, leaving in place:" << filePath
+                               << "(copy to" << backupPath << "failed)";
                 }
             }
         }

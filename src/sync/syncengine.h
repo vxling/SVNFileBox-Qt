@@ -102,6 +102,14 @@ private:
     bool m_pausedByConflict = false;
     bool m_scanning = false;
     QMutex m_scanMutex;
+    // P3 review fix (S2): protect conflict-pause + scanning flags. Without
+    // this, status() (called from QML) and onDebounceTimer() (called from
+    // QTimer on the main event loop) race on `m_pausedByConflict`, and a
+    // quick pause/resume cycle can leave the timer firing once after the
+    // pause. The mutex is checked-only: holding it for the entire body of
+    // onDebounceTimer() would block status() reads (UI hiccup), so we
+    // only lock for the read of the flag (one-line critical section).
+    mutable QMutex m_stateMutex;
     int m_pollIntervalSec = 60;
     int m_staleCounter = 0;
     // FileWatcher reconnection: when watcher fails, try to rebuild it
