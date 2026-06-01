@@ -32,6 +32,11 @@ public:
     Q_INVOKABLE void watchPath(const QString &path);
     Q_INVOKABLE QString status() const;
     Q_INVOKABLE QStringList getConflictedFiles() const;
+    // Rich conflict info: returns a list of QVariantMaps per file with
+    // {path, kind ("text"|"tree"|"property"), localModifiedTime, serverModifiedTime,
+    //  selectedResolution, baseRevision, incomingRevision}.
+    // Mirrors WPF ConflictedFileInfo. Empty if no conflicts.
+    Q_INVOKABLE QVariantList getConflictedFileInfo() const;
     Q_INVOKABLE void resolveConflict(const QString &accept);
     Q_INVOKABLE void resolveConflictForFile(const QString &filePath, const QString &accept);
 

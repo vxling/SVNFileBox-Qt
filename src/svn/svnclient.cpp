@@ -307,6 +307,17 @@ bool SVNClient::cleanup(const QString &path)
     return runSvnBool({"cleanup", "--non-interactive", "--trust-server-cert", path});
 }
 
+// Force-break stale working copy locks left by crashed svn processes.
+// Mirrors WPF SvnService.BreakWriteLockAsync. `svn cleanup --break-wait`
+// aborts any currently-waiting svn client on this working copy and clears
+// the lock files.
+bool SVNClient::breakWriteLock(const QString &path)
+{
+    if (path.isEmpty()) return false;
+    return runSvnBool({"cleanup", "--non-interactive", "--trust-server-cert",
+                       "--break-wait", path});
+}
+
 bool SVNClient::unlock(const QString &path)
 {
     return runSvnBool({"unlock", "--non-interactive", "--trust-server-cert", path});

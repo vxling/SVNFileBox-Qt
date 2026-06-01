@@ -10,6 +10,7 @@
 #include <QRegularExpression>
 #include <QDateTime>
 #include <QSet>
+#include <QVariantMap>
 
 SyncEngine::SyncEngine(QObject *parent)
     : QObject(parent)
@@ -241,6 +242,50 @@ QStringList SyncEngine::getConflictedFiles() const
 {
     if (!m_svnClient || m_localPath.isEmpty()) return {};
     return m_svnClient->getConflictedFiles(m_localPath);
+}
+
+QVariantList SyncEngine::getConflictedFileInfo() const
+{
+    if (!m_svnClient || m_localPath.isEmpty()) return {};
+    QStringList files = m_svnClient->getConflictedFiles(m_localPath);
+    QVariantList result;
+    for (const QString &rel : files) {
+        QString absPath = rel.contains(m_localPath) ? rel : m_localPath + "/" + rel;
+        QVariantMap info;
+        info["path"] = rel;
+
+        // Get base info via `svn info` for revision + times
+        QString infoXml = m_svnClient->getInfo(absPath);
+        // Local mtime via QFileInfo
+        QFileInfo fi(absPath);
+        QDateTime localMtime = fi.exists() ? fi.lastModified() : QDateTime();
+
+        // Determine kind: tree conflict has "treeconflicted" status from
+        // getStatusString. Try that first.
+        QString statusStr = m_svnClient->getStatusString(absPath);
+        QString kind = "text";
+        if (statusStr == "treeconflicted" || statusStr == "Tree conflicted")
+            kind = "tree";
+
+        // Parse commit revision from info xml if present
+        int commitRev = -1;
+        int incomingRev = -1;
+        if (!infoXml.isEmpty()) {
+            // Look for <entry ... revision="N" ...>
+            QRegularExpression revRe(QStringLiteral(R"X([Rr]evision="(\d+)")X"));
+            auto m1 = revRe.match(infoXml);
+            if (m1.hasMatch()) commitRev = m1.captured(1).toInt();
+        }
+
+        info["kind"] = kind;
+        info["localModifiedTime"] = localMtime;
+        info["serverModifiedTime"] = QDateTime();  // server time not available without log
+        info["selectedResolution"] = QString();
+        info["baseRevision"] = commitRev;
+        info["incomingRevision"] = incomingRev;
+        result.append(info);
+    }
+    return result;
 }
 
 void SyncEngine::resolveConflict(const QString &accept)
