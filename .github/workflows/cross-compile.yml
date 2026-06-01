@@ -1,10 +1,14 @@
 name: Qt Cross-Compile
 
 on:
+  # Trigger on version tags (e.g. v1.0.0-qt). No push-to-main triggers,
+  # because we push frequently during development and Action minutes are
+  # limited. To run a build, just push a tag:
+  #   git tag v1.0.1-qt && git push --tags
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags: ['v*-qt']
+  # Allow manual trigger from the Actions UI for ad-hoc builds.
+  workflow_dispatch:
 
 jobs:
   linux:
