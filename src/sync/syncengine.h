@@ -52,6 +52,8 @@ signals:
 
 private slots:
     void onFileChanged(const QString &path);
+    void onDirChanged(const QString &path);
+    void onWatcherError(int err);
     void onDebounceTimer();
     void onPollTimer();
     void onFullSyncTimer();
@@ -64,6 +66,11 @@ private:
     void retryPending();
     bool isSvnManaged(const QString &path) const;
     QString parentDir(const QString &filePath) const;
+    // Add a directory tree to m_watcher recursively. Mirrors WPF
+    // FileSystemWatcher which IS recursive; QFileSystemWatcher is not.
+    void addPathRecursive(const QString &rootPath);
+    // Try to reconnect the file watcher after failure, with backoff.
+    void reconnectWatcher();
     void addPending(const QString &path);
     bool isTempFile(const QString &path) const;
 
@@ -88,6 +95,9 @@ private:
     QMutex m_scanMutex;
     int m_pollIntervalSec = 60;
     int m_staleCounter = 0;
+    // FileWatcher reconnection: when watcher fails, try to rebuild it
+    // with exponential backoff (5s, 10s, then give up).
+    int m_watcherRetryCount = 0;
 };
 
 #endif // SYNCENGINE_H

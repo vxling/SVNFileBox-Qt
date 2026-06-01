@@ -11,6 +11,7 @@
 #include <QDateTime>
 #include <QSet>
 #include <QVariantMap>
+#include <QDirIterator>
 
 SyncEngine::SyncEngine(QObject *parent)
     : QObject(parent)
@@ -47,25 +48,41 @@ void SyncEngine::watchPath(const QString &path)
 
     m_watcher = new QFileSystemWatcher(this);
     connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &SyncEngine::onFileChanged);
+    connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &SyncEngine::onDirChanged);
+    // Qt 6.4: no errorOccurred signal. Watch for files silently disappearing
+    // and re-add them. See onFileChanged handling below.
 
-    // Always watch the current path itself
-    if (QDir(path).exists()) {
-        m_watcher->addPath(path);
-    }
+    if (!QDir(path).exists()) return;
 
-    // Watch direct child directories (one level only, not recursive)
-    QDir dir(path);
-    if (dir.exists()) {
-        for (const QString &sub : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-            QString subPath = path + "/" + sub;
-            if (QFileInfo(subPath).isDir()) {
-                m_watcher->addPath(subPath);
-            }
-        }
-    }
+    // Recursive watch: add all subdirectories. QFileSystemWatcher is not
+    // recursive on most platforms (Linux inotify requires explicit add per
+    // dir), so we walk the tree ourselves. Mirrors WPF FileSystemWatcher
+    // which IS recursive.
+    addPathRecursive(path);
 
     qDebug() << "[SyncEngine] Watching path:" << path
-             << "plus" << m_watcher->files().size() - 1 << "sub-directories";
+             << "directories:" << m_watcher->directories().size();
+}
+
+void SyncEngine::addPathRecursive(const QString &rootPath)
+{
+    if (!m_watcher) return;
+    QDir root(rootPath);
+    if (!root.exists()) return;
+
+    // Add the root itself
+    m_watcher->addPath(rootPath);
+
+    QDirIterator it(rootPath,
+                    QDir::Dirs | QDir::NoDotAndDotDot,
+                    QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString sub = it.next();
+        // Skip .svn dirs — SVN manages them itself and they change a lot
+        if (sub.contains(QStringLiteral("/.svn")) || sub.endsWith(QStringLiteral("/.svn")))
+            continue;
+        m_watcher->addPath(sub);
+    }
 }
 
 void SyncEngine::startSync(const QString &repoName, const QString &localPath, const QString &remoteUrl,
@@ -338,6 +355,60 @@ void SyncEngine::onFileChanged(const QString &path)
     if (!m_debounceTimer->isActive()) {
         m_debounceTimer->start();
     }
+}
+
+void SyncEngine::onDirChanged(const QString &path)
+{
+    if (!m_syncing) return;
+    if (path.isEmpty()) return;
+    // Skip .svn internal
+    if (path.contains("/.svn") || path.endsWith(".svn")) return;
+
+    // A subdirectory was added/removed/renamed. Re-walk our root and
+    // re-add any missing directories to the watcher, then schedule a sync
+    // since a new dir probably means new files. Mirrors WPF FSW's
+    // Renamed/Created events.
+    if (m_watcher && !m_localPath.isEmpty()) {
+        QStringList currentDirs = m_watcher->directories();
+        // Re-add anything missing by walking the tree again
+        addPathRecursive(m_localPath);
+        Q_UNUSED(currentDirs);
+    }
+
+    if (!m_debounceTimer->isActive()) {
+        m_debounceTimer->start();
+    }
+}
+
+void SyncEngine::onWatcherError(int err)
+{
+    Q_UNUSED(err);
+    qWarning() << "[SyncEngine] FileWatcher error, scheduling reconnect";
+    m_watcherRetryCount = 0;
+    reconnectWatcher();
+}
+
+void SyncEngine::reconnectWatcher()
+{
+    if (m_watcherRetryCount >= 3) {
+        qWarning() << "[SyncEngine] FileWatcher reconnect giving up after 3 tries";
+        return;
+    }
+    int delayMs = (m_watcherRetryCount == 0) ? 5000 : 10000;
+    m_watcherRetryCount++;
+
+    QTimer::singleShot(delayMs, this, [this]() {
+        if (!m_syncing || m_localPath.isEmpty()) return;
+        if (m_watcher) {
+            m_watcher->deleteLater();
+            m_watcher = nullptr;
+        }
+        m_watcher = new QFileSystemWatcher(this);
+        connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &SyncEngine::onFileChanged);
+        connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &SyncEngine::onDirChanged);
+        addPathRecursive(m_localPath);
+        qDebug() << "[SyncEngine] FileWatcher reconnected (attempt" << m_watcherRetryCount << ")";
+    });
 }
 
 void SyncEngine::onDebounceTimer()
