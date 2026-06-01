@@ -1,9 +1,12 @@
 #ifndef SVNCLIENT_H
 #define SVNCLIENT_H
 
-#include <QObject>
-#include <QString>
-#include <QStringList>
+#include <QtCore/QObject>
+#include <QtCore/QString>
+#include <QtCore/QStringList>
+#include <QtCore/QHash>
+#include <QtCore/QMutex>
+#include <QtCore/QElapsedTimer>
 #include <QProcess>
 
 namespace SVNFileBox { class SvnCommandExecutor; }
@@ -53,11 +56,22 @@ public:
     // After this, the next SVN command will prompt for credentials again.
     // Mirrors WPF ClearAuthenticationCache().
     Q_INVOKABLE bool clearAuthCache(const QString &url = QString());
+    // Lightweight credential probe: runs `svn info <repoUrl>` and returns true
+    // if the server replied without auth errors. Mirrors WPF IsCredentialValid.
+    // Uses HEAD_REV_TTL_MS cache.
+    Q_INVOKABLE bool isCredentialValid(const QString &repoUrl);
+    // Return last cached head revision for url, or -1 if unknown.
+    Q_INVOKABLE int cachedHeadRevision(const QString &url) const;
 
 signals:
     void commandFinished(const QString &output);
     void commandError(const QString &error);
     void commandWarning(const QString &warning);
+    // Per-file transfer event. Emitted by `update` with each file's transfer
+    // result (filename, transferredBytes, totalBytes or -1 if unknown).
+    // Mirrors WPF SvnService.FileTransferActivity. Listeners (QML status bar)
+    // can show per-file progress.
+    void fileTransferActivity(const QString &filePath, qint64 bytesTransferred, qint64 bytesTotal);
 
     friend class SVNFileBox::SvnCommandExecutor;
 
@@ -70,6 +84,14 @@ private:
     bool runSvnBool(const QStringList &args, const QString &workDir = QString(), int timeoutMs = DEFAULT_TIMEOUT_MS);
     ErrorLevel runSvnLevel(const QStringList &args, const QString &workDir = QString(), int timeoutMs = DEFAULT_TIMEOUT_MS);
     bool runSvnTimed(const QStringList &args, const QString &workDir, int timeoutMs, QString *output = nullptr);
+
+    // Head revision cache: {url -> {revision, timestamp}}
+    struct HeadRevEntry {
+        int revision = -1;
+        QElapsedTimer timestamp;
+    };
+    mutable QHash<QString, HeadRevEntry> m_headRevCache;
+    mutable QMutex m_headRevCacheMutex;
 };
 
 #endif // SVNCLIENT_H

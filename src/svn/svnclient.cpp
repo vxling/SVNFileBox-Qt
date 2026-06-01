@@ -216,17 +216,64 @@ int SVNClient::getWorkingCopyRevision(const QString &path)
 
 int SVNClient::getHeadRevision(const QString &url)
 {
+    // 30s TTL cache to avoid hitting server for every status check.
+    // Mirrors WPF SvnService.GetHeadRevision cache.
+    static constexpr int HEAD_REV_TTL_MS = 30'000;
+    QMutexLocker locker(&m_headRevCacheMutex);
+    auto it = m_headRevCache.find(url);
+    if (it != m_headRevCache.end()) {
+        if (it.value().timestamp.elapsed() < HEAD_REV_TTL_MS) {
+            return it.value().revision;
+        }
+    }
+    locker.unlock();
+
     QStringList args = {"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", "--xml", url};
     QString output = runSvn(args);
+    int rev = -1;
     QXmlStreamReader xml(output);
     while (!xml.atEnd()) {
         if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
-            QString rev = xml.attributes().value("revision").toString();
-            if (!rev.isEmpty())
-                return rev.toInt();
+            QString r = xml.attributes().value("revision").toString();
+            if (!r.isEmpty()) {
+                rev = r.toInt();
+                break;
+            }
         }
     }
+
+    // Cache result (even -1, to avoid retries on persistent failure within TTL)
+    locker.relock();
+    m_headRevCache[url] = { rev, QElapsedTimer() };
+    m_headRevCache[url].timestamp.start();
+    return rev;
+}
+
+int SVNClient::cachedHeadRevision(const QString &url) const
+{
+    QMutexLocker locker(&m_headRevCacheMutex);
+    auto it = m_headRevCache.find(url);
+    if (it != m_headRevCache.end())
+        return it.value().revision;
     return -1;
+}
+
+bool SVNClient::isCredentialValid(const QString &repoUrl)
+{
+    // Lightweight probe: use `svn info` with a short timeout. If it succeeds
+    // AND no "authorization failed" appears in stderr, creds are good.
+    // Reuses the head-revision cache to avoid duplicate network calls.
+    int rev = getHeadRevision(repoUrl);
+    if (rev > 0) return true;
+
+    // Fallback: explicit info call with short timeout
+    QStringList args = {"info", "--non-interactive", "--trust-server-cert",
+                        "--xml", repoUrl};
+    QString output = runSvn(args, QString(), 10'000);
+    if (output.isEmpty()) return false;
+    if (output.contains(QStringLiteral("authorization failed"), Qt::CaseInsensitive))
+        return false;
+    return output.contains(QStringLiteral("<entry"));
 }
 
 int SVNClient::getHeadRevision(const QString &url, const QString &username, const QString &password)

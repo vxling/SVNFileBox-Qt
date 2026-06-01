@@ -320,6 +320,24 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
                 auto match = re.match(output);
                 if (match.hasMatch())
                     revision = match.captured(1).toInt();
+                // Emit per-file activity: lines like "U    path/to/file" or "A  /path"
+                // SVN update output format: <status><spaces><path>
+                // Status chars: A D U C G R
+                const QStringList lines = output.split(QChar('\n'));
+                for (const QString &line : lines) {
+                    if (line.isEmpty()) continue;
+                    QChar c = line.at(0);
+                    if (c == QChar('A') || c == QChar('U') || c == QChar('D')
+                        || c == QChar('C') || c == QChar('G') || c == QChar('R')) {
+                        // Skip lines that don't look like status (e.g. "Updating ...")
+                        if (line.startsWith(QStringLiteral("Updating "))) continue;
+                        // Path is column 5+ (4 spaces, per svn convention)
+                        QString filePath = line.mid(5).trimmed();
+                        if (!filePath.isEmpty()) {
+                            emit m_svnClient->fileTransferActivity(filePath, -1, -1);
+                        }
+                    }
+                }
             } else if (output.isEmpty() && !success) {
                 error = QStringLiteral("svn update timed out or failed");
             } else {
