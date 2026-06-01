@@ -49,8 +49,8 @@ void SyncEngine::watchPath(const QString &path)
     m_watcher = new QFileSystemWatcher(this);
     connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &SyncEngine::onFileChanged);
     connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &SyncEngine::onDirChanged);
-    // Qt 6.4: no errorOccurred signal. Watch for files silently disappearing
-    // and re-add them. See onFileChanged handling below.
+    // Qt 6.7 has no errorOccurred signal (added in 6.8). Reconnection is
+    // triggered by onDirChanged re-walking the tree.
 
     if (!QDir(path).exists()) return;
 
