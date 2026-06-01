@@ -60,6 +60,7 @@ signals:
     void onSyncNotification(const QString &message);
     void onSyncError(const QString &error);
     void onTimeout(const QString &op, const QString &path);
+    void onAuthError(const QString &path);
 
 private:
     void runWorkerLoop();

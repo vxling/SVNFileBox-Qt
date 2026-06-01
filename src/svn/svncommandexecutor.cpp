@@ -219,6 +219,14 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
         emit onSyncError(QStringLiteral("SVN client not initialized"));
         return;
     }
+
+    // Capture commandError for auth detection
+    QString capturedError;
+    QObject tmp;
+    connect(m_svnClient, &SVNClient::commandError, &tmp, [&capturedError](const QString &err) {
+        capturedError = err;
+    });
+
     bool success = false;
     QString error;
     int revision = -1;
@@ -309,6 +317,23 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
         default:
             error = QStringLiteral("Unknown command");
             break;
+    }
+
+    // Auth error detected — retry once with cache cleared
+    if (!success && item.retryCount == 0 && capturedError.startsWith(QStringLiteral("auth_error:"))) {
+        qWarning() << "[SvnCommandExecutor] Auth error, retrying with cleared cache:" << item.path;
+        (void)::system("rm -rf ~/.subversion/auth/*");
+        SvnCommandItem retry = item;
+        retry.retryCount = 1;
+        QMutexLocker locker(&m_queueMutex);
+        m_localWriteQueue.prepend(retry);
+        return;
+    }
+
+    // Auth permanently failed after retry — emit credential expired
+    if (!success && capturedError.startsWith(QStringLiteral("auth_error:"))) {
+        qWarning() << "[SvnCommandExecutor] Auth retry failed, emitting onAuthError:" << item.path;
+        emit onAuthError(item.path);
     }
 
     removeFromDedup(item);

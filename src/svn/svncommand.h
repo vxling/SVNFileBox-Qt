@@ -79,6 +79,7 @@ struct SvnCommandItem {
     QString password;
     QStringList updatePaths; // for Update (sub-paths)
     QString accept;          // for Resolve (e.g. "working", " theirs-full")
+    int retryCount = 0;     // auth retry counter (max 1)
 
     // Factory
     static SvnCommandItem make(
@@ -91,7 +92,7 @@ struct SvnCommandItem {
         const QStringList &updatePaths = QStringList(),
         const QString &accept = QString())
     {
-        return {cmd, path, fromPath, message, repoUrl, username, password, updatePaths, accept};
+        return {cmd, path, fromPath, message, repoUrl, username, password, updatePaths, accept, 0};
     }
 };
 

@@ -101,7 +101,21 @@ bool SVNClient::runSvnTimed(const QStringList &args, const QString &workDir, int
     }
     if (output)
         *output = QString::fromLocal8Bit(p.readAllStandardOutput());
-    return p.exitCode() == 0;
+    QString errorOutput = QString::fromLocal8Bit(p.readAllStandardError());
+    int exitCode = p.exitCode();
+
+    // Detect authentication failures (SVN error codes E170001-E170014)
+    if (exitCode != 0) {
+        QString err = errorOutput.trimmed();
+        if (err.contains(QStringLiteral("E170001")) || err.contains(QStringLiteral("Authentication failed")) ||
+            err.contains(QStringLiteral("E230001")) || err.contains(QStringLiteral("Server SSL certificate")) ||
+            err.contains(QStringLiteral("credential"))) {
+            qWarning() << "[SVNClient] Auth/ssl error detected, exitCode=" << exitCode << ":" << err;
+            emit commandError(QStringLiteral("auth_error:") + err);
+            return false;
+        }
+    }
+    return exitCode == 0;
 }
 
 QString SVNClient::runSvn(const QStringList &args, const QString &workDir, int timeoutMs)
@@ -346,8 +360,13 @@ QVariantMap SVNClient::getStatus(const QString &path, bool depth)
                 curItem.clear();
             } else if (name == QStringLiteral("wc-status")) {
                 QString item = xml.attributes().value("item").toString();
+                QString prop = xml.attributes().value("props").toString();
                 if (!item.isEmpty())
                     curItem = item;
+                // Detect tree conflict: XML shows tree-conflicted="true" on wc-status
+                if (xml.attributes().value("tree-conflicted") == QStringLiteral("true")) {
+                    curItem = QStringLiteral("treeconflicted");
+                }
             }
         } else if (tok == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("entry")) {
             if (!curPath.isEmpty() && !curItem.isEmpty())
