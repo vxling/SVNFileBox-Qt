@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Qt Core & QML
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql Concurrent LinguistTools)
 
 # App
 set(APP_SOURCES
@@ -30,6 +30,8 @@ set(APP_SOURCES
     src/services/newfileservice.cpp
     src/services/fileanalyzer.cpp
     src/services/filecopier.cpp
+    src/i18n/translator.cpp
+    src/i18n/translator.h
     src/models/filemodel.cpp
     src/systemtray/traymanager.cpp
 )
@@ -63,6 +65,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 # Resources
 target_sources(${PROJECT_NAME} PRIVATE resources.qrc)
+
+# P3 #4: i18n. Wrap hard-coded UI strings in qsTr() in QML; lupdate extracts
+# them into i18n/zh_CN.ts / i18n/en.ts. We ship pre-compiled .qm files
+# inside the binary; the Translator C++ class picks the right one at
+# startup based on ConfigService::language() ("zh-CN" / "en" / "auto").
+# RESOURCE_PREFIX /i18n means the .qm files land at qrc:/i18n/zh_CN.qm etc.
+qt_add_translations(${PROJECT_NAME}
+    TS_FILES i18n/zh_CN.ts i18n/en.ts
+    RESOURCE_PREFIX /i18n
+)
 
 # Install
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)

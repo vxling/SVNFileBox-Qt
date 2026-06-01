@@ -15,6 +15,7 @@
 #include "models/filemodel.h"
 #include "systemtray/traymanager.h"
 #include "services/newfileservice.h"
+#include "i18n/translator.h"
 
 int main(int argc, char *argv[])
 {
@@ -87,6 +88,11 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("syncEngine", &syncEngine);
     engine.rootContext()->setContextProperty("syncRecordService", recordService);
     engine.rootContext()->setContextProperty("commitQueue", &commitQueue);
+
+    // P3 #4: install translator BEFORE loading QML. Picks the right .qm
+    // based on configService.language() (auto / zh-CN / en).
+    SVNFileBox::Translator translator;
+    translator.installForLanguage(configService.language());
     engine.rootContext()->setContextProperty("trayManager", &trayManager);
     engine.rootContext()->setContextProperty("globalManager", &globalManager);
 

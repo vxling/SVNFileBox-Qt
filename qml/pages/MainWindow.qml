@@ -140,7 +140,7 @@ Item {
                 spacing: 0
 
                 Label {
-                    text: "仓库列表"
+                    text: qsTr("仓库列表")
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
                     color: "#1A1A2E"
@@ -164,17 +164,17 @@ Item {
                     Rectangle { height: 1; color: "#E8E8E8"; Layout.fillWidth: true }
 
                     SidebarButton {
-                        icon: "🌐"; text: "从网络添加仓库"
+                        icon: "🌐"; text: qsTr("从网络添加仓库")
                         accent: true
                         onClicked: checkoutDrawer.open()
                     }
                     SidebarButton {
-                        icon: "📂"; text: "添加本地仓库"
+                        icon: "📂"; text: qsTr("添加本地仓库")
                         accent: true
                         onClicked: addLocalDrawer.open()
                     }
                     SidebarButton {
-                        icon: "📋"; text: "查看同步记录"
+                        icon: "📋"; text: qsTr("查看同步记录")
                         accent: true
                         onClicked: syncRecordsDrawer.open()
                     }
@@ -182,11 +182,11 @@ Item {
                     Rectangle { height: 1; color: "#E8E8E8"; Layout.topMargin: 4; Layout.bottomMargin: 4; Layout.fillWidth: true }
 
                     SidebarButton {
-                        icon: "⚙️"; text: "设置"
+                        icon: "⚙️"; text: qsTr("设置")
                         onClicked: settingsDrawer.open()
                     }
                     SidebarButton {
-                        icon: "ℹ️"; text: "关于"
+                        icon: "ℹ️"; text: qsTr("关于")
                         onClicked: aboutDrawer.open()
                     }
                 }
@@ -216,7 +216,7 @@ Item {
                         anchors.rightMargin: 12
 
                         Label {
-                            text: "路径:"
+                            text: qsTr("路径:")
                             font.pixelSize: 12
                             color: "#666666"
                         }
@@ -231,7 +231,7 @@ Item {
 
                         Button {
                             id: refreshBtn
-                            text: "刷新"
+                            text: qsTr("刷新")
                             implicitWidth: 70
                             implicitHeight: 32
                             onClicked: fileModel.load(currentPath)
@@ -260,7 +260,7 @@ Item {
                             visible: parent.containsDrag
 
                             Label {
-                                text: "释放文件以导入"
+                                text: qsTr("释放文件以导入")
                                 font.pixelSize: 16
                                 font.weight: Font.DemiBold
                                 color: "#1E88E5"
@@ -314,11 +314,11 @@ Item {
                                 anchors.rightMargin: 12
                                 spacing: 0
 
-                                Label { Layout.minimumWidth: 40; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: "#" }
-                                Label { Layout.minimumWidth: 288; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: "名称" }
-                                Label { Layout.minimumWidth: 70; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: "大小" }
-                                Label { Layout.minimumWidth: 90; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: "修改时间" }
-                                Label { Layout.minimumWidth: 140; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: "SVN 状态" }
+                                Label { Layout.minimumWidth: 40; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("#") }
+                                Label { Layout.minimumWidth: 288; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("名称") }
+                                Label { Layout.minimumWidth: 70; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("大小") }
+                                Label { Layout.minimumWidth: 90; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("修改时间") }
+                                Label { Layout.minimumWidth: 140; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("SVN 状态") }
                             }
                         }
                     }
@@ -329,7 +329,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Label {
-                        text: "暂无文件，请在左侧添加仓库"
+                        text: qsTr("暂无文件，请在左侧添加仓库")
                         font.pixelSize: 14
                         font.italic: true
                         color: "#999999"
@@ -402,7 +402,7 @@ Item {
 
             Label {
                 id: statusBarText
-                text: "就绪"
+                text: qsTr("就绪")
                 font.pixelSize: 12
                 color: "#FFFFFF"
                 elide: Text.ElideRight
@@ -417,32 +417,32 @@ Item {
     Menu {
         id: fileContextMenu
         property int currentIndex: -1
-        MenuItem { text: "在资源管理器中打开"; onTriggered: openInExplorer() }
+        MenuItem { text: qsTr("在资源管理器中打开"); onTriggered: openInExplorer() }
         MenuSeparator { }
-        MenuItem { text: "复制路径"; onTriggered: copyPath() }
-        MenuItem { text: "复制 SVN URL"; onTriggered: copyUrl() }
+        MenuItem { text: qsTr("复制路径"); onTriggered: copyPath() }
+        MenuItem { text: qsTr("复制 SVN URL"); onTriggered: copyUrl() }
         MenuSeparator { }
-        MenuItem { text: "粘贴"; onTriggered: pasteFile() }
-        MenuItem { text: "新建文件夹"; onTriggered: newFolder() }
+        MenuItem { text: qsTr("粘贴"); onTriggered: pasteFile() }
+        MenuItem { text: qsTr("新建文件夹"); onTriggered: newFolder() }
         Menu {
-            title: "新建文件"
-            MenuItem { text: "文本文档 (.txt)";   onTriggered: newFile("txt") }
-            MenuItem { text: "Word 文档 (.docx)";  onTriggered: newFile("docx") }
-            MenuItem { text: "Excel 工作表 (.xlsx)"; onTriggered: newFile("xlsx") }
-            MenuItem { text: "PPT 演示文稿 (.pptx)"; onTriggered: newFile("pptx") }
-            MenuItem { text: "PNG 图片 (.png)";    onTriggered: newFile("png") }
-            MenuItem { text: "BMP 图片 (.bmp)";    onTriggered: newFile("bmp") }
+            title: qsTr("新建文件")
+            MenuItem { text: qsTr("文本文档 (.txt)");   onTriggered: newFile("txt") }
+            MenuItem { text: qsTr("Word 文档 (.docx)");  onTriggered: newFile("docx") }
+            MenuItem { text: qsTr("Excel 工作表 (.xlsx)"); onTriggered: newFile("xlsx") }
+            MenuItem { text: qsTr("PPT 演示文稿 (.pptx)"); onTriggered: newFile("pptx") }
+            MenuItem { text: qsTr("PNG 图片 (.png)");    onTriggered: newFile("png") }
+            MenuItem { text: qsTr("BMP 图片 (.bmp)");    onTriggered: newFile("bmp") }
         }
-        MenuItem { text: "重命名"; onTriggered: renameFile() }
+        MenuItem { text: qsTr("重命名"); onTriggered: renameFile() }
         MenuSeparator { }
-        MenuItem { text: "SVN 还原 (Revert)"; onTriggered: revertFile() }
-        MenuItem { text: "SVN 差异对比 (Diff)"; onTriggered: diffFile() }
-        MenuItem { text: "SVN 添加 (Add)"; onTriggered: addFile() }
-        MenuItem { text: "SVN 删除 (Delete)"; onTriggered: deleteFile() }
+        MenuItem { text: qsTr("SVN 还原 (Revert)"); onTriggered: revertFile() }
+        MenuItem { text: qsTr("SVN 差异对比 (Diff)"); onTriggered: diffFile() }
+        MenuItem { text: qsTr("SVN 添加 (Add)"); onTriggered: addFile() }
+        MenuItem { text: qsTr("SVN 删除 (Delete)"); onTriggered: deleteFile() }
         MenuSeparator { }
-        MenuItem { text: "刷新"; onTriggered: fileModel.load(currentPath) }
+        MenuItem { text: qsTr("刷新"); onTriggered: fileModel.load(currentPath) }
         MenuSeparator { }
-        MenuItem { text: "手工同步"; onTriggered: manualSync() }
+        MenuItem { text: qsTr("手工同步"); onTriggered: manualSync() }
     }
 
     // ================================================================
@@ -801,14 +801,14 @@ Item {
                 spacing: 16
 
                 Label {
-                    text: "添加本地仓库"
+                    text: qsTr("添加本地仓库")
                     font.pixelSize: 20
                     font.weight: Font.DemiBold
                     color: "#1A1A2E"
                 }
 
                 Label {
-                    text: "选择一个已有的 SVN 工作副本目录"
+                    text: qsTr("选择一个已有的 SVN 工作副本目录")
                     font.pixelSize: 13
                     color: "#666666"
                 }
@@ -817,12 +817,12 @@ Item {
                     spacing: 12
                     TextField {
                         id: localRepoPathInput
-                        placeholderText: "选择本地 SVN 工作副本目录"
+                        placeholderText: qsTr("选择本地 SVN 工作副本目录")
                         Layout.fillWidth: true
                         readOnly: true
                     }
                     Button {
-                        text: "浏览..."
+                        text: qsTr("浏览...")
                         implicitWidth: 90; implicitHeight: 36
                         onClicked: localRepoDialog.open()
                     }
@@ -830,7 +830,7 @@ Item {
 
     FileDialog {
         id: localRepoDialog
-        title: "选择 SVN 工作副本目录"
+        title: qsTr("选择 SVN 工作副本目录")
         fileMode: FileDialog.Directory
         folder: "file:///home/osuser"
         onAccepted: {
@@ -841,12 +841,12 @@ Item {
                 RowLayout {
                     spacing: 12
                     Button {
-                        text: "确认"
+                        text: qsTr("确认")
                         implicitWidth: 100; implicitHeight: 36
                         onClicked: doAddLocal()
                     }
                     Button {
-                        text: "取消"
+                        text: qsTr("取消")
                         implicitWidth: 80; implicitHeight: 36
                         onClicked: addLocalDrawer.close()
                     }
@@ -923,12 +923,12 @@ Item {
             id: confirmDeleteDialogContent
             spacing: 16
             Label {
-                text: "确认删除"
+                text: qsTr("确认删除")
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
             }
             Label {
-                text: "确定要删除 \"" + confirmDeleteDialog.fileName + "\" 吗？此操作不可撤销。"
+                text: qsTr("确定要删除 \")" + confirmDeleteDialog.fileName + "\" 吗？此操作不可撤销。"
                 wrapMode: Text.WordWrap
                 width: 300
             }
@@ -936,11 +936,11 @@ Item {
                 spacing: 12
                 anchors.horizontalCenter: parent.horizontalCenter
                 Button {
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: confirmDeleteDialog.close()
                 }
                 Button {
-                    text: "确定"
+                    text: qsTr("确定")
                     highlighted: true
                     onClicked: {
                         confirmDeleteDialog.close()
@@ -965,24 +965,24 @@ Item {
             id: newFolderDialogContent
             spacing: 16
             Label {
-                text: "新建文件夹"
+                text: qsTr("新建文件夹")
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
             }
             TextField {
                 id: newFolderNameInput
-                placeholderText: "新文件夹"
+                placeholderText: qsTr("新文件夹")
                 width: 300
             }
             Row {
                 spacing: 12
                 anchors.horizontalCenter: parent.horizontalCenter
                 Button {
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: newFolderDialog.close()
                 }
                 Button {
-                    text: "确定"
+                    text: qsTr("确定")
                     highlighted: true
                     onClicked: {
                         if (newFolderNameInput.text.trim() !== "") {
@@ -1013,28 +1013,28 @@ Item {
             id: newFileDialogContent
             spacing: 16
             Label {
-                text: "新建文件"
+                text: qsTr("新建文件")
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
             }
             TextField {
                 id: newFileNameInput
-                placeholderText: "新建文件"
+                placeholderText: qsTr("新建文件")
                 width: 300
             }
             Label {
-                text: "类型: ." + newFileDialog.ext
+                text: qsTr("类型: .") + newFileDialog.ext
                 color: "#666"
             }
             Row {
                 spacing: 12
                 anchors.horizontalCenter: parent.horizontalCenter
                 Button {
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: newFileDialog.close()
                 }
                 Button {
-                    text: "确定"
+                    text: qsTr("确定")
                     highlighted: true
                     onClicked: {
                         var name = newFileNameInput.text.trim()
@@ -1068,24 +1068,24 @@ Item {
             id: renameDialogContent
             spacing: 16
             Label {
-                text: "重命名"
+                text: qsTr("重命名")
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
             }
             TextField {
                 id: renameNameInput
-                placeholderText: "新名称"
+                placeholderText: qsTr("新名称")
                 width: 300
             }
             Row {
                 spacing: 12
                 anchors.horizontalCenter: parent.horizontalCenter
                 Button {
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: renameDialog.close()
                 }
                 Button {
-                    text: "确定"
+                    text: qsTr("确定")
                     highlighted: true
                     onClicked: {
                         if (renameNameInput.text.trim() !== "" && renameNameInput.text !== renameDialog.oldName) {
@@ -1117,18 +1117,18 @@ Item {
             spacing: 12
             width: 340
             Label {
-                text: "重命名仓库"
+                text: qsTr("重命名仓库")
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
             }
             Label {
-                text: "原名称：" + renameRepoDialog.oldName
+                text: qsTr("原名称：") + renameRepoDialog.oldName
                 font.pixelSize: 12
                 color: "#666666"
             }
             TextField {
                 id: renameRepoNameInput
-                placeholderText: "新名称"
+                placeholderText: qsTr("新名称")
                 width: 340
                 selectByMouse: true
             }
@@ -1144,11 +1144,11 @@ Item {
                 spacing: 12
                 anchors.horizontalCenter: parent.horizontalCenter
                 Button {
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: renameRepoDialog.close()
                 }
                 Button {
-                    text: "确定"
+                    text: qsTr("确定")
                     highlighted: true
                     onClicked: {
                         var newName = renameRepoNameInput.text.trim()
@@ -1192,23 +1192,23 @@ Item {
             spacing: 12
             width: 380
             Label {
-                text: "修改仓库 URL"
+                text: qsTr("修改仓库 URL")
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
             }
             Label {
-                text: "仓库：" + editRepoDialog.name
+                text: qsTr("仓库：") + editRepoDialog.name
                 font.pixelSize: 12
                 color: "#666666"
             }
             TextField {
                 id: editRepoUrlInput
-                placeholderText: "新 URL (例如 https://svn.example.com/repo)"
+                placeholderText: qsTr("新 URL (例如 https://svn.example.com/repo)")
                 width: 380
                 selectByMouse: true
             }
             Label {
-                text: "注：仅修改本地记录的 URL；如需重新定位工作副本，请使用 \"svn switch --relocate\"。"
+                text: qsTr("注：仅修改本地记录的 URL；如需重新定位工作副本，请使用 \")svn switch --relocate\"。"
                 font.pixelSize: 10
                 color: "#999999"
                 wrapMode: Text.WordWrap
@@ -1226,11 +1226,11 @@ Item {
                 spacing: 12
                 anchors.horizontalCenter: parent.horizontalCenter
                 Button {
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: editRepoDialog.close()
                 }
                 Button {
-                    text: "保存"
+                    text: qsTr("保存")
                     highlighted: true
                     onClicked: {
                         var newUrl = editRepoUrlInput.text.trim()
@@ -1271,7 +1271,7 @@ Item {
             width: 360
 
             Label {
-                text: "正在导入文件"
+                text: qsTr("正在导入文件")
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
             }
@@ -1329,12 +1329,12 @@ Item {
             anchors.fill: parent
             spacing: 12
             Label {
-                text: "冲突检测"
+                text: qsTr("冲突检测")
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
             }
             Label {
-                text: "检测到文件冲突，请手动解决："
+                text: qsTr("检测到文件冲突，请手动解决：")
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
             }
@@ -1355,7 +1355,7 @@ Item {
                 }
             }
             Button {
-                text: "确定"
+                text: qsTr("确定")
                 anchors.horizontalCenter: parent.horizontalCenter
                 highlighted: true
                 onClicked: conflictDialog.close()
