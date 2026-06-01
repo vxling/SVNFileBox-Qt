@@ -36,12 +36,41 @@ Item {
     }
 
     // ================================================================
-    // globalManager.filesChanged 连接（触发 fileModel.load）
+    // globalManager 信号连接（rename/url-edit 持久化已由 C++ 端完成；
+    // 这里仅同步 UI 状态，避免整个 sidebar 重建）
     // ================================================================
     Connections {
         target: globalManager
         function onFilesChanged() {
             fileModel.load(currentPath)
+        }
+        function onRepositoryChanged(oldName, newName, oldUrl, newUrl) {
+            // In-place update of the sidebar ListModel row
+            for (var i = 0; i < repoListModel.count; i++) {
+                var row = repoListModel.get(i)
+                if (row.name === oldName) {
+                    var patched = {
+                        name: newName,
+                        path: row.path,
+                        url: newUrl,
+                        username: row.username,
+                        password: row.password,
+                        type: row.type,
+                        isSelected: row.isSelected
+                    }
+                    repoListModel.setProperty(i, "name", newName)
+                    repoListModel.setProperty(i, "url", newUrl)
+                    if (statusBarRepoLabel.text === oldName) {
+                        statusBarRepoLabel.text = newName
+                    }
+                    if (row.isSelected) {
+                        currentPath = row.path
+                        pathText.text = row.path
+                    }
+                    break
+                }
+            }
+            statusBarText.text = "已更新仓库: " + newName
         }
     }
 
@@ -458,6 +487,18 @@ Item {
             isSelected: model.isSelected
             onItemClicked: selectRepo(index)
             onRemoveClicked: removeRepo(index)
+            onRenameClicked: {
+                renameRepoDialog.index = index
+                renameRepoDialog.oldName = model.name
+                renameRepoDialog.newNameField.text = model.name
+                renameRepoDialog.open()
+            }
+            onEditUrlClicked: {
+                editRepoDialog.index = index
+                editRepoDialog.name = model.name
+                editRepoDialog.urlField.text = model.url
+                editRepoDialog.open()
+            }
         }
     }
 
@@ -1052,6 +1093,156 @@ Item {
                             globalManager.activeManager.activeExecutor().executeLocalWrite(5, newPath, renameDialog.oldPath)
                         }
                         renameDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    // renameRepoDialog — rename a repository (P3)
+    Popup {
+        id: renameRepoDialog
+        anchors.centerIn: parent
+        width: 380
+        height: renameRepoDialogContent.height + 40
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        padding: 20
+        property int index: -1
+        property string oldName: ""
+        property string statusText: ""
+        property alias newNameField: renameRepoNameInput
+        Column {
+            id: renameRepoDialogContent
+            spacing: 12
+            width: 340
+            Label {
+                text: "重命名仓库"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+            }
+            Label {
+                text: "原名称：" + renameRepoDialog.oldName
+                font.pixelSize: 12
+                color: "#666666"
+            }
+            TextField {
+                id: renameRepoNameInput
+                placeholderText: "新名称"
+                width: 340
+                selectByMouse: true
+            }
+            Label {
+                text: renameRepoDialog.statusText
+                color: "#E53935"
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                width: 340
+                visible: text !== ""
+            }
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: "取消"
+                    onClicked: renameRepoDialog.close()
+                }
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    onClicked: {
+                        var newName = renameRepoNameInput.text.trim()
+                        if (newName === "" || newName === renameRepoDialog.oldName) {
+                            renameRepoDialog.statusText = "新名称无效或与原名称相同"
+                            return
+                        }
+                        // Duplicate check against other rows
+                        for (var i = 0; i < repoListModel.count; i++) {
+                            if (i !== renameRepoDialog.index && repoListModel.get(i).name === newName) {
+                                renameRepoDialog.statusText = "已存在同名仓库"
+                                return
+                            }
+                        }
+                        // Find the manager. We use the helper which iterates
+                        // managers(); rename triggers repositoryChanged which
+                        // updates the ListModel + config in-place.
+                        globalManager.renameRepoByName(renameRepoDialog.oldName, newName)
+                        renameRepoDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    // editRepoDialog — change a repository's URL (P3, mirrors WPF EditRepoWindow)
+    Popup {
+        id: editRepoDialog
+        anchors.centerIn: parent
+        width: 420
+        height: editRepoDialogContent.height + 40
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        padding: 20
+        property int index: -1
+        property string name: ""
+        property string statusText: ""
+        property alias urlField: editRepoUrlInput
+        Column {
+            id: editRepoDialogContent
+            spacing: 12
+            width: 380
+            Label {
+                text: "修改仓库 URL"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+            }
+            Label {
+                text: "仓库：" + editRepoDialog.name
+                font.pixelSize: 12
+                color: "#666666"
+            }
+            TextField {
+                id: editRepoUrlInput
+                placeholderText: "新 URL (例如 https://svn.example.com/repo)"
+                width: 380
+                selectByMouse: true
+            }
+            Label {
+                text: "注：仅修改本地记录的 URL；如需重新定位工作副本，请使用 \"svn switch --relocate\"。"
+                font.pixelSize: 10
+                color: "#999999"
+                wrapMode: Text.WordWrap
+                width: 380
+            }
+            Label {
+                text: editRepoDialog.statusText
+                color: "#E53935"
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                width: 380
+                visible: text !== ""
+            }
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: "取消"
+                    onClicked: editRepoDialog.close()
+                }
+                Button {
+                    text: "保存"
+                    highlighted: true
+                    onClicked: {
+                        var newUrl = editRepoUrlInput.text.trim()
+                        if (newUrl === "") {
+                            editRepoDialog.statusText = "URL 不能为空"
+                            return
+                        }
+                        // Resolve the manager by name on the C++ side and
+                        // persist + emit repositoryChanged. QML never holds
+                        // a raw RepoManager* pointer.
+                        globalManager.updateRepoUrlByName(editRepoDialog.name, newUrl)
+                        editRepoDialog.close()
                     }
                 }
             }

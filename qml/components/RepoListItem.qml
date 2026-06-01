@@ -10,6 +10,8 @@ Rectangle {
     property bool isSelected: false
     signal removeClicked()
     signal itemClicked()
+    signal renameClicked()
+    signal editUrlClicked()
 
     color: {
         if (isSelected) return "#E3F2FD"
@@ -26,8 +28,32 @@ Rectangle {
         id: mouseArea
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.itemClicked()
+        onClicked: function(mouse) {
+            if (mouse.button === Qt.RightButton) {
+                repoContextMenu.popup()
+            } else {
+                root.itemClicked()
+            }
+        }
+    }
+
+    Menu {
+        id: repoContextMenu
+        MenuItem {
+            text: "重命名..."
+            onTriggered: root.renameClicked()
+        }
+        MenuItem {
+            text: "修改 URL..."
+            onTriggered: root.editUrlClicked()
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: "移除仓库"
+            onTriggered: root.removeClicked()
+        }
     }
 
     RowLayout {

@@ -162,3 +162,38 @@ QString ConfigService::activeRepositoryName() const
 {
     return m_activeRepoName;
 }
+
+bool ConfigService::updateRepositoryName(const QString &oldName, const QString &newName)
+{
+    if (oldName == newName) return false;
+    const QString trimmedNew = newName.trimmed();
+    if (trimmedNew.isEmpty()) return false;
+
+    for (Repository &r : m_repositories) {
+        if (r.name == oldName) {
+            r.name = trimmedNew;
+            // Keep active-repo pointer consistent
+            if (m_activeRepoName == oldName) {
+                m_activeRepoName = trimmedNew;
+            }
+            saveToDisk();
+            emit repositoriesChanged();
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ConfigService::updateRepositoryUrl(const QString &name, const QString &newUrl)
+{
+    for (Repository &r : m_repositories) {
+        if (r.name == name) {
+            if (r.url == newUrl) return false;
+            r.url = newUrl;
+            saveToDisk();
+            emit repositoriesChanged();
+            return true;
+        }
+    }
+    return false;
+}

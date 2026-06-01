@@ -49,6 +49,13 @@ public:
     Q_INVOKABLE QVariantList repositories() const;
     Q_INVOKABLE void setActiveRepository(const QString &name);
     Q_INVOKABLE QString activeRepositoryName() const;
+    // Rename a repository in-place. Also keeps m_activeRepoName in sync
+    // if the active repo was renamed. Returns true if a row was actually
+    // updated (false = no such repo, or new name equals old name).
+    Q_INVOKABLE bool updateRepositoryName(const QString &oldName, const QString &newName);
+    // Edit a repository's URL in-place (e.g. server moved). Returns true
+    // if a row was actually updated.
+    Q_INVOKABLE bool updateRepositoryUrl(const QString &name, const QString &newUrl);
 
     // SVN 凭证
     Q_INVOKABLE QString getPassword(const QString &repoName) const;

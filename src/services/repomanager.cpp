@@ -67,6 +67,31 @@ void RepoManager::shutdown()
     }
 }
 
+void RepoManager::renameRepo(const QString &newName)
+{
+    const QString oldName = repository.name;
+    if (!repository.setName(newName)) {
+        qDebug() << "[RepoManager] renameRepo: no change for" << oldName;
+        return;
+    }
+    qDebug() << "[RepoManager] renameRepo:" << oldName << "->" << repository.name;
+    emit repositoryChanged(oldName, repository.name, repository.url, repository.url);
+    // State doesn't change here, but emit stateChanged-equivalent: callers
+    // re-render on repositoryChanged. We deliberately do NOT call
+    // syncEngine->startSync again — the working-copy path is unchanged.
+}
+
+void RepoManager::updateUrl(const QString &newUrl)
+{
+    const QString oldUrl = repository.url;
+    if (!repository.setUrl(newUrl)) {
+        qDebug() << "[RepoManager] updateUrl: no change";
+        return;
+    }
+    qDebug() << "[RepoManager] updateUrl:" << oldUrl << "->" << repository.url;
+    emit repositoryChanged(repository.name, repository.name, oldUrl, repository.url);
+}
+
 void RepoManager::emitFilesChanged()
 {
     emit filesChanged();

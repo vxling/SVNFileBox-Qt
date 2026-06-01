@@ -63,6 +63,9 @@ int main(int argc, char *argv[])
 
     // RepoGlobalManager: central multi-repo coordinator
     SVNFileBox::RepoGlobalManager globalManager;
+    // P3: inject ConfigService so RepoGlobalManager can persist
+    // rename/url-edit changes back to .svnfilebox/config.json.
+    globalManager.setConfigService(&configService);
 
     // FileModel (uses configService for current repo path)
     FileModel fileModel;

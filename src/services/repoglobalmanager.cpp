@@ -109,6 +109,9 @@ void RepoGlobalManager::restoreFromConfig(const QVariantList &repoList)
         if (repo.isValid()) {
             auto *manager = new RepoManager(repo, this);
             m_managers.append(manager);
+            // Persistence of rename/edit events is handled by
+            // bindManagerEvents() → onManagerRepositoryChanged() using
+            // the injected m_configService pointer.
         }
     }
 }
@@ -137,12 +140,50 @@ void RepoGlobalManager::restoreAndSwitchToLastActive(const QVariantList &repoLis
     }
 }
 
+void RepoGlobalManager::renameRepo(RepoManager *manager, const QString &newName)
+{
+    if (!manager) return;
+    manager->renameRepo(newName);
+    // Persistence + signal forwarding is handled in onManagerRepositoryChanged
+    // which is wired up via bindManagerEvents().
+}
+
+void RepoGlobalManager::updateRepoUrl(RepoManager *manager, const QString &newUrl)
+{
+    if (!manager) return;
+    manager->updateUrl(newUrl);
+    // Persistence + signal forwarding is handled in onManagerRepositoryChanged.
+}
+
+void RepoGlobalManager::renameRepoByName(const QString &oldName, const QString &newName)
+{
+    for (auto *mgr : m_managers) {
+        if (mgr->repository.name == oldName) {
+            renameRepo(mgr, newName);
+            return;
+        }
+    }
+    qWarning() << "[RepoGlobalManager] renameRepoByName: no manager found for" << oldName;
+}
+
+void RepoGlobalManager::updateRepoUrlByName(const QString &name, const QString &newUrl)
+{
+    for (auto *mgr : m_managers) {
+        if (mgr->repository.name == name) {
+            updateRepoUrl(mgr, newUrl);
+            return;
+        }
+    }
+    qWarning() << "[RepoGlobalManager] updateRepoUrlByName: no manager found for" << name;
+}
+
 void RepoGlobalManager::bindManagerEvents(RepoManager *manager)
 {
     connect(manager, &RepoManager::filesChanged, this, &RepoGlobalManager::onManagerFilesChanged);
     connect(manager, &RepoManager::syncNotification, this, &RepoGlobalManager::onManagerSyncNotification);
     connect(manager, &RepoManager::conflictDetected, this, &RepoGlobalManager::onManagerConflictDetected);
     connect(manager, &RepoManager::credentialExpired, this, &RepoGlobalManager::onManagerCredentialExpired);
+    connect(manager, &RepoManager::repositoryChanged, this, &RepoGlobalManager::onManagerRepositoryChanged);
 }
 
 void RepoGlobalManager::unbindManagerEvents(RepoManager *manager)
@@ -151,6 +192,7 @@ void RepoGlobalManager::unbindManagerEvents(RepoManager *manager)
     disconnect(manager, &RepoManager::syncNotification, this, &RepoGlobalManager::onManagerSyncNotification);
     disconnect(manager, &RepoManager::conflictDetected, this, &RepoGlobalManager::onManagerConflictDetected);
     disconnect(manager, &RepoManager::credentialExpired, this, &RepoGlobalManager::onManagerCredentialExpired);
+    disconnect(manager, &RepoManager::repositoryChanged, this, &RepoGlobalManager::onManagerRepositoryChanged);
 }
 
 void RepoGlobalManager::connectActiveRepoSignals(QObject *receiver)
@@ -163,6 +205,8 @@ void RepoGlobalManager::connectActiveRepoSignals(QObject *receiver)
     connect(m_activeManager, SIGNAL(syncNotification(QString)), receiver, SLOT(syncNotification(QString)), Qt::UniqueConnection);
     connect(m_activeManager, SIGNAL(conflictDetected(QStringList)), receiver, SLOT(conflictDetected(QStringList)), Qt::UniqueConnection);
     connect(m_activeManager, SIGNAL(credentialExpired(QString,QString)), receiver, SLOT(credentialExpired(QString,QString)), Qt::UniqueConnection);
+    connect(m_activeManager, SIGNAL(repositoryChanged(QString,QString,QString,QString)),
+            receiver, SLOT(repositoryChanged(QString,QString,QString,QString)), Qt::UniqueConnection);
 }
 
 void RepoGlobalManager::onManagerFilesChanged()
@@ -183,6 +227,31 @@ void RepoGlobalManager::onManagerConflictDetected(const QStringList &files)
 void RepoGlobalManager::onManagerCredentialExpired(const QString &repoName, const QString &path)
 {
     emit credentialExpired(repoName, path);
+}
+
+void RepoGlobalManager::onManagerRepositoryChanged(const QString &oldName,
+                                                    const QString &newName,
+                                                    const QString &oldUrl,
+                                                    const QString &newUrl)
+{
+    qDebug() << "[RepoGlobalManager] repositoryChanged:" << oldName
+             << "->" << newName << "| url:" << oldUrl << "->" << newUrl;
+
+    // 1) Persist to config.json
+    if (m_configService) {
+        if (oldName != newName) {
+            m_configService->updateRepositoryName(oldName, newName);
+        }
+        if (oldUrl != newUrl) {
+            m_configService->updateRepositoryUrl(newName, newUrl);
+        }
+    } else {
+        qWarning() << "[RepoGlobalManager] no ConfigService injected;"
+                   << "rename/url edit not persisted to disk";
+    }
+
+    // 2) Forward to QML
+    emit repositoryChanged(oldName, newName, oldUrl, newUrl);
 }
 
 } // namespace SVNFileBox
