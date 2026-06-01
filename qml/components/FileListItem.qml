@@ -11,6 +11,7 @@ Rectangle {
     property string svnStatus: "Normal"
     property string fileSizeDisplay: ""
     property string lastModifiedDisplay: ""
+    property string typeDisplay: ""
     property bool isCurrentPath: false  // "返回上级目录" 行
     signal doubleClicked()
     signal contextMenuRequested(real x, real y)
@@ -94,6 +95,16 @@ Rectangle {
             color: "#666666"
             Layout.minimumWidth: 140
             Layout.preferredWidth: 140
+        }
+
+        // 文件类型
+        Label {
+            text: root.typeDisplay
+            font.pixelSize: 12
+            color: "#888888"
+            Layout.minimumWidth: 80
+            Layout.preferredWidth: 80
+            horizontalAlignment: Text.AlignLeft
         }
     }
 }

@@ -7,6 +7,9 @@
 
 namespace SVNFileBox {
 
+// Static concurrency primitive — one permit = one write at a time across all instances
+QSemaphore SvnCommandExecutor::s_writeSemaphore(1);
+
 SvnCommandExecutor::SvnCommandExecutor(SVNClient *svnClient, QObject *parent)
     : QObject(parent)
     , m_svnClient(svnClient)
@@ -41,9 +44,19 @@ void SvnCommandExecutor::start()
 
 void SvnCommandExecutor::stop()
 {
+    // Drain all pending items before stopping (max 30s)
+    {
+        QMutexLocker drainLocker(&m_drainMutex);
+        m_drainMode = true;
+        m_drained = false;
+        m_queueCond.wakeAll();
+        m_drainCond.wait(&m_drainMutex, 30000);
+        m_drainMode = false;
+        m_drained = false;
+    }
     m_running = false;
     m_queueCond.wakeAll();
-    qDebug() << "[SvnCommandExecutor] Stop requested";
+    qDebug() << "[SvnCommandExecutor] Stop requested (drain complete)";
 }
 
 bool SvnCommandExecutor::waitForDrained(int timeoutMs)
@@ -144,9 +157,18 @@ void SvnCommandExecutor::runWorkerLoop()
             QMutexLocker locker(&m_queueMutex);
             while (!m_localWriteQueue.isEmpty()) {
                 item = m_localWriteQueue.dequeue();
-                // Release lock during execution to keep queue responsive
                 locker.unlock();
-                processItem(item);
+
+                // Serialize all writes (LocalWrite and HeavyWrite share the same lock)
+                if (s_writeSemaphore.tryAcquire(LOCK_WAIT_TIMEOUT_MS)) {
+                    processItem(item);
+                    s_writeSemaphore.release();
+                } else {
+                    qWarning() << "[SvnCommandExecutor] LocalWrite timed out waiting for write lock:"
+                              << "cmd=" << static_cast<int>(item.command) << "path=" << item.path;
+                    emit onTimeout(QString::number(static_cast<int>(item.command)), item.path);
+                }
+
                 locker.relock();
             }
         }
@@ -162,7 +184,15 @@ void SvnCommandExecutor::runWorkerLoop()
         }
 
         if (gotHeavy) {
-            processItem(item);
+            // Acquire exclusive write lock (with timeout)
+            if (s_writeSemaphore.tryAcquire(LOCK_WAIT_TIMEOUT_MS)) {
+                processItem(item);
+                s_writeSemaphore.release();
+            } else {
+                qWarning() << "[SvnCommandExecutor] HeavyWrite timed out waiting for write lock:"
+                          << "cmd=" << static_cast<int>(item.command) << "path=" << item.path;
+                emit onTimeout(QString::number(static_cast<int>(item.command)), item.path);
+            }
             continue; // restart loop to drain LocalWrite again
         }
 
@@ -184,6 +214,11 @@ void SvnCommandExecutor::runWorkerLoop()
 
 void SvnCommandExecutor::processItem(const SvnCommandItem &item)
 {
+    if (!m_svnClient) {
+        qWarning() << "[SvnCommandExecutor] m_svnClient is null, cannot process item:" << item.path;
+        emit onSyncError(QStringLiteral("SVN client not initialized"));
+        return;
+    }
     bool success = false;
     QString error;
     int revision = -1;
@@ -191,35 +226,34 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
     switch (item.command) {
         // ── LocalWrite ──
         case SvnCommand::Add: {
-            success = m_svnClient->runSvnBool({QStringLiteral("add"), item.path});
+            success = m_svnClient->runSvnBool({QStringLiteral("add"), item.path}, QString(), SVNClient::DEFAULT_TIMEOUT_MS);
             error = success ? QString() : QStringLiteral("svn add failed");
             break;
         }
         case SvnCommand::Delete: {
-            success = m_svnClient->runSvnBool({QStringLiteral("delete"), item.path});
+            success = m_svnClient->runSvnBool({QStringLiteral("delete"), item.path}, QString(), SVNClient::DEFAULT_TIMEOUT_MS);
             error = success ? QString() : QStringLiteral("svn delete failed");
             break;
         }
         case SvnCommand::Move: {
-            // svn move src dst
-            success = m_svnClient->runSvnBool({QStringLiteral("move"), item.fromPath, item.path});
+            success = m_svnClient->runSvnBool({QStringLiteral("move"), item.fromPath, item.path}, QString(), SVNClient::DEFAULT_TIMEOUT_MS);
             error = success ? QString() : QStringLiteral("svn move failed");
             break;
         }
         case SvnCommand::Revert: {
-            success = m_svnClient->runSvnBool({QStringLiteral("revert"), item.path, QStringLiteral("--recursive")});
+            success = m_svnClient->runSvnBool({QStringLiteral("revert"), item.path, QStringLiteral("--recursive")}, QString(), SVNClient::DEFAULT_TIMEOUT_MS);
             error = success ? QString() : QStringLiteral("svn revert failed");
             break;
         }
         case SvnCommand::Resolve: {
             QStringList args = {QStringLiteral("resolve"), item.accept.isEmpty() ? QStringLiteral("--accept=working") : QStringLiteral("--accept=") + item.accept, item.path};
-            success = m_svnClient->runSvnBool(args);
+            success = m_svnClient->runSvnBool(args, QString(), SVNClient::DEFAULT_TIMEOUT_MS);
             error = success ? QString() : QStringLiteral("svn resolve failed");
             break;
         }
         case SvnCommand::BreakLock: {
             QStringList args = {QStringLiteral("unlock"), item.path};
-            success = m_svnClient->runSvnBool(args);
+            success = m_svnClient->runSvnBool(args, QString(), SVNClient::DEFAULT_TIMEOUT_MS);
             error = success ? QString() : QStringLiteral("svn unlock failed");
             break;
         }
@@ -227,7 +261,7 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
         // ── HeavyWrite ──
         case SvnCommand::Commit: {
             QStringList args = {QStringLiteral("commit"), item.message.isEmpty() ? QStringLiteral("-m ''") : QStringLiteral("-m %1").arg(item.message), item.path};
-            success = m_svnClient->runSvnBool(args);
+            success = m_svnClient->runSvnBool(args, QString(), SVNClient::HEAVYWRITE_TIMEOUT_MS);
             error = success ? QString() : QStringLiteral("svn commit failed");
             break;
         }
@@ -239,17 +273,16 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
                 args.append(item.path);
             }
             args.append(QStringLiteral("--non-interactive"));
-            QString output = m_svnClient->runSvn(args);
-            // svn update outputs "At revision N." on success
-            if (output.contains(QStringLiteral("revision"))) {
-                success = true;
-                // Try to extract revision number
+            QString output;
+            success = m_svnClient->runSvnTimed(args, QString(), SVNClient::HEAVYWRITE_TIMEOUT_MS, &output);
+            if (success && output.contains(QStringLiteral("revision"))) {
                 QRegularExpression re(QStringLiteral(R"(At revision (\d+))"));
                 auto match = re.match(output);
                 if (match.hasMatch())
                     revision = match.captured(1).toInt();
+            } else if (output.isEmpty() && !success) {
+                error = QStringLiteral("svn update timed out or failed");
             } else {
-                success = false;
                 error = output.isEmpty() ? QStringLiteral("svn update failed") : output;
             }
             break;
@@ -259,16 +292,16 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
                                  QStringLiteral("--non-interactive")};
             if (!item.username.isEmpty())
                 args.append({QStringLiteral("--username"), item.username});
-            QString output = m_svnClient->runSvn(args);
-            if (output.contains(QStringLiteral("Checked out revision"))) {
-                success = true;
+            QString output;
+            success = m_svnClient->runSvnTimed(args, QString(), SVNClient::HEAVYWRITE_TIMEOUT_MS, &output);
+            if (success && output.contains(QStringLiteral("Checked out revision"))) {
                 QRegularExpression re(QStringLiteral(R"(Checked out revision (\d+))"));
                 auto match = re.match(output);
                 if (match.hasMatch())
                     revision = match.captured(1).toInt();
             } else {
                 success = false;
-                error = output.isEmpty() ? QStringLiteral("svn checkout failed") : output;
+                error = output.isEmpty() ? QStringLiteral("svn checkout timed out or failed") : output;
             }
             break;
         }
@@ -299,6 +332,11 @@ SvnQueryResult SvnCommandExecutor::executeReadOnly(
 {
     Q_UNUSED(fromPath);
     Q_UNUSED(message);
+
+    if (!m_svnClient) {
+        qWarning() << "[SvnCommandExecutor] executeReadOnly called with null m_svnClient";
+        return SvnQueryResult::Fail(QStringLiteral("SVN client not initialized"));
+    }
 
     try {
         switch (cmd) {

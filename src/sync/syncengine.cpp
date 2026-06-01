@@ -203,6 +203,23 @@ void SyncEngine::pollServer()
 {
     if (!m_svnClient || m_localPath.isEmpty()) return;
 
+    // P0: Repair incomplete working copy (e.g. previous update was interrupted)
+    if (m_svnClient->hasIncompleteWorkingCopy(m_localPath)) {
+        qWarning() << "[SyncEngine] Incomplete working copy detected, repairing...";
+        emit syncNotification(QStringLiteral("检测到工作副本损坏，正在修复..."));
+        bool ok = m_svnClient->update(m_localPath);
+        if (ok) {
+            emit syncNotification(QStringLiteral("已修复工作副本中的 incomplete 状态"));
+        } else {
+            emit syncNotification(QStringLiteral("修复 incomplete 失败"));
+            m_recordService->addRecord(m_repoName, m_localPath, "Update", "Failed",
+                "Repair update failed: incomplete working copy");
+        }
+        handleConflicts();
+        emit filesChanged();
+        return;
+    }
+
     int localRev = m_svnClient->getWorkingCopyRevision(m_localPath);
     int serverRev = m_remoteUrl.isEmpty() ? localRev
                                           : m_svnClient->getHeadRevision(m_remoteUrl);

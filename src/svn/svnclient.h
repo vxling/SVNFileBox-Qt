@@ -46,6 +46,7 @@ public:
     Q_INVOKABLE QVariantMap getStatus(const QString &path, bool depth = false);
     Q_INVOKABLE QString getLastChangedTime(const QString &path);
     Q_INVOKABLE bool isVersioned(const QString &path);
+    Q_INVOKABLE bool hasIncompleteWorkingCopy(const QString &path);
     Q_INVOKABLE bool testConnection(const QString &url, const QString &username, const QString &password);
     Q_INVOKABLE QStringList getServerUpdatePaths(const QString &path);
 
@@ -57,9 +58,14 @@ signals:
     friend class SVNFileBox::SvnCommandExecutor;
 
 private:
-    QString runSvn(const QStringList &args, const QString &workDir = QString());
-    bool runSvnBool(const QStringList &args, const QString &workDir = QString());
-    ErrorLevel runSvnLevel(const QStringList &args, const QString &workDir = QString());
+    static constexpr int DEFAULT_TIMEOUT_MS = 60'000;       // 60s for read ops
+    static constexpr int HEAVYWRITE_TIMEOUT_MS = 600'000;   // 600s safety ceiling for HeavyWrite
+    static constexpr int SAFETY_TIMEOUT_MS = 600'000;       // absolute max for any SVN call
+
+    QString runSvn(const QStringList &args, const QString &workDir = QString(), int timeoutMs = DEFAULT_TIMEOUT_MS);
+    bool runSvnBool(const QStringList &args, const QString &workDir = QString(), int timeoutMs = DEFAULT_TIMEOUT_MS);
+    ErrorLevel runSvnLevel(const QStringList &args, const QString &workDir = QString(), int timeoutMs = DEFAULT_TIMEOUT_MS);
+    bool runSvnTimed(const QStringList &args, const QString &workDir, int timeoutMs, QString *output = nullptr);
 };
 
 #endif // SVNCLIENT_H

@@ -10,6 +10,7 @@
 #include <QtCore/QThread>
 #include <QtCore/QVariant>
 #include <QtCore/QRegularExpression>
+#include <QtCore/QSemaphore>
 
 class SVNClient;
 
@@ -58,6 +59,7 @@ signals:
     void onCommandCompleted(const SvnCommandResult &result);
     void onSyncNotification(const QString &message);
     void onSyncError(const QString &error);
+    void onTimeout(const QString &op, const QString &path);
 
 private:
     void runWorkerLoop();
@@ -73,6 +75,10 @@ private:
     bool tryEnqueueHeavyWrite(const SvnCommandItem &item);
     void removeFromDedup(const SvnCommandItem &item);
     QString dedupKey(const SvnCommandItem &item) const;
+
+    // ── Concurrency ────────────────────────────────────────────
+    static QSemaphore s_writeSemaphore;   // Serializes all writes (1 permit), initialized in .cpp
+    static constexpr int LOCK_WAIT_TIMEOUT_MS = 30'000;
 
     SVNClient *m_svnClient = nullptr;
     QQueue<SvnCommandItem> m_localWriteQueue;

@@ -82,77 +82,85 @@ QString SVNClient::getStatusString(const QString &path)
     return "Normal";
 }
 
-QString SVNClient::runSvn(const QStringList &args, const QString &workDir)
+bool SVNClient::runSvnTimed(const QStringList &args, const QString &workDir, int timeoutMs, QString *output)
 {
     QProcess p;
-    if (!workDir.isEmpty()) {
+    if (!workDir.isEmpty())
         p.setWorkingDirectory(workDir);
-    }
     p.start("svn", args);
-    p.waitForFinished(-1);
-    QString output = QString::fromLocal8Bit(p.readAllStandardOutput());
-    QString error = QString::fromLocal8Bit(p.readAllStandardError());
-    if (!error.isEmpty()) {
-        qWarning() << "svn error:" << error;
-        emit commandError(error);
+    if (!p.waitForStarted(5000)) {
+        qWarning() << "[SVNClient] Failed to start svn process:" << args;
+        return false;
     }
-    return output;
-}
-
-bool SVNClient::runSvnBool(const QStringList &args, const QString &workDir)
-{
-    QProcess p;
-    if (!workDir.isEmpty()) {
-        p.setWorkingDirectory(workDir);
+    bool finished = p.waitForFinished(timeoutMs);
+    if (!finished) {
+        qWarning() << "[SVNClient] SVN timed out after" << timeoutMs << "ms:" << args;
+        p.kill();
+        p.waitForFinished(2000);
+        return false;
     }
-    p.start("svn", args);
-    p.waitForFinished(-1);
+    if (output)
+        *output = QString::fromLocal8Bit(p.readAllStandardOutput());
     return p.exitCode() == 0;
 }
 
-SVNClient::ErrorLevel SVNClient::runSvnLevel(const QStringList &args, const QString &workDir)
+QString SVNClient::runSvn(const QStringList &args, const QString &workDir, int timeoutMs)
 {
-    QProcess p;
-    if (!workDir.isEmpty()) {
-        p.setWorkingDirectory(workDir);
-    }
-    p.start("svn", args);
-    p.waitForFinished(-1);
+    int cap = qMin(timeoutMs, SAFETY_TIMEOUT_MS);
+    QString output;
+    runSvnTimed(args, workDir, cap, &output);
+    return output;
+}
 
+bool SVNClient::runSvnBool(const QStringList &args, const QString &workDir, int timeoutMs)
+{
+    int cap = qMin(timeoutMs, SAFETY_TIMEOUT_MS);
+    return runSvnTimed(args, workDir, cap);
+}
+
+SVNClient::ErrorLevel SVNClient::runSvnLevel(const QStringList &args, const QString &workDir, int timeoutMs)
+{
+    int cap = qMin(timeoutMs, SAFETY_TIMEOUT_MS);
+    QProcess p;
+    if (!workDir.isEmpty())
+        p.setWorkingDirectory(workDir);
+    p.start("svn", args);
+    if (!p.waitForStarted(5000)) {
+        qWarning() << "[SVNClient] Failed to start svn process:" << args;
+        return ErrorLevel::Error;
+    }
+    bool finished = p.waitForFinished(cap);
+    if (!finished) {
+        qWarning() << "[SVNClient] SVN timed out after" << cap << "ms:" << args;
+        p.kill();
+        p.waitForFinished(2000);
+        return ErrorLevel::Error;
+    }
     QString error = QString::fromLocal8Bit(p.readAllStandardError());
     QString output = QString::fromLocal8Bit(p.readAllStandardOutput());
     int exitCode = p.exitCode();
 
-    // Warning-level messages: no changes needed or nothing to do
+    // Warning-level patterns
     QStringList warningPatterns = {
-        "Nothing to commit",
-        "Skipped",
-        "At revision",
-        "Updating",
-        "Summary of conflicts",
-        "Revision"
+        "Nothing to commit", "Skipped", "At revision",
+        "Updating", "Summary of conflicts", "Revision"
     };
     for (const QString &pat : warningPatterns) {
         if (error.contains(pat) || output.contains(pat)) {
             if (exitCode == 0 || error.contains("At revision")) {
-                emit commandWarning(error.isEmpty() ? output : error);
+                if (!error.isEmpty())
+                    emit commandWarning(error.isEmpty() ? output : error);
                 return ErrorLevel::Warning;
             }
         }
     }
 
-    // Error-level messages
+    // Error-level patterns
     QStringList errorPatterns = {
-        "Authentication required",
-        "authorization failed",
-        "Can't create directory",
-        "Permission denied",
-        "File not found",
-        "Working copy already locked",
-        "Run 'svn cleanup'",
-        "conflict",
-        "Out of date",
-        "Invalid URL"
+        "Authentication required", "authorization failed",
+        "Can't create directory", "Permission denied",
+        "File not found", "Working copy already locked",
+        "Run 'svn cleanup'", "conflict", "Out of date", "Invalid URL"
     };
     for (const QString &pat : errorPatterns) {
         if (error.contains(pat)) {
@@ -365,6 +373,22 @@ QString SVNClient::getLastChangedTime(const QString &path)
 bool SVNClient::isVersioned(const QString &path)
 {
     return isValidWorkingCopy(path) || QFile::exists(QFileInfo(path).dir().absolutePath() + "/.svn");
+}
+
+bool SVNClient::hasIncompleteWorkingCopy(const QString &path)
+{
+    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml", "--depth=infinity", path};
+    QString output = runSvn(args);
+    QXmlStreamReader xml(output);
+    while (!xml.atEnd()) {
+        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("wc-status")) {
+            // SVN reports "incomplete" as the 'item' or 'depth' attribute when WC is corrupted
+            QString item = xml.attributes().value("item").toString();
+            if (item == QStringLiteral("incomplete"))
+                return true;
+        }
+    }
+    return false;
 }
 
 bool SVNClient::testConnection(const QString &url, const QString &username, const QString &password)

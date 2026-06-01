@@ -34,6 +34,7 @@ QVariant FileModel::data(const QModelIndex &index, int role) const
                 ? item.lastModified.toString("yyyy-MM-dd HH:mm")
                 : QString();
         case IsCurrentPathRole: return item.isCurrentPath;
+        case TypeDisplayRole:  return getTypeDisplay(item.name, item.isDirectory, item.isCurrentPath);
     }
     return QVariant();
 }
@@ -47,7 +48,8 @@ QHash<int, QByteArray> FileModel::roleNames() const
         { SvnStatusRole, "svnStatus" },
         { FileSizeDisplayRole, "fileSizeDisplay" },
         { LastModifiedDisplayRole, "lastModifiedDisplay" },
-        { IsCurrentPathRole, "isCurrentPath" }
+        { IsCurrentPathRole, "isCurrentPath" },
+        { TypeDisplayRole, "typeDisplay" }
     };
 }
 
@@ -247,4 +249,75 @@ QString FileModel::formatFileSize(qint64 bytes)
     if (bytes < 1024 * 1024) return QString::number(bytes / 1024.0, 'f', 1) + " KB";
     if (bytes < 1024 * 1024 * 1024) return QString::number(bytes / (1024.0 * 1024), 'f', 1) + " MB";
     return QString::number(bytes / (1024.0 * 1024 * 1024), 'f', 1) + " GB";
+}
+
+QString FileModel::getTypeDisplay(const QString &fileName, bool isDir, bool isCurrentPath)
+{
+    if (isCurrentPath) return QString();
+    if (isDir) return "文件夹";
+
+    auto ext = fileName.contains('.')
+        ? fileName.split('.').last().toLower()
+        : QString();
+
+    if (ext.isEmpty()) return "文档";
+
+    // Code
+    if (ext == "cs" || ext == "fs" || ext == "vb" || ext == "java" || ext == "py"
+        || ext == "go" || ext == "rs" || ext == "c" || ext == "cpp" || ext == "h" || ext == "hpp"
+        || ext == "swift" || ext == "kt" || ext == "rb" || ext == "php" || ext == "js" || ext == "ts")
+        return "代码";
+
+    // Excel
+    if (ext == "xlsx" || ext == "xls" || ext == "xlsm" || ext == "csv")
+        return "Excel";
+
+    // Word
+    if (ext == "docx" || ext == "doc" || ext == "odt" || ext == "rtf")
+        return "Word";
+
+    // PPT
+    if (ext == "pptx" || ext == "ppt" || ext == "odp")
+        return "PPT";
+
+    // PDF
+    if (ext == "pdf")
+        return "PDF";
+
+    // Image
+    if (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" || ext == "bmp"
+        || ext == "webp" || ext == "ico" || ext == "svg" || ext == "tiff" || ext == "tif")
+        return "图片";
+
+    // Video
+    if (ext == "mp4" || ext == "avi" || ext == "mkv" || ext == "mov" || ext == "wmv" || ext == "flv" || ext == "webm")
+        return "视频";
+
+    // Audio
+    if (ext == "mp3" || ext == "wav" || ext == "flac" || ext == "aac" || ext == "ogg" || ext == "wma")
+        return "音频";
+
+    // Archive
+    if (ext == "zip" || ext == "rar" || ext == "7z" || ext == "tar" || ext == "gz" || ext == "bz2")
+        return "压缩包";
+
+    // Text
+    if (ext == "txt" || ext == "md" || ext == "log" || ext == "ini" || ext == "cfg" || ext == "conf")
+        return "文本";
+
+    // Config
+    if (ext == "json" || ext == "xml" || ext == "yaml" || ext == "yml" || ext == "toml")
+        return "配置";
+
+    // Web
+    if (ext == "html" || ext == "htm" || ext == "css" || ext == "js" || ext == "ts"
+        || ext == "jsx" || ext == "tsx" || ext == "vue" || ext == "sass" || ext == "scss")
+        return "Web";
+
+    // Executable
+    if (ext == "exe" || ext == "msi" || ext == "dll" || ext == "sys" || ext == "bat" || ext == "cmd" || ext == "ps1"
+        || ext == "app" || ext == "dmg" || ext == "deb" || ext == "rpm" || ext == "appimage")
+        return "可执行";
+
+    return "文档";
 }

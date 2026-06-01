@@ -34,7 +34,8 @@ public:
         SvnStatusRole,
         FileSizeDisplayRole,
         LastModifiedDisplayRole,
-        IsCurrentPathRole
+        IsCurrentPathRole,
+        TypeDisplayRole
     };
 
     explicit FileModel(QObject *parent = nullptr);
@@ -66,6 +67,7 @@ private:
     SVNClient *m_svnClient = nullptr;
 
     static QString formatFileSize(qint64 bytes);
+    static QString getTypeDisplay(const QString &fileName, bool isDir, bool isCurrentPath);
     bool copyDirectory(const QString &src, const QString &dst);
     void collectNewFiles(const QString &dirPath, QStringList &out);
 };
