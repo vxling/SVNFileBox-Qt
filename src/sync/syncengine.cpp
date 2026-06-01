@@ -1,4 +1,5 @@
 #include "syncengine.h"
+#include "ignorepattern.h"
 #include "svn/svnclient.h"
 #include "sync/syncrecordservice.h"
 #include <QDebug>
@@ -796,40 +797,6 @@ bool SyncEngine::isTempFile(const QString &path) const
     return false;
 }
 
-// P3 #2: glob → anchored regex. Supports * and ? wildcards, escapes regex
-// metachars. Patterns containing "/" are matched against the full relative
-// path; patterns without "/" are matched against the basename only (so
-// "*.tmp" ignores any .tmp file in any subdirectory).
-QList<QRegularExpression> SyncEngine::compileIgnorePatterns(const QStringList &patterns) const
-{
-    QList<QRegularExpression> out;
-    for (const QString &p : patterns) {
-        QString pat = p.trimmed();
-        if (pat.isEmpty() || pat.startsWith(QLatin1String("#"))) continue;
-        QString rx = QStringLiteral("^");
-        for (QChar c : pat) {
-            if (c == QLatin1Char('*'))      rx += QStringLiteral(".*");
-            else if (c == QLatin1Char('?')) rx += QStringLiteral(".");
-            else if (c == QLatin1Char('.')) rx += QStringLiteral("\\.");
-            else if (c == QLatin1Char('\\')) rx += QStringLiteral("\\\\");
-            else if (c == QLatin1Char('+')
-                  || c == QLatin1Char('(')
-                  || c == QLatin1Char(')')
-                  || c == QLatin1Char('[')
-                  || c == QLatin1Char(']')
-                  || c == QLatin1Char('{')
-                  || c == QLatin1Char('}')
-                  || c == QLatin1Char('|')
-                  || c == QLatin1Char('^')
-                  || c == QLatin1Char('$')) rx += QStringLiteral("\\") + c;
-            else rx += c;
-        }
-        rx += QStringLiteral("$");
-        out.append(QRegularExpression(rx, QRegularExpression::CaseInsensitiveOption));
-    }
-    return out;
-}
-
 bool SyncEngine::isPathIgnored(const QString &path) const
 {
     if (m_ignoreRegexes.isEmpty()) return false;
@@ -841,12 +808,5 @@ bool SyncEngine::isPathIgnored(const QString &path) const
         relPath = relPath.mid(m_localPath.size());
         if (relPath.startsWith(QLatin1Char('/'))) relPath = relPath.mid(1);
     }
-
-    for (const QRegularExpression &rx : m_ignoreRegexes) {
-        // Basename match (no "/" in pattern) — match against file name
-        if (rx.match(name).hasMatch()) return true;
-        // Full path match (with "/") — match against relative path
-        if (rx.match(relPath).hasMatch()) return true;
-    }
-    return false;
+    return SVNFileBox::matchIgnore(m_ignoreRegexes, name, relPath);
 }

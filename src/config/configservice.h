@@ -101,14 +101,16 @@ public:
     bool autoSyncEnabled() const { return m_autoSyncEnabled; }
     void setAutoSyncEnabled(bool v) { m_autoSyncEnabled = v; }
 
+    // P3 #3: expose load/save for unit tests. Safe to call repeatedly;
+    // production code only calls them in ctor / setter paths.
+    void loadFromDisk();
+    void saveToDisk();
+    QString configFilePath() const;
+
 signals:
     void repositoriesChanged();
 
 private:
-    void loadFromDisk();
-    void saveToDisk();
-
-    QString configFilePath() const;
 
     // 运行时配置
     QString m_localPath;

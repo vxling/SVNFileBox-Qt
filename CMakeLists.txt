@@ -22,6 +22,8 @@ set(APP_SOURCES
     src/sync/sqlitesyncrecordstore.h
     src/sync/sqlitesyncrecordstore.cpp
     src/sync/commitqueue.cpp
+    src/sync/ignorepattern.cpp
+    src/sync/ignorepattern.h
     src/config/configservice.cpp
     src/services/repomanager.cpp
     src/services/repoglobalmanager.cpp

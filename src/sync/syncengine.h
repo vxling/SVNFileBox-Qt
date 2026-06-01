@@ -5,6 +5,7 @@
 #include <QString>
 #include <QFileSystemWatcher>
 #include <QTimer>
+#include "ignorepattern.h"
 #include <QSet>
 #include <QMutex>
 #include <QMutexLocker>
@@ -32,7 +33,7 @@ public:
     // to m_localPath (basename match for plain names, full path match for
     // patterns containing "/"). Mirrors WPF's SyncService filter at
     // SyncService.cs:284-308.
-    void setIgnorePatterns(const QStringList &patterns) { m_ignorePatterns = patterns; m_ignoreRegexes = compileIgnorePatterns(patterns); }
+    void setIgnorePatterns(const QStringList &patterns) { m_ignorePatterns = patterns; m_ignoreRegexes = SVNFileBox::compileIgnorePatterns(patterns); }
     QStringList ignorePatterns() const { return m_ignorePatterns; }
     Q_INVOKABLE void stopSync();
     Q_INVOKABLE void syncNow();
@@ -109,11 +110,9 @@ private:
     // P3 #2: ignore patterns
     QStringList m_ignorePatterns;
     QList<QRegularExpression> m_ignoreRegexes;
-    // Compile glob patterns (with support for * and ?) to anchored regexes.
-    QList<QRegularExpression> compileIgnorePatterns(const QStringList &patterns) const;
-    // Returns true if any ignore pattern matches the path. Path should be
-    // the full local file path; we compare against both basename and the
-    // path relative to m_localPath.
+    // Returns true if any ignore pattern matches the path. Implementation
+    // lives in syncengine.cpp; logic itself lives in the standalone
+    // ignorepattern.{h,cpp} helper so it can be unit-tested.
     bool isPathIgnored(const QString &path) const;
 };
 
