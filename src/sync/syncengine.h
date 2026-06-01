@@ -59,6 +59,7 @@ private:
     bool isSvnManaged(const QString &path) const;
     QString parentDir(const QString &filePath) const;
     void addPending(const QString &path);
+    bool isTempFile(const QString &path) const;
 
     SVNClient *m_svnClient = nullptr;
     SyncRecordService *m_recordService = nullptr;
@@ -78,6 +79,7 @@ private:
     bool m_syncing = false;
     bool m_pausedByConflict = false;
     int m_pollIntervalSec = 60;
+    int m_staleCounter = 0;
 };
 
 #endif // SYNCENGINE_H

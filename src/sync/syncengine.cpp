@@ -8,6 +8,7 @@
 #include <QTimer>
 #include <QThread>
 #include <QRegularExpression>
+#include <QDateTime>
 
 SyncEngine::SyncEngine(QObject *parent)
     : QObject(parent)
@@ -129,13 +130,25 @@ void SyncEngine::resolveConflict(const QString &accept)
 
     QStringList files = m_svnClient->getConflictedFiles(m_localPath);
     for (const QString &f : files) {
-        // Build absolute path: m_localPath + "/" + f
         QString absPath = f.contains(m_localPath) ? f : m_localPath + "/" + f;
-        m_svnClient->resolveConflict(absPath, accept);
+        if (accept == "keep-both") {
+            // KeepBoth: backup local as .local-backup-*, then accept server
+            QString backupPath = absPath + ".local-backup-" + QDateTime::currentDateTimeUtc().toString("yyyyMMddHHmmss");
+            if (QFile::copy(absPath, backupPath)) {
+                qDebug() << "[SyncEngine] KeepBoth: backed up" << absPath << "→" << backupPath;
+            }
+            // Tree conflicts can only be resolved with Working (local), so use that
+            QString svnAccept = "theirs-conflict"; // default for text conflicts
+            m_svnClient->resolveConflict(absPath, svnAccept);
+        } else {
+            m_svnClient->resolveConflict(absPath, accept);
+        }
     }
 
     m_pausedByConflict = false;
-    emit syncNotification(QString("冲突已解决（%1）").arg(accept == "mine-conflict" ? "保留本地" : "使用服务器"));
+    QString msg = accept == "keep-both" ? "保留两者（备份后接受服务器）"
+                  : accept == "mine-conflict" ? "保留本地" : "使用服务器";
+    emit syncNotification(QString("冲突已解决（%1）").arg(msg));
     emit filesChanged();
 }
 
@@ -203,7 +216,29 @@ void SyncEngine::pollServer()
 {
     if (!m_svnClient || m_localPath.isEmpty()) return;
 
-    // P0: Repair incomplete working copy (e.g. previous update was interrupted)
+    // ── Stale guard ───────────────────────────────────────────
+    // No server updates for 35 consecutive polls → force a full update
+    // to recover from missed webhooks or clock skew.
+    // Initial poll (_staleCounter==1) also triggers a forced full update.
+    m_staleCounter++;
+    if (m_staleCounter > 35) {
+        qDebug() << "[SyncEngine] Stale for" << m_staleCounter << "polls, forcing full update...";
+        emit syncNotification(QStringLiteral("连续无更新次数过多，正在强制全量更新..."));
+        bool ok = m_svnClient->update(m_localPath);
+        if (ok) {
+            handleConflicts();
+            emit syncNotification(QStringLiteral("强制全量更新完成"));
+        } else {
+            emit syncNotification(QStringLiteral("强制全量更新失败"));
+            if (m_recordService)
+                m_recordService->addRecord(m_repoName, m_localPath, "Update", "Failed", "Stale refresh failed");
+        }
+        emit filesChanged();
+        m_staleCounter = 1;
+        return;
+    }
+
+    // ── Repair incomplete working copy ─────────────────────────
     if (m_svnClient->hasIncompleteWorkingCopy(m_localPath)) {
         qWarning() << "[SyncEngine] Incomplete working copy detected, repairing...";
         emit syncNotification(QStringLiteral("检测到工作副本损坏，正在修复..."));
@@ -212,14 +247,16 @@ void SyncEngine::pollServer()
             emit syncNotification(QStringLiteral("已修复工作副本中的 incomplete 状态"));
         } else {
             emit syncNotification(QStringLiteral("修复 incomplete 失败"));
-            m_recordService->addRecord(m_repoName, m_localPath, "Update", "Failed",
-                "Repair update failed: incomplete working copy");
+            if (m_recordService)
+                m_recordService->addRecord(m_repoName, m_localPath, "Update", "Failed",
+                    "Repair update failed: incomplete working copy");
         }
         handleConflicts();
         emit filesChanged();
         return;
     }
 
+    // ── Normal server → local update ──────────────────────────
     int localRev = m_svnClient->getWorkingCopyRevision(m_localPath);
     int serverRev = m_remoteUrl.isEmpty() ? localRev
                                           : m_svnClient->getHeadRevision(m_remoteUrl);
@@ -230,6 +267,9 @@ void SyncEngine::pollServer()
     qDebug() << "[SyncEngine] Server has updates, updating...";
     bool ok = m_svnClient->update(m_localPath);
     if (ok) handleConflicts();
+
+    // Successful update resets stale counter
+    m_staleCounter = 1;
 
     QString msg;
     QString result;
@@ -402,6 +442,7 @@ void SyncEngine::retryPending()
 
 void SyncEngine::addPending(const QString &path)
 {
+    if (isTempFile(path)) return;
     CommitQueue::instance().enqueue(path, CommitQueue::OpModify);
 }
 
@@ -448,4 +489,30 @@ void SyncEngine::ReEnableFileWatcher()
             }
         }
     }
+}
+
+bool SyncEngine::isTempFile(const QString &path) const
+{
+    QString name = QFileInfo(path).fileName();
+    // Office temp: ~$*.doc*, ~$*.xls*, ~$*.ppt*, etc.
+    if (name.startsWith(QLatin1String("~$"))) return true;
+    // macOS
+    if (name == QLatin1String(".DS_Store")) return true;
+    if (name == QLatin1String("._") + name.mid(2)) return true; // ._foo (AppleDouble)
+    // Vim
+    if (name.endsWith(QLatin1String(".swp"))) return true;
+    if (name.endsWith(QLatin1String(".swo"))) return true;
+    if (name.endsWith(QLatin1String("~"))) return true;
+    // Emacs
+    if (name.endsWith(QLatin1String("~"))) return true;
+    if (name.startsWith(QLatin1String("#")) && name.endsWith(QLatin1String("#"))) return true;
+    // Patch conflicts
+    if (name.endsWith(QLatin1String(".orig"))) return true;
+    if (name.endsWith(QLatin1String(".rej"))) return true;
+    // General tmp
+    if (name.endsWith(QLatin1String(".tmp"))) return true;
+    if (name.endsWith(QLatin1String(".temp"))) return true;
+    // Unix core dumps
+    if (name.startsWith(QLatin1String("core.")) && name.mid(5).toLongLong() > 0) return true;
+    return false;
 }
