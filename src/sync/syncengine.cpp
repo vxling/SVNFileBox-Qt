@@ -83,6 +83,10 @@ void SyncEngine::startSync(const QString &repoName, const QString &localPath, co
     m_pollTimer->start();
     m_fullSyncTimer->start();
 
+    // Poll server first, then scan & commit local changes
+    pollServer();
+    scanAndCommit();
+
     emit syncStarted();
     emit syncNotification("同步已启动: " + m_repoName);
     qDebug() << "[SyncEngine] Started sync for" << m_repoName << "at" << m_localPath;
@@ -107,9 +111,123 @@ void SyncEngine::syncNow()
     if (!m_syncing || m_localPath.isEmpty()) return;
     qDebug() << "[SyncEngine] Manual syncNow triggered";
 
-    // Upload: commit pending local changes
-    retryPending();
+    scanAndCommit();
     pollServer();
+    emit filesChanged();
+}
+
+void SyncEngine::scanAndCommit()
+{
+    if (!m_svnClient || m_localPath.isEmpty()) return;
+
+    // Prevent re-entry (WPF uses Interlocked.CompareExchange)
+    {
+        QMutexLocker locker(&m_scanMutex);
+        if (m_scanning) {
+            qDebug() << "[SyncEngine] ScanAndCommit already in progress, skipping";
+            return;
+        }
+        m_scanning = true;
+    }
+
+    // Commit any pending retries first
+    retryPending();
+
+    // Scan local svn status --xml --depth=infinity
+    QVariantMap statuses = m_svnClient->getStatus(m_localPath, true);
+    if (statuses.isEmpty()) {
+        qDebug() << "[SyncEngine] ScanAndCommit: no changes to commit";
+        {
+            QMutexLocker locker(&m_scanMutex);
+            m_scanning = false;
+        }
+        return;
+    }
+
+    QString repoRoot = m_localPath;
+
+    // Separate unversioned files from versioned changes
+    QStringList unversionedFiles;
+    QVariantMap versionedChanges;
+    for (auto it = statuses.begin(); it != statuses.end(); ++it) {
+        QString path = it.key();
+        QString status = it.value().toString();
+        if (status == "unversioned") {
+            unversionedFiles.append(path);
+        } else if (status != "conflicted" && status != "treeconflicted") {
+            versionedChanges[path] = status;
+        }
+    }
+
+    // Add all unversioned files (filter temp files)
+    for (const QString &filePath : unversionedFiles) {
+        if (isTempFile(filePath)) continue;
+        m_svnClient->add(filePath);
+        qDebug() << "[SyncEngine] ScanAndCommit: enqueued Add for unversioned:" << filePath;
+    }
+
+    if (versionedChanges.isEmpty()) {
+        {
+            QMutexLocker locker(&m_scanMutex);
+            m_scanning = false;
+        }
+        return;
+    }
+
+    // Group by parent directory
+    // Normalize repoRoot to strip trailing slash
+    QString normRoot = repoRoot;
+    if (normRoot.endsWith('/')) normRoot.chop(1);
+
+    // Map: parentDir -> list of file paths in that dir
+    QMap<QString, QStringList> dirGroups;
+    for (auto it = versionedChanges.begin(); it != versionedChanges.end(); ++it) {
+        QString path = it.key();
+        // Only include files inside repo root
+        if (!path.startsWith(normRoot + '/') && path != normRoot) continue;
+
+        // Strip repo root prefix to get relative path
+        QString relPath = path;
+        if (relPath.startsWith(normRoot + '/'))
+            relPath = relPath.mid(normRoot.length() + 1);
+
+        // Determine parent directory
+        int lastSlash = relPath.lastIndexOf('/');
+        QString parentDir = lastSlash > 0 ? relPath.left(lastSlash) : QString();
+        dirGroups[parentDir].append(relPath);
+    }
+
+    qDebug() << "[SyncEngine] ScanAndCommit: committing" << dirGroups.size() << "dirs,"
+             << versionedChanges.size() << "files (+" << unversionedFiles.size() << "unversioned)";
+
+    // Process deepest dirs first to avoid "out of date" errors
+    QList<QString> sortedDirs = dirGroups.keys();
+    std::sort(sortedDirs.begin(), sortedDirs.end(), [](const QString &a, const QString &b) {
+        return a.count('/') > b.count('/');
+    });
+
+    for (const QString &relParent : sortedDirs) {
+        QStringList filesInDir = dirGroups.value(relParent);
+        QString absParent = relParent.isEmpty() ? normRoot : normRoot + '/' + relParent;
+        QString commitPath = absParent;
+
+        QString msg;
+        if (filesInDir.size() == 1) {
+            msg = "Auto-sync: " + filesInDir.first();
+        } else {
+            msg = "Auto-sync: " + QString::number(filesInDir.size()) + " files in " + QFileInfo(absParent).fileName();
+        }
+
+        qDebug() << "[SyncEngine] ScanAndCommit: committing dir:" << commitPath << "with" << filesInDir.size() << "files";
+        m_svnClient->commit(commitPath, msg);
+    }
+
+    {
+        QMutexLocker locker(&m_scanMutex);
+        m_scanning = false;
+    }
+
+    emit syncNotification("批量同步完成");
     emit filesChanged();
 }
 
@@ -210,7 +328,8 @@ void SyncEngine::onFullSyncTimer()
     if (!m_syncing || m_localPath.isEmpty()) return;
     if (m_pausedByConflict) return;
     qDebug() << "[SyncEngine] Full sync timer fired";
-    fullScan();
+    scanAndCommit();
+    pollServer();
 }
 
 void SyncEngine::pollServer()

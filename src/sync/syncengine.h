@@ -28,6 +28,7 @@ public:
                                 const QString &username = QString(), const QString &password = QString());
     Q_INVOKABLE void stopSync();
     Q_INVOKABLE void syncNow();
+    Q_INVOKABLE void scanAndCommit();
     Q_INVOKABLE void watchPath(const QString &path);
     Q_INVOKABLE QString status() const;
     Q_INVOKABLE QStringList getConflictedFiles() const;
@@ -78,6 +79,8 @@ private:
 
     bool m_syncing = false;
     bool m_pausedByConflict = false;
+    bool m_scanning = false;
+    QMutex m_scanMutex;
     int m_pollIntervalSec = 60;
     int m_staleCounter = 0;
 };
