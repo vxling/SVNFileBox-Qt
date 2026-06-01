@@ -498,27 +498,3 @@ QStringList SVNClient::getServerUpdatePaths(const QString &path)
     }
     return paths;
 }
-
-bool SVNClient::clearAuthCache(const QString &url)
-{
-    // Use `svn auth --remove` to invalidate cached credentials for a realm.
-    // If url is empty, wipe the entire ~/.subversion/auth/ directory.
-    if (url.isEmpty()) {
-        // Wipe entire auth cache (Linux/macOS path; on Windows the path differs
-        // but SVN itself uses the same code path).
-        QString home = QDir::homePath();
-        QString authDir = home + "/.subversion/auth";
-        QDir d(authDir);
-        if (!d.exists()) return true;  // nothing to clear
-        bool ok = d.removeRecursively();
-        return ok;
-    }
-    // Targeted: use `svn auth --remove <pattern>` if available (SVN 1.13+).
-    // Fallback: nuke the entire auth dir if targeted removal is not supported.
-    QStringList args = {"auth", "--remove", url, "--non-interactive", "--trust-server-cert"};
-    bool out = runSvnBool(args);
-    Q_UNUSED(out);
-    // Also nuke as belt-and-suspenders (svn auth --remove support varies by version)
-    QDir(QDir::homePath() + "/.subversion/auth").removeRecursively();
-    return true;
-}

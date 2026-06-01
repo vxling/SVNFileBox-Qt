@@ -55,10 +55,6 @@ public:
     Q_INVOKABLE bool hasIncompleteWorkingCopy(const QString &path);
     Q_INVOKABLE bool testConnection(const QString &url, const QString &username, const QString &password);
     Q_INVOKABLE QStringList getServerUpdatePaths(const QString &path);
-    // Clear SVN's auth cache for a specific URL (or all if url empty).
-    // After this, the next SVN command will prompt for credentials again.
-    // Mirrors WPF ClearAuthenticationCache().
-    Q_INVOKABLE bool clearAuthCache(const QString &url = QString());
     // Lightweight credential probe: runs `svn info <repoUrl>` and returns true
     // if the server replied without auth errors. Mirrors WPF IsCredentialValid.
     // Uses HEAD_REV_TTL_MS cache.

@@ -369,20 +369,19 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
             break;
     }
 
-    // Auth error detected — retry once with cache cleared
-    if (!success && item.retryCount == 0 && capturedError.startsWith(QStringLiteral("auth_error:"))) {
-        qWarning() << "[SvnCommandExecutor] Auth error, retrying with cleared cache:" << item.path;
-        (void)::system("rm -rf ~/.subversion/auth/*");
-        SvnCommandItem retry = item;
-        retry.retryCount = 1;
-        QMutexLocker locker(&m_queueMutex);
-        m_localWriteQueue.prepend(retry);
-        return;
-    }
-
-    // Auth permanently failed after retry — emit credential expired
+    // Auth error detected — emit credential expired so the user can
+    // re-enter credentials. SVN's own auth cache is invalidated by the
+    // server returning 401, so the next command after the user re-enters
+    // creds will succeed without us needing to clear the cache first.
+    //
+    // P3 review fix (M6 + user feedback): the previous implementation
+    // called `system("rm -rf ~/.subversion/auth/*")` and retried once
+    // before giving up. That "wipe + retry" path was both heavy-handed
+    // and redundant — `svn` itself re-prompts when cached creds are
+    // rejected, and clearing the cache mid-retry doesn't help because
+    // there's no new creds to use yet.
     if (!success && capturedError.startsWith(QStringLiteral("auth_error:"))) {
-        qWarning() << "[SvnCommandExecutor] Auth retry failed, emitting onAuthError:" << item.path;
+        qWarning() << "[SvnCommandExecutor] Auth error, requesting credential re-entry:" << item.path;
         emit onAuthError(item.path);
     }
 
