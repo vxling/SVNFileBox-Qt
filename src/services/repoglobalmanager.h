@@ -26,6 +26,8 @@ signals:
     void syncNotification(const QString &message);
     void conflictDetected(const QStringList &conflictedFiles);
     void activeExecutorChanged(RepoManager *manager);
+    // Forwarded credential-expired event from any RepoManager
+    void credentialExpired(const QString &repoName, const QString &path);
 
 public slots:
     void createNetworkRepoAsync(const QString &name, const QString &path,
@@ -45,6 +47,7 @@ private slots:
     void onManagerFilesChanged();
     void onManagerSyncNotification(const QString &msg);
     void onManagerConflictDetected(const QStringList &files);
+    void onManagerCredentialExpired(const QString &repoName, const QString &path);
 
 private:
     void bindManagerEvents(RepoManager *manager);

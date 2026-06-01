@@ -212,6 +212,29 @@ void SvnCommandExecutor::runWorkerLoop()
 
 // ── Process single command item ────────────────────────────────
 
+void SvnCommandExecutor::maybeRunStaleLockCleanup(const QString &path)
+{
+    // Throttle: at most once per 60s
+    QDateTime now = QDateTime::currentDateTime();
+    if (m_lastCleanupAt.isValid() && m_lastCleanupAt.secsTo(now) < 60)
+        return;
+    m_lastCleanupAt = now;
+
+    if (!m_svnClient || path.isEmpty()) return;
+    // svn cleanup <path> clears stale locks in the path's ancestry.
+    // Idempotent, fast on clean working copies. Mirrors WPF's
+    // SvnService.TryCleanStaleLocks() that runs before every write.
+    bool ok = m_svnClient->runSvnBool(
+        {QStringLiteral("cleanup"), QStringLiteral("--non-interactive"),
+         QStringLiteral("--trust-server-cert"), path},
+        QString(), 5000);
+    if (ok) {
+        qDebug() << "[SvnCommandExecutor] Cleanup OK for" << path;
+    } else {
+        qDebug() << "[SvnCommandExecutor] Cleanup skipped/failed for" << path;
+    }
+}
+
 void SvnCommandExecutor::processItem(const SvnCommandItem &item)
 {
     if (!m_svnClient) {
@@ -230,6 +253,15 @@ void SvnCommandExecutor::processItem(const SvnCommandItem &item)
     bool success = false;
     QString error;
     int revision = -1;
+
+    // WPF parity: clear stale working copy locks before every write.
+    // Throttled to 60s inside the helper.
+    {
+        QString pathForCleanup = item.path;
+        if (item.command == SvnCommand::Update && !item.updatePaths.isEmpty())
+            pathForCleanup = item.updatePaths.first();
+        maybeRunStaleLockCleanup(pathForCleanup);
+    }
 
     switch (item.command) {
         // ── LocalWrite ──

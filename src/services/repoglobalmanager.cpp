@@ -142,6 +142,7 @@ void RepoGlobalManager::bindManagerEvents(RepoManager *manager)
     connect(manager, &RepoManager::filesChanged, this, &RepoGlobalManager::onManagerFilesChanged);
     connect(manager, &RepoManager::syncNotification, this, &RepoGlobalManager::onManagerSyncNotification);
     connect(manager, &RepoManager::conflictDetected, this, &RepoGlobalManager::onManagerConflictDetected);
+    connect(manager, &RepoManager::credentialExpired, this, &RepoGlobalManager::onManagerCredentialExpired);
 }
 
 void RepoGlobalManager::unbindManagerEvents(RepoManager *manager)
@@ -149,6 +150,7 @@ void RepoGlobalManager::unbindManagerEvents(RepoManager *manager)
     disconnect(manager, &RepoManager::filesChanged, this, &RepoGlobalManager::onManagerFilesChanged);
     disconnect(manager, &RepoManager::syncNotification, this, &RepoGlobalManager::onManagerSyncNotification);
     disconnect(manager, &RepoManager::conflictDetected, this, &RepoGlobalManager::onManagerConflictDetected);
+    disconnect(manager, &RepoManager::credentialExpired, this, &RepoGlobalManager::onManagerCredentialExpired);
 }
 
 void RepoGlobalManager::connectActiveRepoSignals(QObject *receiver)
@@ -160,6 +162,7 @@ void RepoGlobalManager::connectActiveRepoSignals(QObject *receiver)
     connect(m_activeManager, SIGNAL(filesChanged()), receiver, SLOT(filesChanged()), Qt::UniqueConnection);
     connect(m_activeManager, SIGNAL(syncNotification(QString)), receiver, SLOT(syncNotification(QString)), Qt::UniqueConnection);
     connect(m_activeManager, SIGNAL(conflictDetected(QStringList)), receiver, SLOT(conflictDetected(QStringList)), Qt::UniqueConnection);
+    connect(m_activeManager, SIGNAL(credentialExpired(QString,QString)), receiver, SLOT(credentialExpired(QString,QString)), Qt::UniqueConnection);
 }
 
 void RepoGlobalManager::onManagerFilesChanged()
@@ -175,6 +178,11 @@ void RepoGlobalManager::onManagerSyncNotification(const QString &msg)
 void RepoGlobalManager::onManagerConflictDetected(const QStringList &files)
 {
     emit conflictDetected(files);
+}
+
+void RepoGlobalManager::onManagerCredentialExpired(const QString &repoName, const QString &path)
+{
+    emit credentialExpired(repoName, path);
 }
 
 } // namespace SVNFileBox

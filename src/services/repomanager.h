@@ -56,6 +56,11 @@ signals:
     void syncNotification(const QString &message);
     void conflictDetected(const QStringList &conflictedFiles);
     void stateChanged(RepoState newState);
+    // Credentials expired or invalid for this repo. Mirrors WPF's
+    // CredentialExpired event. Listeners (RepoGlobalManager, QML) should
+    // show a "update credentials" dialog and call svnClient->clearAuthCache()
+    // to force re-prompt.
+    void credentialExpired(const QString &repoName, const QString &path);
 
 private:
     RepoState m_state = RepoState::None;

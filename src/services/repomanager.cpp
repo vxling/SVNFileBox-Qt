@@ -16,6 +16,13 @@ RepoManager::RepoManager(const Repository &repo, QObject *parent)
     connect(executor, &SvnCommandExecutor::onCommandCompleted, this, [this](const SvnCommandResult &) {
         emitFilesChanged();
     });
+    // Auth error: SVN auth permanently failed even after retry. Bubble up.
+    connect(executor, &SvnCommandExecutor::onAuthError, this,
+            [this](const QString &path) {
+        qWarning() << "[RepoManager] Credential expired for" << repository.name
+                   << "at" << path;
+        emit credentialExpired(repository.name, path);
+    });
     connect(syncEngine, &SyncEngine::syncNotification, this, &RepoManager::emitSyncNotification);
     connect(syncEngine, &SyncEngine::conflictDetected, this, &RepoManager::emitConflictDetected);
 }

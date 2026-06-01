@@ -11,6 +11,7 @@
 #include <QtCore/QVariant>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSemaphore>
+#include <QtCore/QDateTime>
 
 class SVNClient;
 
@@ -93,6 +94,9 @@ private:
     bool m_drained = false;
     QMutex m_drainMutex;
     QWaitCondition m_drainCond;
+    // Throttle svn cleanup: run at most once per 60s per executor
+    QDateTime m_lastCleanupAt;
+    void maybeRunStaleLockCleanup(const QString &path);
 };
 
 } // namespace SVNFileBox
