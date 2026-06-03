@@ -318,11 +318,12 @@ Item {
                                 anchors.rightMargin: 12
                                 spacing: 0
 
-                                Label { Layout.minimumWidth: 40; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("#") }
-                                Label { Layout.minimumWidth: 288; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("名称") }
-                                Label { Layout.minimumWidth: 70; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("大小") }
-                                Label { Layout.minimumWidth: 90; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("修改时间") }
-                                Label { Layout.minimumWidth: 140; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("SVN 状态") }
+                                Label { Layout.minimumWidth: 40; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("类型") }
+                                Label { Layout.minimumWidth: 280; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("名称") }
+                                Label { Layout.minimumWidth: 70; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("状态") }
+                                Label { Layout.minimumWidth: 90; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("大小") }
+                                Label { Layout.minimumWidth: 140; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("修改时间") }
+                                Label { Layout.minimumWidth: 80; font.pixelSize: 11; font.weight: Font.DemiBold; color: "#888888"; text: qsTr("文件类型") }
                             }
                         }
                     }
@@ -1516,7 +1517,5 @@ Item {
                 onClicked: conflictDialog.close()
             }
         }
-        Component.onCompleted: conflictDialog.close()
-        Component.onDestruction: conflictDialog.close()
     }
 }

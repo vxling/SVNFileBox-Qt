@@ -387,10 +387,20 @@ void SyncEngine::onDirChanged(const QString &path)
     // since a new dir probably means new files. Mirrors WPF FSW's
     // Renamed/Created events.
     if (m_watcher && !m_localPath.isEmpty()) {
-        QStringList currentDirs = m_watcher->directories();
+        int watchedBefore = m_watcher->directories().size();
         // Re-add anything missing by walking the tree again
         addPathRecursive(m_localPath);
-        Q_UNUSED(currentDirs);
+        int watchedAfter = m_watcher->directories().size();
+
+        // R1 fix: if the watcher silently lost directories (count dropped),
+        // it means the underlying inotify fd is exhausted or corrupted.
+        // Trigger a full reconnect rather than continuing with a broken watcher.
+        if (watchedAfter < watchedBefore && watchedAfter > 0) {
+            qWarning() << "[SyncEngine] Watcher目录数异常减少:" << watchedBefore << "->" << watchedAfter << ", 触发重连";
+            m_watcherRetryCount = 0;
+            reconnectWatcher();
+            return;
+        }
     }
 
     if (!m_debounceTimer->isActive()) {
