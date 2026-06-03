@@ -490,9 +490,11 @@ QStringList SVNClient::getServerUpdatePaths(const QString &path)
     QXmlStreamReader xml(output);
     while (!xml.atEnd()) {
         if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
-            // Only include entries that have remote updates (status="hidden" or has 'r'* marker)
+            // Only include entries that have remote updates (status="hidden" means
+            // the server has a newer version that needs to be updated locally).
             QString filePath = xml.attributes().value("path").toString();
-            if (!filePath.isEmpty())
+            QString statusAttr = xml.attributes().value("status").toString();
+            if (!filePath.isEmpty() && statusAttr == "hidden")
                 paths.append(filePath);
         }
     }
