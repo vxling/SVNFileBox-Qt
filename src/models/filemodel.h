@@ -9,6 +9,7 @@
 
 class SVNClient;
 class FileCopier;
+#include "services/repoglobalmanager.h"
 
 class FileItem
 {
@@ -66,6 +67,7 @@ public:
 
     void setSvnClient(SVNClient *client) { m_svnClient = client; }
     SVNClient *svnClient() const { return m_svnClient; }
+    void setGlobalManager(SVNFileBox::RepoGlobalManager *gm) { m_globalManager = gm; }
 
     QString currentPath() const { return m_currentPath; }
     void setCurrentPath(const QString &path);
@@ -80,6 +82,7 @@ private:
     QList<FileItem> m_files;
     QString m_currentPath;
     SVNClient *m_svnClient = nullptr;
+    SVNFileBox::RepoGlobalManager *m_globalManager = nullptr;
     FileCopier *m_copier = nullptr;
 
     static QString formatFileSize(qint64 bytes);

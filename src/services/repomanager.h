@@ -64,6 +64,8 @@ public:
     Q_INVOKABLE void renameRepo(const QString &newName);
     Q_INVOKABLE void updateUrl(const QString &newUrl);
     Q_INVOKABLE SvnCommandExecutor *activeExecutor() const { return executor; }
+    Q_INVOKABLE CommitQueue *commitQueue() const { return m_commitQueue; }
+    Q_INVOKABLE void enqueueCommit(const QString &path, int operation, const QString &fromPath = QString());
 
     void emitFilesChanged();
     void emitSyncNotification(const QString &msg);
@@ -89,6 +91,7 @@ signals:
 
 private:
     RepoState m_state = RepoState::None;
+    CommitQueue *m_commitQueue = nullptr;
 };
 
 } // namespace SVNFileBox

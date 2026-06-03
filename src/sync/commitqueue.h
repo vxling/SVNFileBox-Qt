@@ -6,7 +6,6 @@
 #include <QList>
 #include <QMutex>
 #include <QMutexLocker>
-#include <QWaitCondition>
 
 class CommitQueue : public QObject
 {
@@ -38,7 +37,8 @@ public:
         int retryCount = 0;
     };
 
-    static CommitQueue &instance();
+    explicit CommitQueue(QObject *parent = nullptr);
+    ~CommitQueue() = default;
 
     Q_INVOKABLE int count() const;
     Q_INVOKABLE void enqueue(const QString &path, int operation, const QString &fromPath = QString());
@@ -49,7 +49,6 @@ public:
     Q_INVOKABLE void markFailed(const QList<Item> &items);
     Q_INVOKABLE QList<Item> getStaleItems(int maxRetries = 3) const;
     Q_INVOKABLE void prune();
-    Q_INVOKABLE void save();
 
     Q_INVOKABLE QString toJson() const;
     Q_INVOKABLE static QString operationName(int op);
@@ -59,18 +58,10 @@ signals:
     void queueChanged();
 
 private:
-    explicit CommitQueue(QObject *parent = nullptr);
-    ~CommitQueue() = default;
-    CommitQueue(const CommitQueue &) = delete;
-    CommitQueue &operator=(const CommitQueue &) = delete;
-
-    void load();
-    void saveInternal();
-    QString queueFilePath() const;
+    void removeCommitted(const QList<Item> &items);
 
     mutable QMutex m_mutex;
     QList<Item> m_items;
-    QString m_queuePath;
 };
 
 #endif // COMMITQUEUE_H

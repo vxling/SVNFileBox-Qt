@@ -66,6 +66,8 @@ public slots:
     Q_INVOKABLE void renameRepoByName(const QString &oldName, const QString &newName);
     // Convenience: resolve manager by name and update URL. No-op if not found.
     Q_INVOKABLE void updateRepoUrlByName(const QString &name, const QString &newUrl);
+    // Route enqueue to active manager's CommitQueue. No-op if no active manager.
+    Q_INVOKABLE void enqueueCommit(const QString &path, int operation, const QString &fromPath = QString());
 
 private slots:
     void onManagerFilesChanged();

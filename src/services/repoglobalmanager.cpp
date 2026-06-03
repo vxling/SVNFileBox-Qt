@@ -254,4 +254,11 @@ void RepoGlobalManager::onManagerRepositoryChanged(const QString &oldName,
     emit repositoryChanged(oldName, newName, oldUrl, newUrl);
 }
 
+void RepoGlobalManager::enqueueCommit(const QString &path, int operation, const QString &fromPath)
+{
+    if (m_activeManager) {
+        m_activeManager->enqueueCommit(path, operation, fromPath);
+    }
+}
+
 } // namespace SVNFileBox

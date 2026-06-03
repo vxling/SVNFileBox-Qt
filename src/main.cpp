@@ -43,12 +43,6 @@ int main(int argc, char *argv[])
             return &inst;
         });
 
-    // CommitQueue singleton
-    qmlRegisterSingletonType<CommitQueue>("SVNFileBox.Sync", 1, 0, "CommitQueue",
-        [](QQmlEngine *, QJSEngine *) -> QObject * {
-            return &CommitQueue::instance();
-        });
-
     // SyncRecordService singleton
     qmlRegisterSingletonType<SyncRecordService>("SVNFileBox.Sync", 1, 0, "SyncRecordService",
         [](QQmlEngine *, QJSEngine *) -> QObject * {
@@ -58,7 +52,6 @@ int main(int argc, char *argv[])
     // ── Singleton instances ─────────────────────────────────────
     SVNClient svnClient;
     ConfigService configService;
-    CommitQueue &commitQueue = CommitQueue::instance();
     SyncRecordService *recordService = SyncRecordService::instance();
     TrayManager trayManager;
 
@@ -71,6 +64,7 @@ int main(int argc, char *argv[])
     // FileModel (uses configService for current repo path)
     FileModel fileModel;
     fileModel.setSvnClient(&svnClient);
+    fileModel.setGlobalManager(&globalManager);
 
     // SyncEngine (created per RepoManager, not as global singleton)
     // Each RepoManager creates its own SyncEngine + SvnCommandExecutor
@@ -87,7 +81,6 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("fileModel", &fileModel);
     engine.rootContext()->setContextProperty("syncEngine", &syncEngine);
     engine.rootContext()->setContextProperty("syncRecordService", recordService);
-    engine.rootContext()->setContextProperty("commitQueue", &commitQueue);
 
     // P3 #4: install translator BEFORE loading QML. Picks the right .qm
     // based on configService.language() (auto / zh-CN / en).

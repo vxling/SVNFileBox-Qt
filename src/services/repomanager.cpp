@@ -19,6 +19,8 @@ RepoManager::RepoManager(const Repository &repo, QObject *parent)
     executor = new SvnCommandExecutor(repoClient, this);
     syncEngine = new SyncEngine(this);
     syncEngine->setSvnClient(repoClient);
+    m_commitQueue = new CommitQueue(this);
+    syncEngine->setCommitQueue(m_commitQueue);
 
     connect(executor, &SvnCommandExecutor::onCommandCompleted, this, [this](const SvnCommandResult &) {
         emitFilesChanged();
@@ -122,6 +124,13 @@ void RepoManager::emitSyncNotification(const QString &msg)
 void RepoManager::emitConflictDetected(const QStringList &files)
 {
     emit conflictDetected(files);
+}
+
+void RepoManager::enqueueCommit(const QString &path, int operation, const QString &fromPath)
+{
+    if (m_commitQueue) {
+        m_commitQueue->enqueue(path, operation, fromPath);
+    }
 }
 
 } // namespace SVNFileBox

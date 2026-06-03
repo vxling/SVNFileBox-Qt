@@ -2,6 +2,7 @@
 #include "ignorepattern.h"
 #include "svn/svnclient.h"
 #include "sync/syncrecordservice.h"
+#include "sync/commitqueue.h"
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -772,11 +773,11 @@ int SyncEngine::handleConflicts()
 
 void SyncEngine::retryPending()
 {
-    CommitQueue &queue = CommitQueue::instance();
-    QList<CommitQueue::Item> pending = queue.resolve();
+    if (!m_commitQueue) return;
+    QList<CommitQueue::Item> pending = m_commitQueue->resolve();
     if (pending.isEmpty()) return;
 
-    queue.markInProgress(pending);
+    m_commitQueue->markInProgress(pending);
     for (const CommitQueue::Item &it : pending) {
         if (!QFile::exists(it.path) && !QDir(it.path).exists()) {
             if (isSvnManaged(it.path)) {
@@ -786,13 +787,15 @@ void SyncEngine::retryPending()
         }
         commitFile(it.path);
     }
-    queue.markCommitted(pending);
+    m_commitQueue->markCommitted(pending);
 }
 
 void SyncEngine::addPending(const QString &path)
 {
     if (isTempFile(path)) return;
-    CommitQueue::instance().enqueue(path, CommitQueue::OpModify);
+    if (m_commitQueue) {
+        m_commitQueue->enqueue(path, CommitQueue::OpModify);
+    }
 }
 
 bool SyncEngine::isSvnManaged(const QString &path) const

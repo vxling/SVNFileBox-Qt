@@ -149,7 +149,7 @@ bool FileModel::createDirectory(const QString &path)
         return false;
     m_svnClient->add(path);
     bool ok = m_svnClient->commit(path, "[SVNFileBox] Add folder: " + QFileInfo(path).fileName());
-    CommitQueue::instance().enqueue(path, CommitQueue::OpAdd);
+    m_globalManager->enqueueCommit(path, CommitQueue::OpAdd);
     return ok;
 }
 
@@ -159,7 +159,7 @@ bool FileModel::createFile(const QString &fullPath)
         return false;
     m_svnClient->add(fullPath);
     bool ok = m_svnClient->commit(fullPath, "[SVNFileBox] Add file: " + QFileInfo(fullPath).fileName());
-    CommitQueue::instance().enqueue(fullPath, CommitQueue::OpAdd);
+    m_globalManager->enqueueCommit(fullPath, CommitQueue::OpAdd);
     return ok;
 }
 
@@ -189,7 +189,7 @@ QString FileModel::pasteFromClipboard()
     if (QFile::copy(src, dst)) {
         // svn add and enqueue for debounced commit
         m_svnClient->add(dst);
-        CommitQueue::instance().enqueue(dst, CommitQueue::OpAdd);
+        m_globalManager->enqueueCommit(dst, CommitQueue::OpAdd);
         return dst;
     }
     return QString();
@@ -227,7 +227,7 @@ QString FileModel::importFiles(const QStringList &paths, const QString &destPath
     for (const QString &item : newItems) {
         m_svnClient->add(item);
         // Enqueue each new file for debounced commit via CommitQueue
-        CommitQueue::instance().enqueue(item, CommitQueue::OpAdd);
+        m_globalManager->enqueueCommit(item, CommitQueue::OpAdd);
     }
 
     return newItems.join(", ");
@@ -279,7 +279,7 @@ void FileModel::importFilesAsync(const QStringList &paths, const QString &destPa
                 // svn add all newly-copied paths + enqueue commit
                 for (const QString &p : r.svnAddedPaths) {
                     m_svnClient->add(p);
-                    CommitQueue::instance().enqueue(p, CommitQueue::OpAdd);
+                    m_globalManager->enqueueCommit(p, CommitQueue::OpAdd);
                 }
             }
             emit copyCompleted(r.copiedCount, r.skippedCount, r.overwrittenCount,

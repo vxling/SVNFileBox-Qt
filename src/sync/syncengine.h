@@ -23,6 +23,7 @@ public:
     ~SyncEngine();
 
     void setSvnClient(SVNClient *client) { m_svnClient = client; }
+    void setCommitQueue(CommitQueue *queue) { m_commitQueue = queue; }
     void setSyncRecordService(SyncRecordService *svc) { m_recordService = svc; }
 
     Q_INVOKABLE void startSync(const QString &repoName, const QString &localPath, const QString &remoteUrl,
@@ -88,6 +89,7 @@ private:
     bool isTempFile(const QString &path) const;
 
     SVNClient *m_svnClient = nullptr;
+    CommitQueue *m_commitQueue = nullptr;
     SyncRecordService *m_recordService = nullptr;
 
     QString m_repoName;
