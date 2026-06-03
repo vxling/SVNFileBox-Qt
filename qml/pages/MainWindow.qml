@@ -976,15 +976,15 @@ Item {
                     }
                 }
 
-    FileDialog {
-        id: localRepoDialog
-        title: qsTr("选择 SVN 工作副本目录")
-        fileMode: FileDialog.Directory
-        folder: "file:///home/osuser"
-        onAccepted: {
-            localRepoPathInput.text = localRepoDialog.folder
-        }
-    }
+                FileDialog {
+                    id: localRepoDialog
+                    title: qsTr("选择 SVN 工作副本目录")
+                    fileMode: FileDialog.Directory
+                    folder: "file:///home/osuser"
+                    onAccepted: {
+                        localRepoPathInput.text = localRepoDialog.folder
+                    }
+                }
 
                 RowLayout {
                     spacing: 12
