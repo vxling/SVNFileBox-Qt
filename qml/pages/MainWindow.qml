@@ -159,9 +159,9 @@ Item {
                 ColumnLayout {
                     Layout.topMargin: 8
                     spacing: 8
-                    width: parent.width
+                    Layout.fillWidth: true
 
-                    Rectangle { height: 1; color: "#E8E8E8"; Layout.fillWidth: true }
+                    Rectangle { Layout.preferredHeight: 1; Layout.fillWidth: true; color: "#E8E8E8" }
 
                     SidebarButton {
                         icon: "🌐"; text: qsTr("从网络添加仓库")
@@ -179,7 +179,7 @@ Item {
                         onClicked: syncRecordsDrawer.open()
                     }
 
-                    Rectangle { height: 1; color: "#E8E8E8"; Layout.topMargin: 4; Layout.bottomMargin: 4; Layout.fillWidth: true }
+                    Rectangle { Layout.preferredHeight: 1; Layout.topMargin: 4; Layout.bottomMargin: 4; Layout.fillWidth: true; color: "#E8E8E8" }
 
                     SidebarButton {
                         icon: "⚙️"; text: qsTr("设置")
@@ -391,10 +391,9 @@ Item {
 
             Rectangle {
                 id: syncIndicator
-                width: 10
-                height: 10
+                implicitWidth: 10
+                implicitHeight: 10
                 radius: 5
-                color: "#FFFFFF"
                 visible: running
                 property bool running: false
                 SequentialAnimation on color {
@@ -524,63 +523,6 @@ Item {
             text: qsTr("手工同步")
             enabled: fileContextMenu.hasRepo
             onTriggered: manualSync()
-        }
-    }
-
-    // ================================================================
-    // Delegate 定义
-    // ================================================================
-    Component {
-        id: fileItemDelegate
-        FileListItem {
-            id: fileListItem
-            name: model.name
-            fullPath: model.fullPath
-            isDirectory: model.isDirectory
-            svnStatus: model.svnStatus
-            fileSizeDisplay: model.fileSizeDisplay
-            lastModifiedDisplay: model.lastModifiedDisplay
-            isCurrentPath: model.isCurrentPath
-
-            onDoubleClicked: {
-                if (model.isCurrentPath) {
-                    goUp()
-                } else if (model.isDirectory) {
-                    navigateInto(model.fullPath)
-                } else {
-                    openInExplorer()
-                }
-            }
-
-            onContextMenuRequested: {
-                fileContextMenu.currentIndex = index
-                var g = fileListItem.mapToItem(null, x, y)
-                fileContextMenu.popup(g.x, g.y)
-            }
-        }
-    }
-
-    Component {
-        id: repoListDelegate
-        RepoListItem {
-            repoName: model.name
-            repoPath: model.path
-            repoType: model.type
-            isSelected: model.isSelected
-            onItemClicked: selectRepo(index)
-            onRemoveClicked: removeRepo(index)
-            onRenameClicked: {
-                renameRepoDialog.index = index
-                renameRepoDialog.oldName = model.name
-                renameRepoDialog.newNameField.text = model.name
-                renameRepoDialog.open()
-            }
-            onEditUrlClicked: {
-                editRepoDialog.index = index
-                editRepoDialog.name = model.name
-                editRepoDialog.urlField.text = model.url
-                editRepoDialog.open()
-            }
         }
     }
 
@@ -879,643 +821,60 @@ Item {
     }
 
     // ================================================================
-    // Drawer：设置（Loader + sourceComponent）
+    // Extracted Drawer Components
     // ================================================================
-    Drawer {
+    SettingsDrawer {
         id: settingsDrawer
-        edge: Qt.RightEdge
-        width: parent.width * 0.5
-        height: parent.height - 36
-        y: 0
-        position: 0
-
-        Loader {
-            anchors.fill: parent
-            sourceComponent: settingsDrawerContent
-        }
     }
 
-    Component {
-        id: settingsDrawerContent
-        SettingsDrawerContent {
-            onSaveClicked: saveSettings()
-            onCloseClicked: settingsDrawer.close()
-        }
-    }
-
-    // ================================================================
-    // Drawer：从网络添加仓库（Loader）
-    // ================================================================
-    Drawer {
+    CheckoutDrawer {
         id: checkoutDrawer
-        edge: Qt.RightEdge
-        width: parent.width * 0.5
-        height: parent.height - 36
-        y: 0
-        position: 0
-
-        Loader {
-            anchors.fill: parent
-            sourceComponent: checkoutDrawerContent
-        }
     }
 
-    Component {
-        id: checkoutDrawerContent
-        CheckoutDrawerContent {
-            onConfirmClicked: doCheckout()
-            onCancelClicked: checkoutDrawer.close()
-        }
-    }
-
-    // ================================================================
-    // Drawer：添加本地仓库（内联，保持不变）
-    // ================================================================
-    Drawer {
+    AddLocalDrawer {
         id: addLocalDrawer
-        edge: Qt.RightEdge
-        width: parent.width * 0.5
-        height: parent.height - 36
-        y: 0
-        position: 0
-
-        Rectangle {
-            anchors.fill: parent
-            color: "#FFFFFF"
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 40
-                spacing: 16
-
-                Label {
-                    text: qsTr("添加本地仓库")
-                    font.pixelSize: 20
-                    font.weight: Font.DemiBold
-                    color: "#1A1A2E"
-                }
-
-                Label {
-                    text: qsTr("选择一个已有的 SVN 工作副本目录")
-                    font.pixelSize: 13
-                    color: "#666666"
-                }
-
-                RowLayout {
-                    spacing: 12
-                    TextField {
-                        id: localRepoPathInput
-                        placeholderText: qsTr("选择本地 SVN 工作副本目录")
-                        Layout.fillWidth: true
-                        readOnly: true
-                    }
-                    Button {
-                        text: qsTr("浏览...")
-                        implicitWidth: 90; implicitHeight: 36
-                        onClicked: localRepoDialog.open()
-                    }
-                }
-
-                FileDialog {
-                    id: localRepoDialog
-                    title: qsTr("选择 SVN 工作副本目录")
-                    fileMode: FileDialog.Directory
-                    folder: "file:///home/osuser"
-                    onAccepted: {
-                        localRepoPathInput.text = localRepoDialog.folder
-                    }
-                }
-
-                RowLayout {
-                    spacing: 12
-                    Button {
-                        text: qsTr("确认")
-                        implicitWidth: 100; implicitHeight: 36
-                        onClicked: doAddLocal()
-                    }
-                    Button {
-                        text: qsTr("取消")
-                        implicitWidth: 80; implicitHeight: 36
-                        onClicked: addLocalDrawer.close()
-                    }
-                }
-
-                Item { Layout.fillHeight: true }
-                Label { id: addLocalStatusLabel; text: ""; color: "#E53935"; font.pixelSize: 12 }
-            }
-        }
     }
 
-    // ================================================================
-    // Drawer：同步记录（Loader）
-    // ================================================================
-    Drawer {
+    SyncRecordsDrawer {
         id: syncRecordsDrawer
-        edge: Qt.RightEdge
-        width: parent.width * 0.6
-        height: parent.height - 36
-        y: 0
-        position: 0
-
-        Loader {
-            anchors.fill: parent
-            sourceComponent: syncRecordsDrawerContent
-        }
     }
 
-    Component {
-        id: syncRecordsDrawerContent
-        SyncRecordsDrawerContent {
-            onClearClicked: syncRecordService.clearRecords()
-            onCloseClicked: syncRecordsDrawer.close()
-        }
-    }
-
-    // ================================================================
-    // Drawer：关于（Loader）
-    // ================================================================
-    Drawer {
+    AboutDrawer {
         id: aboutDrawer
-        edge: Qt.RightEdge
-        width: parent.width * 0.5
-        height: parent.height - 36
-        y: 0
-        position: 0
-
-        Loader {
-            anchors.fill: parent
-            sourceComponent: aboutDrawerContent
-        }
-    }
-
-    Component {
-        id: aboutDrawerContent
-        AboutDrawerContent {
-            onCloseClicked: aboutDrawer.close()
-        }
     }
 
     // ================================================================
-    // confirmDeleteDialog
-    Popup {
+    // Extracted Dialog Components
+    // ================================================================
+    ConfirmDeleteDialog {
         id: confirmDeleteDialog
-        property string fileToDelete: ""
-        property string fileName: ""
-        anchors.centerIn: parent
-        width: 360
-        height: confirmDeleteDialogContent.height + 40
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        padding: 20
-        Column {
-            id: confirmDeleteDialogContent
-            spacing: 16
-            Label {
-                text: qsTr("确认删除")
-                font.pixelSize: 16
-                font.weight: Font.DemiBold
-            }
-            Label {
-                // Pre-existing string-concat bug fix: qsTr(...) returns a
-                // translated string but applying '+' to its result is fine
-                // since it's a regular JS string. We translate the prefix
-                // and append the file name without re-translation.
-                text: qsTr("确定要删除 \"") + confirmDeleteDialog.fileName + qsTr("\" 吗？此操作不可撤销。")
-                wrapMode: Text.WordWrap
-                width: 300
-            }
-            Row {
-                spacing: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-                Button {
-                    text: qsTr("取消")
-                    onClicked: confirmDeleteDialog.close()
-                }
-                Button {
-                    text: qsTr("确定")
-                    highlighted: true
-                    onClicked: {
-                        confirmDeleteDialog.close()
-                        globalManager.activeManager.activeExecutor().executeLocalWrite(6, confirmDeleteDialog.fileToDelete)
-                    }
-                }
-            }
-        }
     }
 
-    // newFolderDialog
-    Popup {
+    NewFolderDialog {
         id: newFolderDialog
-        anchors.centerIn: parent
-        width: 360
-        height: newFolderDialogContent.height + 40
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        padding: 20
-        property alias newNameField: newFolderNameInput
-        Column {
-            id: newFolderDialogContent
-            spacing: 16
-            Label {
-                text: qsTr("新建文件夹")
-                font.pixelSize: 16
-                font.weight: Font.DemiBold
-            }
-            TextField {
-                id: newFolderNameInput
-                placeholderText: qsTr("新文件夹")
-                width: 300
-            }
-            Row {
-                spacing: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-                Button {
-                    text: qsTr("取消")
-                    onClicked: newFolderDialog.close()
-                }
-                Button {
-                    text: qsTr("确定")
-                    highlighted: true
-                    onClicked: {
-                        if (newFolderNameInput.text.trim() !== "") {
-                            var newPath = currentPath + "/" + newFolderNameInput.text.trim()
-                            if (fileModel.createDirectory(newPath)) {
-                                globalManager.activeManager.activeExecutor().executeLocalWrite(8, newPath)
-                            }
-                        }
-                        newFolderDialog.close()
-                    }
-                }
-            }
-        }
     }
 
-    // newFileDialog
-    Popup {
+    NewFileDialog {
         id: newFileDialog
-        anchors.centerIn: parent
-        width: 360
-        height: newFileDialogContent.height + 40
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        padding: 20
-        property string ext: "txt"
-        property alias newNameField: newFileNameInput
-        Column {
-            id: newFileDialogContent
-            spacing: 16
-            Label {
-                text: qsTr("新建文件")
-                font.pixelSize: 16
-                font.weight: Font.DemiBold
-            }
-            TextField {
-                id: newFileNameInput
-                placeholderText: qsTr("新建文件")
-                width: 300
-            }
-            Label {
-                text: qsTr("类型: .") + newFileDialog.ext
-                color: "#666"
-            }
-            Row {
-                spacing: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-                Button {
-                    text: qsTr("取消")
-                    onClicked: newFileDialog.close()
-                }
-                Button {
-                    text: qsTr("确定")
-                    highlighted: true
-                    onClicked: {
-                        var name = newFileNameInput.text.trim()
-                        if (name === "") { newFileDialog.close(); return }
-                        if (!name.endsWith("." + newFileDialog.ext))
-                            name += "." + newFileDialog.ext
-                        var fullPath = currentPath + "/" + name
-                        if (fileModel.createFile(fullPath)) {
-                            globalManager.activeManager.activeExecutor().executeLocalWrite(4, fullPath)
-                        }
-                        newFileDialog.close()
-                    }
-                }
-            }
-        }
     }
 
-    // renameDialog
-    Popup {
+    RenameDialog {
         id: renameDialog
-        anchors.centerIn: parent
-        width: 360
-        height: renameDialogContent.height + 40
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        padding: 20
-        property string oldPath: ""
-        property string oldName: ""
-        property alias newNameField: renameNameInput
-        Column {
-            id: renameDialogContent
-            spacing: 16
-            Label {
-                text: qsTr("重命名")
-                font.pixelSize: 16
-                font.weight: Font.DemiBold
-            }
-            TextField {
-                id: renameNameInput
-                placeholderText: qsTr("新名称")
-                width: 300
-            }
-            Row {
-                spacing: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-                Button {
-                    text: qsTr("取消")
-                    onClicked: renameDialog.close()
-                }
-                Button {
-                    text: qsTr("确定")
-                    highlighted: true
-                    onClicked: {
-                        if (renameNameInput.text.trim() !== "" && renameNameInput.text !== renameDialog.oldName) {
-                            var newPath = currentPath + "/" + renameNameInput.text.trim()
-                            globalManager.activeManager.activeExecutor().executeLocalWrite(5, newPath, renameDialog.oldPath)
-                        }
-                        renameDialog.close()
-                    }
-                }
-            }
-        }
     }
 
-    // renameRepoDialog — rename a repository (P3)
-    Popup {
+    RenameRepoDialog {
         id: renameRepoDialog
-        anchors.centerIn: parent
-        width: 380
-        height: renameRepoDialogContent.height + 40
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        padding: 20
-        property int index: -1
-        property string oldName: ""
-        property string statusText: ""
-        property alias newNameField: renameRepoNameInput
-        Column {
-            id: renameRepoDialogContent
-            spacing: 12
-            width: 340
-            Label {
-                text: qsTr("重命名仓库")
-                font.pixelSize: 16
-                font.weight: Font.DemiBold
-            }
-            Label {
-                text: qsTr("原名称：") + renameRepoDialog.oldName
-                font.pixelSize: 12
-                color: "#666666"
-            }
-            TextField {
-                id: renameRepoNameInput
-                placeholderText: qsTr("新名称")
-                width: 340
-                selectByMouse: true
-            }
-            Label {
-                text: renameRepoDialog.statusText
-                color: "#E53935"
-                font.pixelSize: 11
-                wrapMode: Text.WordWrap
-                width: 340
-                visible: text !== ""
-            }
-            Row {
-                spacing: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-                Button {
-                    text: qsTr("取消")
-                    onClicked: renameRepoDialog.close()
-                }
-                Button {
-                    text: qsTr("确定")
-                    highlighted: true
-                    onClicked: {
-                        var newName = renameRepoNameInput.text.trim()
-                        if (newName === "" || newName === renameRepoDialog.oldName) {
-                            renameRepoDialog.statusText = "新名称无效或与原名称相同"
-                            return
-                        }
-                        // Duplicate check against other rows
-                        for (var i = 0; i < repoListModel.count; i++) {
-                            if (i !== renameRepoDialog.index && repoListModel.get(i).name === newName) {
-                                renameRepoDialog.statusText = "已存在同名仓库"
-                                return
-                            }
-                        }
-                        // Find the manager. We use the helper which iterates
-                        // managers(); rename triggers repositoryChanged which
-                        // updates the ListModel + config in-place.
-                        globalManager.renameRepoByName(renameRepoDialog.oldName, newName)
-                        renameRepoDialog.close()
-                    }
-                }
-            }
-        }
     }
 
-    // editRepoDialog — change a repository's URL (P3, mirrors WPF EditRepoWindow)
-    Popup {
+    EditRepoDialog {
         id: editRepoDialog
-        anchors.centerIn: parent
-        width: 420
-        height: editRepoDialogContent.height + 40
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        padding: 20
-        property int index: -1
-        property string name: ""
-        property string statusText: ""
-        property alias urlField: editRepoUrlInput
-        Column {
-            id: editRepoDialogContent
-            spacing: 12
-            width: 380
-            Label {
-                text: qsTr("修改仓库 URL")
-                font.pixelSize: 16
-                font.weight: Font.DemiBold
-            }
-            Label {
-                text: qsTr("仓库：") + editRepoDialog.name
-                font.pixelSize: 12
-                color: "#666666"
-            }
-            TextField {
-                id: editRepoUrlInput
-                placeholderText: qsTr("新 URL (例如 https://svn.example.com/repo)")
-                width: 380
-                selectByMouse: true
-            }
-            Label {
-                // Pre-existing escape bug fix: the original used \" inside a
-                // qsTr() string but the trailing \" svn switch --relocate\"
-                // was unbalanced. Use single quotes / Chinese quotes to
-                // avoid escaping headaches.
-                text: qsTr("注：仅修改本地记录的 URL；如需重新定位工作副本，请使用 svn switch --relocate。")
-                font.pixelSize: 10
-                color: "#999999"
-                wrapMode: Text.WordWrap
-                width: 380
-            }
-            Label {
-                text: editRepoDialog.statusText
-                color: "#E53935"
-                font.pixelSize: 11
-                wrapMode: Text.WordWrap
-                width: 380
-                visible: text !== ""
-            }
-            Row {
-                spacing: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-                Button {
-                    text: qsTr("取消")
-                    onClicked: editRepoDialog.close()
-                }
-                Button {
-                    text: qsTr("保存")
-                    highlighted: true
-                    onClicked: {
-                        var newUrl = editRepoUrlInput.text.trim()
-                        if (newUrl === "") {
-                            editRepoDialog.statusText = "URL 不能为空"
-                            return
-                        }
-                        // Resolve the manager by name on the C++ side and
-                        // persist + emit repositoryChanged. QML never holds
-                        // a raw RepoManager* pointer.
-                        globalManager.updateRepoUrlByName(editRepoDialog.name, newUrl)
-                        editRepoDialog.close()
-                    }
-                }
-            }
-        }
     }
 
-    // copyProgressDialog — shows async file copy progress
-    Popup {
+    CopyProgressDialog {
         id: copyProgressDialog
-        anchors.centerIn: parent
-        width: 400
-        height: copyProgressColumn.height + 40
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        padding: 20
-        property int totalCount: 0
-        property int currentIndex: 0
-        property real bytesCopied: 0
-        property real totalBytes: 0
-        property string currentFile: ""
-        property bool wasCancelled: false
-
-        Column {
-            id: copyProgressColumn
-            spacing: 12
-            width: 360
-
-            Label {
-                text: qsTr("正在导入文件")
-                font.pixelSize: 16
-                font.weight: Font.DemiBold
-            }
-
-            Label {
-                text: copyProgressDialog.currentIndex + " / " + copyProgressDialog.totalCount
-                color: "#666"
-            }
-
-            ProgressBar {
-                id: copyProgressBar
-                width: 360
-                from: 0
-                to: copyProgressDialog.totalBytes > 0 ? copyProgressDialog.totalBytes : 1
-                value: copyProgressDialog.bytesCopied
-            }
-
-            Label {
-                text: copyProgressDialog.currentFile
-                elide: Text.ElideMiddle
-                width: 360
-                color: "#999"
-                font.pixelSize: 12
-            }
-
-            Row {
-                spacing: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-                Button {
-                    text: copyProgressDialog.wasCancelled ? "关闭" : "取消"
-                    onClicked: {
-                        if (!copyProgressDialog.wasCancelled) {
-                            fileModel.cancelCopy()
-                            copyProgressDialog.wasCancelled = true
-                        } else {
-                            copyProgressDialog.close()
-                        }
-                    }
-                }
-            }
-        }
     }
 
-    // conflictDialog
-    Popup {
+    ConflictDialog {
         id: conflictDialog
-        anchors.centerIn: parent
-        width: 500
-        height: 320
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        padding: 20
-        property var conflictFileList: []
-        Column {
-            anchors.fill: parent
-            spacing: 12
-            Label {
-                text: qsTr("冲突检测")
-                font.pixelSize: 16
-                font.weight: Font.DemiBold
-            }
-            Label {
-                text: qsTr("检测到文件冲突，请手动解决：")
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-            }
-            ListView {
-                id: conflictList
-                height: 180
-                width: parent.width
-                anchors.left: parent.left
-                anchors.right: parent.right
-                model: conflictDialog.conflictFileList
-                interactive: false
-                clip: true
-                delegate: Label {
-                    text: modelData
-                    font.pixelSize: 12
-                    color: "#E53935"
-                    wrapMode: Text.WordWrap
-                }
-            }
-            Button {
-                text: qsTr("确定")
-                anchors.horizontalCenter: parent.horizontalCenter
-                highlighted: true
-                onClicked: conflictDialog.close()
-            }
-        }
     }
 }
