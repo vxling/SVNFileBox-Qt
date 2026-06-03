@@ -1,4 +1,5 @@
 #include "repomanager.h"
+#include "svn/svnclient.h"
 #include "svn/svncommandexecutor.h"
 #include "svn/svncommand.h"
 #include "sync/syncengine.h"
@@ -10,8 +11,14 @@ namespace SVNFileBox {
 RepoManager::RepoManager(const Repository &repo, QObject *parent)
     : QObject(parent), repository(repo)
 {
-    executor = new SvnCommandExecutor(nullptr, this);
+    // Each repo gets its own SVNClient for thread-safe write operations.
+    // The global svnClient (main.cpp) handles shared read operations like
+    // checkout and repo info. Per-repo clients handle local writes via
+    // executor and sync operations.
+    SVNClient *repoClient = new SVNClient(this);
+    executor = new SvnCommandExecutor(repoClient, this);
     syncEngine = new SyncEngine(this);
+    syncEngine->setSvnClient(repoClient);
 
     connect(executor, &SvnCommandExecutor::onCommandCompleted, this, [this](const SvnCommandResult &) {
         emitFilesChanged();
