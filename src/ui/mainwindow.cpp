@@ -334,7 +334,17 @@ void MainWindow::onFileDoubleClicked(const QModelIndex &index)
 
 void MainWindow::onRefreshClicked()
 {
-    m_fileModel->load(m_currentPath);
+    QString path = m_currentPath;
+    // Fallback: if m_currentPath is empty, use the active repo's path
+    if (path.isEmpty()) {
+        auto *active = m_globalManager->activeManager();
+        if (active) {
+            path = active->repository.path;
+        }
+    }
+    if (!path.isEmpty()) {
+        m_fileModel->load(path);
+    }
 }
 
 void MainWindow::onPathEditingFinished()
