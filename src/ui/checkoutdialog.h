@@ -1,9 +1,13 @@
 #pragma once
 #include <QDialog>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
-#include "../services/repoglobalmanager.h"
+
+namespace SVNFileBox {
+class RepoGlobalManager;
+}
+
+namespace Ui {
+class CheckoutDialog;
+}
 
 class CheckoutDialog : public QDialog
 {
@@ -22,13 +26,6 @@ private slots:
     void onCancelClicked();
 
 private:
+    Ui::CheckoutDialog *ui = nullptr;
     SVNFileBox::RepoGlobalManager *m_globalManager = nullptr;
-
-    QLineEdit *m_nameInput;
-    QLineEdit *m_urlInput;
-    QLineEdit *m_userInput;
-    QLineEdit *m_passInput;
-    QLineEdit *m_folderInput;
-    QPushButton *m_browseBtn;
-    QLabel *m_statusLabel;
 };

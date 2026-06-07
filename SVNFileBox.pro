@@ -78,6 +78,14 @@ HEADERS += \
 TRANSLATIONS += \
     src/i18n/zh_CN.ts
 
+# ── UI Designer forms ──────────────────────────────────────────────
+FORMS += \
+    src/ui/settingsdialog.ui \
+    src/ui/addlocaldialog.ui \
+    src/ui/checkoutdialog.ui \
+    src/ui/newfiledialog.ui \
+    src/ui/newfolderdialog.ui
+
 # ── Resources ─────────────────────────────────────────────────────
 RESOURCES += \
     resources.qrc

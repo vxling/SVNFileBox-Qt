@@ -1,11 +1,11 @@
 #pragma once
 #include <QDialog>
-#include <QLineEdit>
-#include <QComboBox>
-#include <QCheckBox>
-#include <QSpinBox>
 
 class ConfigService;
+
+namespace Ui {
+class SettingsDialog;
+}
 
 class SettingsDialog : public QDialog
 {
@@ -20,17 +20,8 @@ private slots:
     void onCancelClicked();
 
 private:
-    void loadSettings();
-
+    Ui::SettingsDialog *ui = nullptr;
     ConfigService *m_configService = nullptr;
 
-    QCheckBox *m_autoSyncCheck;
-    QSpinBox *m_syncIntervalSpin;
-    QLineEdit *m_proxyUrlInput;
-    QCheckBox *m_autoStartCheck;
-    QCheckBox *m_minimizeToTrayCheck;
-    QCheckBox *m_autoStartMinimizeCheck;
-    QSpinBox *m_timeoutSpin;
-    QComboBox *m_languageCombo;
-    QComboBox *m_themeCombo;
+    void loadSettings();
 };

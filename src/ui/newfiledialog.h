@@ -2,10 +2,20 @@
 #include <QDialog>
 #include <QLineEdit>
 #include <QLabel>
-#include <QPushButton>
 
 class FileModel;
 
+namespace Ui {
+class NewFileDialog;
+class NewFolderDialog;
+class RenameDialog;
+class RenameRepoDialog;
+class EditRepoDialog;
+class ConfirmDeleteDialog;
+class ConflictDialog;
+}
+
+// ── NewFileDialog ──────────────────────────────────────────────
 class NewFileDialog : public QDialog
 {
     Q_OBJECT
@@ -19,14 +29,13 @@ private slots:
     void onCancelClicked();
 
 private:
+    Ui::NewFileDialog *ui = nullptr;
     FileModel *m_fileModel = nullptr;
     QString m_currentPath;
-    QString m_ext;
-
-    QLineEdit *m_nameInput;
-    QLabel *m_typeLabel;
+    QString m_ext = QStringLiteral("txt");
 };
 
+// ── NewFolderDialog ─────────────────────────────────────────────
 class NewFolderDialog : public QDialog
 {
     Q_OBJECT
@@ -40,12 +49,12 @@ private slots:
     void onCancelClicked();
 
 private:
+    Ui::NewFolderDialog *ui = nullptr;
     FileModel *m_fileModel = nullptr;
     QString m_currentPath;
-
-    QLineEdit *m_nameInput;
 };
 
+// ── RenameDialog ───────────────────────────────────────────────
 class RenameDialog : public QDialog
 {
     Q_OBJECT
@@ -59,10 +68,11 @@ private slots:
     void onCancelClicked();
 
 private:
-    QLineEdit *m_nameInput;
+    QLineEdit *m_nameInput = nullptr;
     QString m_oldPath;
 };
 
+// ── RenameRepoDialog ────────────────────────────────────────────
 class RenameRepoDialog : public QDialog
 {
     Q_OBJECT
@@ -76,10 +86,11 @@ private slots:
     void onCancelClicked();
 
 private:
-    QLineEdit *m_nameInput;
+    QLineEdit *m_nameInput = nullptr;
     QString m_oldName;
 };
 
+// ── EditRepoDialog ─────────────────────────────────────────────
 class EditRepoDialog : public QDialog
 {
     Q_OBJECT
@@ -93,11 +104,12 @@ private slots:
     void onCancelClicked();
 
 private:
-    QLineEdit *m_urlInput;
+    QLineEdit *m_urlInput = nullptr;
     QString m_name;
-    QLabel *m_statusLabel;
+    QLabel *m_statusLabel = nullptr;
 };
 
+// ── ConfirmDeleteDialog ────────────────────────────────────────
 class ConfirmDeleteDialog : public QDialog
 {
     Q_OBJECT
@@ -113,6 +125,7 @@ private:
     QString m_itemName;
 };
 
+// ── ConflictDialog ─────────────────────────────────────────────
 class ConflictDialog : public QDialog
 {
     Q_OBJECT

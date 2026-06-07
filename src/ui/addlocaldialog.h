@@ -1,13 +1,14 @@
 #pragma once
 #include <QDialog>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
 
 class ConfigService;
 
 namespace SVNFileBox {
 class RepoGlobalManager;
+}
+
+namespace Ui {
+class AddLocalDialog;
 }
 
 class AddLocalDialog : public QDialog
@@ -29,10 +30,7 @@ private slots:
     void onCancelClicked();
 
 private:
+    Ui::AddLocalDialog *ui = nullptr;
     SVNFileBox::RepoGlobalManager *m_globalManager = nullptr;
     ConfigService *m_configService = nullptr;
-
-    QLineEdit *m_pathInput;
-    QPushButton *m_browseBtn;
-    QLabel *m_statusLabel;
 };

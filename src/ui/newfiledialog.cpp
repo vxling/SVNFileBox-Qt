@@ -1,4 +1,6 @@
 #include "newfiledialog.h"
+#include "ui_newfiledialog.h"
+#include "ui_newfolderdialog.h"
 #include "../models/filemodel.h"
 
 #include <QVBoxLayout>
@@ -8,60 +10,37 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QFileInfo>
-#include <QInputDialog>
 
 // ── NewFileDialog ──────────────────────────────────────────────
 NewFileDialog::NewFileDialog(FileModel *fileModel, const QString &currentPath, QWidget *parent)
     : QDialog(parent)
+    , ui(new Ui::NewFileDialog)
     , m_fileModel(fileModel)
     , m_currentPath(currentPath)
     , m_ext(QStringLiteral("txt"))
 {
+    ui->setupUi(this);
     setWindowTitle(QStringLiteral("新建文件"));
     setFixedSize(360, 180);
-    setModal(true);
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(20, 20, 20, 16);
-    layout->setSpacing(12);
+    ui->confirmBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: #07C160; color: white; border: none; border-radius: 4px; }"
+        "QPushButton:hover { background: #06AD56; }"));
+    ui->cancelBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: #F5F5F5; color: #333; border: 1px solid #E0E0E0; border-radius: 4px; }"
+        "QPushButton:hover { background: #E0E0E0; }"));
 
-    QLabel *title = new QLabel(QStringLiteral("新建文件"));
-    title->setStyleSheet(QStringLiteral("QLabel { font-size: 16px; font-weight: bold; }"));
-    layout->addWidget(title);
+    ui->typeLabel->setText(QStringLiteral("类型: .") + m_ext);
 
-    m_nameInput = new QLineEdit();
-    m_nameInput->setFixedHeight(36);
-    m_nameInput->setPlaceholderText(QStringLiteral("新建文件"));
-    layout->addWidget(m_nameInput);
-
-    m_typeLabel = new QLabel(QStringLiteral("类型: .") + m_ext);
-    m_typeLabel->setStyleSheet(QStringLiteral("QLabel { color: #666; font-size: 12px; }"));
-    layout->addWidget(m_typeLabel);
-
-    QHBoxLayout *btnLayout = new QHBoxLayout();
-    btnLayout->addStretch();
-
-    QPushButton *confirmBtn = new QPushButton(QStringLiteral("确定"));
-    confirmBtn->setFixedSize(100, 36);
-    confirmBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; }"));
-
-    QPushButton *cancelBtn = new QPushButton(QStringLiteral("取消"));
-    cancelBtn->setFixedSize(80, 36);
-
-    btnLayout->addWidget(confirmBtn);
-    btnLayout->addWidget(cancelBtn);
-    layout->addLayout(btnLayout);
-
-    connect(confirmBtn, &QPushButton::clicked, this, &NewFileDialog::onConfirmClicked);
-    connect(cancelBtn, &QPushButton::clicked, this, &NewFileDialog::onCancelClicked);
+    connect(ui->confirmBtn, &QPushButton::clicked, this, &NewFileDialog::onConfirmClicked);
+    connect(ui->cancelBtn, &QPushButton::clicked, this, &NewFileDialog::onCancelClicked);
 }
 
 NewFileDialog::~NewFileDialog() = default;
 
 void NewFileDialog::onConfirmClicked()
 {
-    QString name = m_nameInput->text().trimmed();
+    QString name = ui->nameInput->text().trimmed();
     if (name.isEmpty()) {
         QMessageBox::warning(this, QStringLiteral("提示"), QStringLiteral("请输入文件名"));
         return;
@@ -85,50 +64,30 @@ void NewFileDialog::onCancelClicked()
 // ── NewFolderDialog ─────────────────────────────────────────────
 NewFolderDialog::NewFolderDialog(FileModel *fileModel, const QString &currentPath, QWidget *parent)
     : QDialog(parent)
+    , ui(new Ui::NewFolderDialog)
     , m_fileModel(fileModel)
     , m_currentPath(currentPath)
 {
+    ui->setupUi(this);
     setWindowTitle(QStringLiteral("新建文件夹"));
     setFixedSize(360, 160);
-    setModal(true);
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(20, 20, 20, 16);
-    layout->setSpacing(12);
+    ui->confirmBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: #07C160; color: white; border: none; border-radius: 4px; }"
+        "QPushButton:hover { background: #06AD56; }"));
+    ui->cancelBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: #F5F5F5; color: #333; border: 1px solid #E0E0E0; border-radius: 4px; }"
+        "QPushButton:hover { background: #E0E0E0; }"));
 
-    QLabel *title = new QLabel(QStringLiteral("新建文件夹"));
-    title->setStyleSheet(QStringLiteral("QLabel { font-size: 16px; font-weight: bold; }"));
-    layout->addWidget(title);
-
-    m_nameInput = new QLineEdit();
-    m_nameInput->setFixedHeight(36);
-    m_nameInput->setPlaceholderText(QStringLiteral("新文件夹"));
-    layout->addWidget(m_nameInput);
-
-    QHBoxLayout *btnLayout = new QHBoxLayout();
-    btnLayout->addStretch();
-
-    QPushButton *confirmBtn = new QPushButton(QStringLiteral("确定"));
-    confirmBtn->setFixedSize(100, 36);
-    confirmBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; }"));
-
-    QPushButton *cancelBtn = new QPushButton(QStringLiteral("取消"));
-    cancelBtn->setFixedSize(80, 36);
-
-    btnLayout->addWidget(confirmBtn);
-    btnLayout->addWidget(cancelBtn);
-    layout->addLayout(btnLayout);
-
-    connect(confirmBtn, &QPushButton::clicked, this, &NewFolderDialog::onConfirmClicked);
-    connect(cancelBtn, &QPushButton::clicked, this, &NewFolderDialog::onCancelClicked);
+    connect(ui->confirmBtn, &QPushButton::clicked, this, &NewFolderDialog::onConfirmClicked);
+    connect(ui->cancelBtn, &QPushButton::clicked, this, &NewFolderDialog::onCancelClicked);
 }
 
 NewFolderDialog::~NewFolderDialog() = default;
 
 void NewFolderDialog::onConfirmClicked()
 {
-    QString name = m_nameInput->text().trimmed();
+    QString name = ui->nameInput->text().trimmed();
     if (name.isEmpty()) {
         QMessageBox::warning(this, QStringLiteral("提示"), QStringLiteral("请输入文件夹名称"));
         return;
@@ -147,7 +106,7 @@ void NewFolderDialog::onCancelClicked()
     reject();
 }
 
-// ── RenameDialog ───────────────────────────────────────────────
+// ── RenameDialog ────────────────────────────────────────────────
 RenameDialog::RenameDialog(const QString &oldPath, const QString &oldName, QWidget *parent)
     : QDialog(parent)
     , m_oldPath(oldPath)
@@ -175,11 +134,9 @@ RenameDialog::RenameDialog(const QString &oldPath, const QString &oldName, QWidg
     QPushButton *confirmBtn = new QPushButton(QStringLiteral("确定"));
     confirmBtn->setFixedSize(100, 36);
     confirmBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; }"));
-
+        "QPushButton { background: #07C160; color: white; border: none; border-radius: 4px; }"));
     QPushButton *cancelBtn = new QPushButton(QStringLiteral("取消"));
     cancelBtn->setFixedSize(80, 36);
-
     btnLayout->addWidget(confirmBtn);
     btnLayout->addWidget(cancelBtn);
     layout->addLayout(btnLayout);
@@ -219,7 +176,6 @@ RenameRepoDialog::RenameRepoDialog(const QString &oldName, QWidget *parent)
     QLabel *title = new QLabel(QStringLiteral("重命名仓库"));
     title->setStyleSheet(QStringLiteral("QLabel { font-size: 16px; font-weight: bold; }"));
     layout->addWidget(title);
-
     layout->addWidget(new QLabel(QStringLiteral("原名称：") + oldName));
 
     m_nameInput = new QLineEdit();
@@ -233,11 +189,9 @@ RenameRepoDialog::RenameRepoDialog(const QString &oldName, QWidget *parent)
     QPushButton *confirmBtn = new QPushButton(QStringLiteral("确定"));
     confirmBtn->setFixedSize(100, 36);
     confirmBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; }"));
-
+        "QPushButton { background: #07C160; color: white; border: none; border-radius: 4px; }"));
     QPushButton *cancelBtn = new QPushButton(QStringLiteral("取消"));
     cancelBtn->setFixedSize(80, 36);
-
     btnLayout->addWidget(confirmBtn);
     btnLayout->addWidget(cancelBtn);
     layout->addLayout(btnLayout);
@@ -282,19 +236,13 @@ EditRepoDialog::EditRepoDialog(const QString &name, const QString &url, QWidget 
     QLabel *title = new QLabel(QStringLiteral("修改仓库 URL"));
     title->setStyleSheet(QStringLiteral("QLabel { font-size: 16px; font-weight: bold; }"));
     layout->addWidget(title);
-
     layout->addWidget(new QLabel(QStringLiteral("仓库：") + name));
 
     m_urlInput = new QLineEdit();
     m_urlInput->setFixedHeight(36);
     m_urlInput->setText(url);
-    m_urlInput->setPlaceholderText(QStringLiteral("新 URL (例如 https://svn.example.com/repo)"));
+    m_urlInput->setPlaceholderText(QStringLiteral("新 URL"));
     layout->addWidget(m_urlInput);
-
-    QLabel *note = new QLabel(QStringLiteral("注：仅修改本地记录的 URL；如需重新定位工作副本，请使用 svn switch --relocate。"));
-    note->setStyleSheet(QStringLiteral("QLabel { font-size: 10px; color: #999; }"));
-    note->setWordWrap(true);
-    layout->addWidget(note);
 
     m_statusLabel = new QLabel();
     m_statusLabel->setStyleSheet(QStringLiteral("QLabel { color: #E53935; font-size: 11px; }"));
@@ -306,11 +254,9 @@ EditRepoDialog::EditRepoDialog(const QString &name, const QString &url, QWidget 
     QPushButton *saveBtn = new QPushButton(QStringLiteral("保存"));
     saveBtn->setFixedSize(100, 36);
     saveBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; }"));
-
+        "QPushButton { background: #07C160; color: white; border: none; border-radius: 4px; }"));
     QPushButton *cancelBtn = new QPushButton(QStringLiteral("取消"));
     cancelBtn->setFixedSize(80, 36);
-
     btnLayout->addWidget(saveBtn);
     btnLayout->addWidget(cancelBtn);
     layout->addLayout(btnLayout);
@@ -354,7 +300,6 @@ ConfirmDeleteDialog::ConfirmDeleteDialog(const QString &itemName, QWidget *paren
     QLabel *title = new QLabel(QStringLiteral("确认删除"));
     title->setStyleSheet(QStringLiteral("QLabel { font-size: 16px; font-weight: bold; }"));
     layout->addWidget(title);
-
     layout->addWidget(new QLabel(QStringLiteral("确定要删除「%1」吗？").arg(itemName)));
 
     QHBoxLayout *btnLayout = new QHBoxLayout();
@@ -364,10 +309,8 @@ ConfirmDeleteDialog::ConfirmDeleteDialog(const QString &itemName, QWidget *paren
     confirmBtn->setFixedSize(100, 36);
     confirmBtn->setStyleSheet(QStringLiteral(
         "QPushButton { background: #E53935; color: white; border: none; border-radius: 4px; }"));
-
     QPushButton *cancelBtn = new QPushButton(QStringLiteral("取消"));
     cancelBtn->setFixedSize(80, 36);
-
     btnLayout->addWidget(confirmBtn);
     btnLayout->addWidget(cancelBtn);
     layout->addLayout(btnLayout);
@@ -402,7 +345,6 @@ ConflictDialog::ConflictDialog(const QStringList &files, QWidget *parent)
     QLabel *title = new QLabel(QStringLiteral("文件冲突"));
     title->setStyleSheet(QStringLiteral("QLabel { font-size: 16px; font-weight: bold; }"));
     layout->addWidget(title);
-
     layout->addWidget(new QLabel(QStringLiteral("检测到以下文件存在冲突:")));
     layout->addWidget(new QLabel(files.join(QStringLiteral("\n"))));
 
@@ -412,11 +354,9 @@ ConflictDialog::ConflictDialog(const QStringList &files, QWidget *parent)
     QPushButton *resolveBtn = new QPushButton(QStringLiteral("解决"));
     resolveBtn->setFixedSize(100, 36);
     resolveBtn->setStyleSheet(QStringLiteral(
-        "QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; }"));
-
+        "QPushButton { background: #07C160; color: white; border: none; border-radius: 4px; }"));
     QPushButton *cancelBtn = new QPushButton(QStringLiteral("取消"));
     cancelBtn->setFixedSize(80, 36);
-
     btnLayout->addWidget(resolveBtn);
     btnLayout->addWidget(cancelBtn);
     layout->addLayout(btnLayout);
