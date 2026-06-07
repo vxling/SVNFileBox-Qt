@@ -34,6 +34,21 @@ set(APP_SOURCES
     src/i18n/translator.h
     src/models/filemodel.cpp
     src/systemtray/traymanager.cpp
+    # UI (Qt Widgets)
+    src/ui/mainwindow.cpp
+    src/ui/mainwindow.h
+    src/ui/repolistmodel.cpp
+    src/ui/repolistmodel.h
+    src/ui/settingsdialog.cpp
+    src/ui/settingsdialog.h
+    src/ui/checkoutdialog.cpp
+    src/ui/checkoutdialog.h
+    src/ui/addlocaldialog.cpp
+    src/ui/addlocaldialog.h
+    src/ui/newfiledialog.cpp
+    src/ui/newfiledialog.h
+    src/ui/copyprogressdialog.cpp
+    src/ui/copyprogressdialog.h
 )
 
 # MOC must see Q_OBJECT headers
