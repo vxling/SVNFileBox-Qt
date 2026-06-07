@@ -18,6 +18,9 @@ Item {
     FileDialog {
         id: checkoutFolderDialog
         title: "选择检出目录"
+        modality: Qt.NonModal
+        fileMode: FileDialog.Directory
+        selectFolder: true
         folder: "file:///home/osuser"
         onAccepted: {
             checkoutFolderInput.text = checkoutFolderDialog.folder
