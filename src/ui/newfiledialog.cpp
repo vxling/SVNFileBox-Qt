@@ -8,6 +8,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QFileInfo>
+#include <QInputDialog>
 
 // ── NewFileDialog ──────────────────────────────────────────────
 NewFileDialog::NewFileDialog(FileModel *fileModel, const QString &currentPath, QWidget *parent)
@@ -62,7 +63,7 @@ void NewFileDialog::onConfirmClicked()
 {
     QString name = m_nameInput->text().trimmed();
     if (name.isEmpty()) {
-        accept();
+        QMessageBox::warning(this, QStringLiteral("提示"), QStringLiteral("请输入文件名"));
         return;
     }
     if (!name.endsWith(QStringLiteral(".") + m_ext))
@@ -70,6 +71,9 @@ void NewFileDialog::onConfirmClicked()
     QString fullPath = m_currentPath + QStringLiteral("/") + name;
     if (m_fileModel->createFile(fullPath)) {
         accept();
+    } else {
+        QMessageBox::warning(this, QStringLiteral("错误"),
+            QStringLiteral("创建文件失败: %1").arg(fullPath));
     }
 }
 
@@ -126,12 +130,15 @@ void NewFolderDialog::onConfirmClicked()
 {
     QString name = m_nameInput->text().trimmed();
     if (name.isEmpty()) {
-        accept();
+        QMessageBox::warning(this, QStringLiteral("提示"), QStringLiteral("请输入文件夹名称"));
         return;
     }
     QString fullPath = m_currentPath + QStringLiteral("/") + name;
     if (m_fileModel->createDirectory(fullPath)) {
         accept();
+    } else {
+        QMessageBox::warning(this, QStringLiteral("错误"),
+            QStringLiteral("创建文件夹失败: %1").arg(fullPath));
     }
 }
 

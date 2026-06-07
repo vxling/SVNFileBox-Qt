@@ -1,10 +1,12 @@
 #include "copyprogressdialog.h"
+#include "../sync/syncrecordservice.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QHeaderView>
 
 static QString formatBytesStatic(qint64 bytes)
 {
@@ -90,8 +92,44 @@ SyncRecordsDialog::SyncRecordsDialog(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(QStringLiteral("同步记录"));
-    setFixedSize(600, 400);
+    setFixedSize(700, 450);
     setModal(false);
+
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(16, 16, 16, 12);
+    layout->setSpacing(12);
+
+    QLabel *hint = new QLabel(QStringLiteral("以下是所有仓库的同步历史记录："));
+    hint->setStyleSheet(QStringLiteral("QLabel { font-size: 12px; color: #666; }"));
+    layout->addWidget(hint);
+
+    m_tableView = new QTableView();
+    m_tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_tableView->setAlternatingRowColors(true);
+    m_tableView->verticalHeader()->setVisible(false);
+
+    SyncRecordService *recordService = SyncRecordService::instance();
+    m_tableView->setModel(recordService);
+
+    m_tableView->setColumnWidth(0, 200); // repo name
+    m_tableView->setColumnWidth(1, 300); // file path
+    m_tableView->setColumnWidth(2, 100); // action
+
+    layout->addWidget(m_tableView, 1);
+
+    QHBoxLayout *btnLayout = new QHBoxLayout();
+    btnLayout->addStretch();
+
+    QPushButton *closeBtn = new QPushButton(QStringLiteral("关闭"));
+    closeBtn->setFixedSize(100, 36);
+    closeBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; }"));
+
+    btnLayout->addWidget(closeBtn);
+    layout->addLayout(btnLayout);
+
+    connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
 }
 
 SyncRecordsDialog::~SyncRecordsDialog() = default;

@@ -3,6 +3,9 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QTableView>
+
+class SyncRecordService;
 
 class CopyProgressDialog : public QDialog
 {
@@ -38,7 +41,7 @@ public:
     ~SyncRecordsDialog() override;
 
 private:
-    // TODO: implement with QTableView showing sync history
+    QTableView *m_tableView = nullptr;
 };
 
 class AboutDialog : public QDialog

@@ -76,8 +76,12 @@ private:
     QLabel *m_pathLabel = nullptr;
     QLineEdit *m_pathEdit = nullptr;
     QPushButton *m_refreshBtn = nullptr;
+    QPushButton *m_goUpBtn = nullptr;
     QTableView *m_fileTableView = nullptr;
     QStandardItemModel *m_fileTableModel = nullptr;
+
+    // Map: table row -> file path (from FileModel)
+    QStringList m_currentFilePaths;
 
     // Status bar
     QLabel *m_statusRepoLabel = nullptr;

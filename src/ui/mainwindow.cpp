@@ -43,11 +43,23 @@ MainWindow::MainWindow(ConfigService *configService,
     QVariantList repos = configService->repositories();
     m_repoListModel->loadFromConfig(repos);
 
-    // Select first or last active repo
-    for (int i = 0; i < m_repoListModel->count(); ++i) {
-        if (!repos[i].toMap()["isSelected"].toBool() && i == 0) {
-            m_repoListModel->selectRepo(i);
+    // Select the repo that was last active (isSelected == true)
+    int selectedIndex = -1;
+    for (int i = 0; i < repos.size(); ++i) {
+        if (repos[i].toMap()["isSelected"].toBool()) {
+            selectedIndex = i;
             break;
+        }
+    }
+    if (selectedIndex == -1 && m_repoListModel->count() > 0) {
+        selectedIndex = 0; // fallback to first repo
+    }
+    if (selectedIndex >= 0) {
+        m_repoListModel->selectRepo(selectedIndex);
+        QString path = m_repoListModel->repoPath(selectedIndex);
+        if (!path.isEmpty()) {
+            navigateTo(path);
+            m_statusRepoLabel->setText(m_repoListModel->repoName(selectedIndex));
         }
     }
 }
@@ -159,6 +171,14 @@ void MainWindow::setupUi()
     m_refreshBtn->setStyleSheet(QStringLiteral(
         "QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; }"
         "QPushButton:hover { background: #1565C0; }"));
+
+    m_goUpBtn = new QPushButton(QStringLiteral("↑ 返回"));
+    m_goUpBtn->setFixedSize(70, 32);
+    m_goUpBtn->setStyleSheet(QStringLiteral(
+        "QPushButton { background: #F5F5F5; color: #333; border: 1px solid #E0E0E0; border-radius: 4px; }"
+        "QPushButton:hover { background: #E0E0E0; }"));
+
+    pathLayout->addWidget(m_goUpBtn);
     pathLayout->addWidget(m_refreshBtn);
 
     // File table
@@ -214,6 +234,7 @@ void MainWindow::connectSignals()
             this, &MainWindow::onRepoSelected);
 
     connect(m_refreshBtn, &QPushButton::clicked, this, &MainWindow::onRefreshClicked);
+    connect(m_goUpBtn, &QPushButton::clicked, this, &MainWindow::onGoUpClicked);
 
     connect(m_pathEdit, &QLineEdit::editingFinished,
             this, &MainWindow::onPathEditingFinished);
@@ -256,7 +277,8 @@ void MainWindow::connectSignals()
         dlg.exec();
     });
     connect(m_btnSyncRecords, &QPushButton::clicked, this, [this]() {
-        // TODO: open sync records dialog
+        SyncRecordsDialog dlg(this);
+        dlg.exec();
     });
     connect(m_btnSettings, &QPushButton::clicked, this, [this]() {
         SettingsDialog dlg(m_configService, this);
@@ -283,7 +305,10 @@ void MainWindow::onRepoSelected(const QModelIndex &index)
 void MainWindow::onFileDoubleClicked(const QModelIndex &index)
 {
     if (!index.isValid()) return;
-    QString path = m_fileModel->getFilePath(index.row());
+    int row = index.row();
+    if (row < 0 || row >= m_currentFilePaths.size()) return;
+
+    QString path = m_currentFilePaths[row];
     if (path.isEmpty()) return;
 
     QFileInfo info(path);
@@ -339,16 +364,54 @@ void MainWindow::goUp()
 void MainWindow::refreshFileTable()
 {
     m_fileTableModel->removeRows(0, m_fileTableModel->rowCount());
+    m_currentFilePaths.clear();
 
-    QFileIconProvider iconProvider;
     for (int i = 0; i < m_fileModel->rowCount(); ++i) {
         QVariantMap item = m_fileModel->get(i);
         if (item.isEmpty()) continue;
 
+        QString name = item["name"].toString();
+        QString fullPath = item["path"].toString();
+        QString svnStatus = item["svnStatus"].toString();
+        QString size = item["size"].toString();
+        QString modifiedTime = item["lastModified"].toString();
+        QString fileType = item["isDir"].toBool() ? QStringLiteral("文件夹") : QFileInfo(name).suffix();
+
+        m_currentFilePaths.append(fullPath);
+
         QList<QStandardItem *> row;
-        row.append(new QStandardItem(item["name"].toString()));
-        row[0]->setData(item["svnStatus"].toString(), Qt::UserRole + 1);
-        // Add more columns as needed...
+
+        // Column 0: icon (text emoji placeholder)
+        QStandardItem *iconCol = new QStandardItem();
+        iconCol->setData(item["isDir"].toBool() ? QStringLiteral("📁") : QStringLiteral("📄"), Qt::DisplayRole);
+        iconCol->setData(fullPath, Qt::UserRole);
+        row.append(iconCol);
+
+        // Column 1: name
+        QStandardItem *nameCol = new QStandardItem(name);
+        nameCol->setData(fullPath, Qt::UserRole);
+        row.append(nameCol);
+
+        // Column 2: svn status
+        QStandardItem *statusCol = new QStandardItem(svnStatus);
+        statusCol->setData(fullPath, Qt::UserRole);
+        row.append(statusCol);
+
+        // Column 3: size
+        QStandardItem *sizeCol = new QStandardItem(size);
+        sizeCol->setData(fullPath, Qt::UserRole);
+        row.append(sizeCol);
+
+        // Column 4: modified time
+        QStandardItem *timeCol = new QStandardItem(modifiedTime);
+        timeCol->setData(fullPath, Qt::UserRole);
+        row.append(timeCol);
+
+        // Column 5: file type
+        QStandardItem *typeCol = new QStandardItem(fileType);
+        typeCol->setData(fullPath, Qt::UserRole);
+        row.append(typeCol);
+
         m_fileTableModel->appendRow(row);
     }
 }
