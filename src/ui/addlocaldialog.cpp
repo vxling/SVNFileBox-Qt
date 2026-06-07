@@ -1,5 +1,6 @@
 #include "addlocaldialog.h"
 #include "../services/repoglobalmanager.h"
+#include "../config/configservice.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -7,10 +8,13 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QFileDialog>
+#include <QFileInfo>
 
-AddLocalDialog::AddLocalDialog(SVNFileBox::RepoGlobalManager *globalManager, QWidget *parent)
+AddLocalDialog::AddLocalDialog(SVNFileBox::RepoGlobalManager *globalManager,
+                               ConfigService *configService, QWidget *parent)
     : QDialog(parent)
     , m_globalManager(globalManager)
+    , m_configService(configService)
 {
     setWindowTitle(QStringLiteral("添加本地仓库"));
     setFixedSize(500, 200);
@@ -91,7 +95,21 @@ void AddLocalDialog::onConfirmClicked()
     QString name = QFileInfo(path).fileName();
     if (name.isEmpty()) name = QStringLiteral("未命名仓库");
 
+    // Persist to ConfigService first
+    QVariantMap repoMap;
+    repoMap[QStringLiteral("name")] = name;
+    repoMap[QStringLiteral("path")] = path;
+    repoMap[QStringLiteral("url")] = QString();
+    repoMap[QStringLiteral("type")] = QStringLiteral("Local");
+    repoMap[QStringLiteral("isSelected")] = true;
+    if (m_configService) {
+        m_configService->addRepository(repoMap);
+        m_configService->saveConfig();
+    }
+
+    // Create manager in global manager (also switches to it)
     m_globalManager->createLocalRepo(name, path, QString(), QString(), QString());
+
     emit localRepoAdded(name, path);
     accept();
 }

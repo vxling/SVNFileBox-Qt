@@ -273,8 +273,22 @@ void MainWindow::connectSignals()
         dlg.exec();
     });
     connect(m_btnAddLocal, &QPushButton::clicked, this, [this]() {
-        AddLocalDialog dlg(m_globalManager, this);
-        dlg.exec();
+        AddLocalDialog dlg(m_globalManager, m_configService, this);
+        if (dlg.exec() == QDialog::Accepted) {
+            // Refresh repo list from config
+            QVariantList repos = m_configService->repositories();
+            m_repoListModel->loadFromConfig(repos);
+            // Switch to the newly added repo (last one)
+            if (!repos.isEmpty()) {
+                int last = repos.size() - 1;
+                m_repoListModel->selectRepo(last);
+                QString path = m_repoListModel->repoPath(last);
+                if (!path.isEmpty()) {
+                    navigateTo(path);
+                    m_statusRepoLabel->setText(m_repoListModel->repoName(last));
+                }
+            }
+        }
     });
     connect(m_btnSyncRecords, &QPushButton::clicked, this, [this]() {
         SyncRecordsDialog dlg(this);

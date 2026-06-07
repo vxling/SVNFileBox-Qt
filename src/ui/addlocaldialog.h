@@ -3,14 +3,21 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
-#include "../services/repoglobalmanager.h"
+
+class ConfigService;
+
+namespace SVNFileBox {
+class RepoGlobalManager;
+}
 
 class AddLocalDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AddLocalDialog(SVNFileBox::RepoGlobalManager *globalManager, QWidget *parent = nullptr);
+    explicit AddLocalDialog(SVNFileBox::RepoGlobalManager *globalManager,
+                            ConfigService *configService,
+                            QWidget *parent = nullptr);
     ~AddLocalDialog() override;
 
 signals:
@@ -23,6 +30,7 @@ private slots:
 
 private:
     SVNFileBox::RepoGlobalManager *m_globalManager = nullptr;
+    ConfigService *m_configService = nullptr;
 
     QLineEdit *m_pathInput;
     QPushButton *m_browseBtn;
