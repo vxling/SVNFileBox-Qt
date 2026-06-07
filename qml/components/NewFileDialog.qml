@@ -27,6 +27,7 @@ Popup {
             id: newFileNameInput
             placeholderText: qsTr("新建文件")
             width: 300
+            implicitHeight: 36
         }
 
         Label {

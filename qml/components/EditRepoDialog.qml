@@ -36,6 +36,7 @@ Popup {
             id: editRepoUrlInput
             placeholderText: qsTr("新 URL (例如 https://svn.example.com/repo)")
             width: 380
+            implicitHeight: 36
             selectByMouse: true
         }
 

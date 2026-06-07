@@ -36,6 +36,7 @@ Popup {
             id: renameRepoNameInput
             placeholderText: qsTr("新名称")
             width: 340
+            implicitHeight: 36
             selectByMouse: true
         }
 

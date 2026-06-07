@@ -179,6 +179,7 @@ Item {
                         id: proxyUrlInput
                         placeholderText: "http://proxy:8080"
                         Layout.fillWidth: true
+                        implicitHeight: 36
                         text: configService.proxyUrl
                     }
 

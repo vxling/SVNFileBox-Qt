@@ -50,6 +50,7 @@ Item {
                     id: checkoutNameInput
                     placeholderText: "例如：我的项目"
                     Layout.minimumWidth: 300
+                    implicitHeight: 36
                 }
 
                 Label { text: "SVN 仓库 URL:"; Layout.alignment: Qt.AlignRight }
@@ -57,6 +58,7 @@ Item {
                     id: checkoutUrlInput
                     placeholderText: "https://example.com/svn/repo"
                     Layout.minimumWidth: 300
+                    implicitHeight: 36
                 }
 
                 Label { text: "用户名:"; Layout.alignment: Qt.AlignRight }
@@ -64,6 +66,7 @@ Item {
                     id: checkoutUserInput
                     placeholderText: "（可选）"
                     Layout.minimumWidth: 300
+                    implicitHeight: 36
                 }
 
                 Label { text: "密码:"; Layout.alignment: Qt.AlignRight }
@@ -72,6 +75,7 @@ Item {
                     echoMode: TextInput.Password
                     placeholderText: "（可选）"
                     Layout.minimumWidth: 300
+                    implicitHeight: 36
                 }
             }
 

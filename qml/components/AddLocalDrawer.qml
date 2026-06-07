@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import Qt.labs.platform
 
 Drawer {
@@ -38,6 +39,7 @@ Drawer {
                     id: localRepoPathInput
                     placeholderText: qsTr("选择本地 SVN 工作副本目录")
                     Layout.fillWidth: true
+                    implicitHeight: 36
                     readOnly: true
                 }
                 Button {

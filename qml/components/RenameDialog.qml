@@ -28,6 +28,7 @@ Popup {
             id: renameNameInput
             placeholderText: qsTr("新名称")
             width: 300
+            implicitHeight: 36
         }
 
         Row {

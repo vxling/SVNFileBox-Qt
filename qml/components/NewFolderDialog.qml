@@ -26,6 +26,7 @@ Popup {
             id: newFolderNameInput
             placeholderText: qsTr("新文件夹")
             width: 300
+            implicitHeight: 36
         }
 
         Row {
