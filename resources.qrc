@@ -13,5 +13,19 @@
         <file>qml/components/CheckoutDrawerContent.qml</file>
         <file>qml/components/AboutDrawerContent.qml</file>
         <file>qml/components/RenameDialog.qml</file>
+        <file>qml/components/SettingsDrawer.qml</file>
+        <file>qml/components/CheckoutDrawer.qml</file>
+        <file>qml/components/AddLocalDrawer.qml</file>
+        <file>qml/components/SyncRecordsDrawer.qml</file>
+        <file>qml/components/AboutDrawer.qml</file>
+        <file>qml/components/ConfirmDeleteDialog.qml</file>
+        <file>qml/components/NewFolderDialog.qml</file>
+        <file>qml/components/NewFileDialog.qml</file>
+        <file>qml/components/RenameRepoDialog.qml</file>
+        <file>qml/components/EditRepoDialog.qml</file>
+        <file>qml/components/CopyProgressDialog.qml</file>
+        <file>qml/components/ConflictDialog.qml</file>
+        <file>qml/components/RepoListDelegate.qml</file>
+        <file>qml/components/FileItemDelegate.qml</file>
     </qresource>
 </RCC>
