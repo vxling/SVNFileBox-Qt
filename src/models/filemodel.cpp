@@ -68,11 +68,11 @@ void FileModel::load(const QString &path)
     beginResetModel();
     m_files.clear();
     m_currentPath = path;
-    emit currentPathChanged();
 
     QDir dir(path);
     if (!dir.exists()) {
         endResetModel();
+        emit currentPathChanged();
         return;
     }
 
@@ -110,6 +110,7 @@ void FileModel::load(const QString &path)
     }
 
     endResetModel();
+    emit currentPathChanged();
 }
 
 QString FileModel::getFilePath(int row) const

@@ -363,6 +363,9 @@ void MainWindow::navigateTo(const QString &path)
     m_pathEdit->setText(path);
     m_statusPathLabel->setText(path);
     m_fileModel->load(path);
+    // currentPathChanged is now emitted AFTER load() fills the model,
+    // so onFilesChanged -> refreshFileTable() will show the correct data.
+    // Direct call below as fallback / for non-signal triggers.
     refreshFileTable();
 }
 
