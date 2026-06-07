@@ -90,5 +90,5 @@ private:
 
     void refreshFileTable();
 
-    QString m_currentPath;
+    QString m_currentPath; // kept for path-bar display sync; always use m_fileModel->currentPath() for actual loads
 };

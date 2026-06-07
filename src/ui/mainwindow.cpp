@@ -334,13 +334,13 @@ void MainWindow::onFileDoubleClicked(const QModelIndex &index)
 
 void MainWindow::onRefreshClicked()
 {
-    QString path = m_currentPath;
-    // Fallback: if m_currentPath is empty, use the active repo's path
+    // Always use FileModel's currentPath as source of truth — it is always
+    // up-to-date regardless of how navigation happened (repo switch,
+    // folder double-click, go-up, path-bar edit, or refresh itself)
+    QString path = m_fileModel->currentPath();
     if (path.isEmpty()) {
         auto *active = m_globalManager->activeManager();
-        if (active) {
-            path = active->repository.path;
-        }
+        if (active) path = active->repository.path;
     }
     if (!path.isEmpty()) {
         m_fileModel->load(path);
@@ -445,6 +445,8 @@ void MainWindow::refreshFileTable()
 
 void MainWindow::onFilesChanged()
 {
+    // Keep m_currentPath in sync with the model's real path
+    m_currentPath = m_fileModel->currentPath();
     refreshFileTable();
 }
 
