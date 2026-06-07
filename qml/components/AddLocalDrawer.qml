@@ -55,7 +55,6 @@ Drawer {
                 title: qsTr("选择 SVN 工作副本目录")
                 modality: Qt.NonModal
                 fileMode: FileDialog.Directory
-                selectFolder: true
                 folder: "file:///home/osuser"
                 onAccepted: {
                     localRepoPathInput.text = localRepoDialog.folder

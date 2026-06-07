@@ -1,6 +1,8 @@
 #include "traymanager.h"
 #include <QDebug>
 #include <QApplication>
+#include <QIcon>
+#include <QPixmap>
 
 TrayManager::TrayManager(QObject *parent)
     : QObject(parent)
@@ -18,6 +20,16 @@ TrayManager::TrayManager(QObject *parent)
     m_menu.addAction(m_syncAction);
     m_menu.addSeparator();
     m_menu.addAction(m_exitAction);
+
+    // Set tray icon - try theme icon first, fallback to empty
+    QIcon trayIcon = QIcon::fromTheme("folder-sync", QIcon::fromTheme("emblem-synchronizing"));
+    if (trayIcon.isNull()) {
+        // Last resort: use a simple generated icon
+        QPixmap pix(32, 32);
+        pix.fill(Qt::transparent);
+        trayIcon = QIcon(pix);
+    }
+    m_trayIcon.setIcon(trayIcon);
 
     m_trayIcon.setContextMenu(&m_menu);
     m_trayIcon.setToolTip(QStringLiteral("SVNFileBox"));

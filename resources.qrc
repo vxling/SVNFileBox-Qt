@@ -12,5 +12,6 @@
         <file>qml/components/SettingsDrawerContent.qml</file>
         <file>qml/components/CheckoutDrawerContent.qml</file>
         <file>qml/components/AboutDrawerContent.qml</file>
+        <file>qml/components/RenameDialog.qml</file>
     </qresource>
 </RCC>
