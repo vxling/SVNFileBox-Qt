@@ -49,6 +49,8 @@ set(APP_SOURCES
     src/ui/newfiledialog.h
     src/ui/copyprogressdialog.cpp
     src/ui/copyprogressdialog.h
+    src/ui/filecarddelegate.cpp
+    src/ui/filecarddelegate.h
 )
 
 # MOC must see Q_OBJECT headers

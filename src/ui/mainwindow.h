@@ -1,16 +1,13 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QTableView>
+#include <QWidget>
 #include <QListView>
-#include <QLabel>
 #include <QPushButton>
-#include <QStatusBar>
-#include <QDockWidget>
-#include <QSplitter>
-#include <QFileSystemModel>
-#include <QStandardItemModel>
 #include <QLineEdit>
+#include <QLabel>
+#include <QStackedWidget>
+#include <QPropertyAnimation>
 
 class ConfigService;
 class FileModel;
@@ -20,6 +17,9 @@ class RepoListModel;
 namespace SVNFileBox {
 class RepoGlobalManager;
 }
+
+// ── File card list delegate ────────────────────────────────────
+class FileCardDelegate;
 
 class MainWindow : public QMainWindow
 {
@@ -34,12 +34,10 @@ public:
     ~MainWindow() override;
 
 private slots:
-    void onRepoSelected(const QModelIndex &index);
-    void onFileDoubleClicked(const QModelIndex &index);
+    void onFileDoubleClicked(int row);
     void onRefreshClicked();
     void onGoUpClicked();
     void onPathEditingFinished();
-    void onManualSync();
     void onFilesChanged();
     void onSyncNotification(const QString &message);
     void onConflictDetected(const QStringList &files);
@@ -49,46 +47,49 @@ private slots:
 
 private:
     void setupUi();
-    void setupSidebar();
-    void setupFileList();
-    void setupPathBar();
-    void setupStatusBar();
+    void setupLeftNav();
+    void setupMiddlePanel();
+    void setupRightPanel();
     void connectSignals();
     void navigateTo(const QString &path);
-    void goUp();
+    void refreshFileTable();
 
     ConfigService *m_configService = nullptr;
     FileModel *m_fileModel = nullptr;
     SyncEngine *m_syncEngine = nullptr;
     SVNFileBox::RepoGlobalManager *m_globalManager = nullptr;
 
-    // Left sidebar
+    // ── Left Navigation (48px) ─────────────────────────────────
+    QWidget *m_navWidget = nullptr;
+    QPushButton *m_navRepoBtn = nullptr;
+    QPushButton *m_navSettingsBtn = nullptr;
+    QPushButton *m_navAboutBtn = nullptr;
+    QPushButton *m_navMinimizeBtn = nullptr;
+    QPushButton *m_navCloseBtn = nullptr;
+
+    // ── Middle Panel (260px) ────────────────────────────────────
+    QWidget *m_middleWidget = nullptr;
+    QLineEdit *m_searchInput = nullptr;
     QListView *m_repoListView = nullptr;
     RepoListModel *m_repoListModel = nullptr;
-    QPushButton *m_btnCheckout = nullptr;
+    QPushButton *m_btnAddRepo = nullptr;
     QPushButton *m_btnAddLocal = nullptr;
+    QPushButton *m_btnCheckout = nullptr;
     QPushButton *m_btnSyncRecords = nullptr;
-    QPushButton *m_btnSettings = nullptr;
-    QPushButton *m_btnAbout = nullptr;
 
-    // Main content
-    QWidget *m_contentWidget = nullptr;
-    QLabel *m_pathLabel = nullptr;
+    // ── Right Content Area ───────────────────────────────────────
+    QWidget *m_rightWidget = nullptr;
     QLineEdit *m_pathEdit = nullptr;
-    QPushButton *m_refreshBtn = nullptr;
     QPushButton *m_goUpBtn = nullptr;
-    QTableView *m_fileTableView = nullptr;
-    QStandardItemModel *m_fileTableModel = nullptr;
-
-    // Map: table row -> file path (from FileModel)
-    QStringList m_currentFilePaths;
+    QPushButton *m_refreshBtn = nullptr;
+    QListView *m_fileListView = nullptr;
+    FileCardDelegate *m_fileDelegate = nullptr;
 
     // Status bar
     QLabel *m_statusRepoLabel = nullptr;
     QLabel *m_statusPathLabel = nullptr;
     QLabel *m_syncIndicator = nullptr;
 
-    void refreshFileTable();
-
-    QString m_currentPath; // kept for path-bar display sync; always use m_fileModel->currentPath() for actual loads
+    // File path mapping for card clicks
+    QStringList m_currentFilePaths;
 };
