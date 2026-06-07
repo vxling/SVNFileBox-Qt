@@ -27,5 +27,6 @@
         <file>qml/components/ConflictDialog.qml</file>
         <file>qml/components/RepoListDelegate.qml</file>
         <file>qml/components/FileItemDelegate.qml</file>
+        <file>qml/components/qmldir</file>
     </qresource>
 </RCC>

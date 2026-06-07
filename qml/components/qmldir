@@ -1,0 +1,26 @@
+module SVNFileBox.Components
+
+RepoListItem 1.0 RepoListItem.qml
+FileListItem 1.0 FileListItem.qml
+FileTypeIcon 1.0 FileTypeIcon.qml
+SidebarButton 1.0 SidebarButton.qml
+StatusBadge 1.0 StatusBadge.qml
+SyncRecordsDrawerContent 1.0 SyncRecordsDrawerContent.qml
+SettingsDrawerContent 1.0 SettingsDrawerContent.qml
+CheckoutDrawerContent 1.0 CheckoutDrawerContent.qml
+AboutDrawerContent 1.0 AboutDrawerContent.qml
+RenameDialog 1.0 RenameDialog.qml
+SettingsDrawer 1.0 SettingsDrawer.qml
+CheckoutDrawer 1.0 CheckoutDrawer.qml
+AddLocalDrawer 1.0 AddLocalDrawer.qml
+SyncRecordsDrawer 1.0 SyncRecordsDrawer.qml
+AboutDrawer 1.0 AboutDrawer.qml
+ConfirmDeleteDialog 1.0 ConfirmDeleteDialog.qml
+NewFolderDialog 1.0 NewFolderDialog.qml
+NewFileDialog 1.0 NewFileDialog.qml
+RenameRepoDialog 1.0 RenameRepoDialog.qml
+EditRepoDialog 1.0 EditRepoDialog.qml
+CopyProgressDialog 1.0 CopyProgressDialog.qml
+ConflictDialog 1.0 ConflictDialog.qml
+RepoListDelegate 1.0 RepoListDelegate.qml
+FileItemDelegate 1.0 FileItemDelegate.qml
