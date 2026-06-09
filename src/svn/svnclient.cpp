@@ -2,501 +2,916 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
-#include <QXmlStreamReader>
-#include <QRegularExpression>
+#include <QFileInfo>
+#include <QMutexLocker>
 
-SVNClient::SVNClient(QObject *parent) : QObject(parent) {}
+extern "C" {
+#include <svn_client.h>
+#include <svn_wc.h>
+#include <svn_error.h>
+#include <svn_path.h>
+#include <svn_repos.h>
+#include <svn_ra.h>
+#include <svn_auth.h>
+#include <svn_time.h>
+#include <svn_xml.h>
+#include <svn_io.h>
+#include <svn_delta.h>
+#include <svn_diff.h>
+#include <svn_opt.h>
+#include <svn_dirent_uri.h>
+#include <svn_pools.h>
+}
 
-QStringList SVNClient::list(const QString &path)
+namespace {
+
+// Helper to get pointers to svn_opt_revision_t constants
+static svn_opt_revision_t makeOptRev(svn_opt_revision_kind kind)
 {
-    QStringList args = {"list", "--non-interactive", "--trust-server-cert", "--xml", path};
-    QString output = runSvn(args);
-    QStringList result;
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
-            QString name = xml.attributes().value("name").toString();
-            if (!name.isEmpty())
-                result.append(name);
+    static svn_opt_revision_t unspecifiedRev = { svn_opt_revision_unspecified };
+    static svn_opt_revision_t headRev = { svn_opt_revision_head };
+    switch (kind) {
+        case svn_opt_revision_unspecified: return unspecifiedRev;
+        case svn_opt_revision_head: return headRev;
+        default: {
+            static svn_opt_revision_t var;
+            var.kind = kind;
+            return var;
         }
     }
-    return result;
 }
+
+// Return address of a static svn_opt_revision_t for a given kind
+static const svn_opt_revision_t *optRevPtr(svn_opt_revision_kind kind)
+{
+    static svn_opt_revision_t unspecifiedRev = { svn_opt_revision_unspecified };
+    static svn_opt_revision_t headRev = { svn_opt_revision_head };
+    if (kind == svn_opt_revision_unspecified) return &unspecifiedRev;
+    if (kind == svn_opt_revision_head) return &headRev;
+    return &unspecifiedRev; // fallback
+}
+
+
+static QString statusKindToQStr(svn_wc_status_kind kind)
+{
+    switch (kind) {
+        case svn_wc_status_none:          return QStringLiteral("None");
+        case svn_wc_status_unversioned:   return QStringLiteral("Unversioned");
+        case svn_wc_status_normal:        return QStringLiteral("Normal");
+        case svn_wc_status_added:         return QStringLiteral("Added");
+        case svn_wc_status_missing:       return QStringLiteral("Missing");
+        case svn_wc_status_deleted:       return QStringLiteral("Deleted");
+        case svn_wc_status_replaced:     return QStringLiteral("Replaced");
+        case svn_wc_status_modified:     return QStringLiteral("Modified");
+        case svn_wc_status_merged:       return QStringLiteral("Merged");
+        case svn_wc_status_conflicted:    return QStringLiteral("Conflicted");
+        case svn_wc_status_ignored:       return QStringLiteral("Ignored");
+        case svn_wc_status_obstructed:    return QStringLiteral("Obstructed");
+        case svn_wc_status_external:     return QStringLiteral("External");
+        case svn_wc_status_incomplete:    return QStringLiteral("Incomplete");
+        default:                          return QStringLiteral("Unknown");
+    }
+}
+
+// ── Status baton for batch operations ───────────────────────────
+
+struct StatusBaton {
+    QVariantMap *result = nullptr;
+    QMutex mutex;
+    bool batchMode = false;
+};
+
+// Callback for svn_client_status5
+static svn_error_t *
+status_catcher(void *baton, const char *localPath, const svn_client_status_t *status, apr_pool_t *)
+{
+    StatusBaton *b = static_cast<StatusBaton *>(baton);
+    QString path = QString::fromUtf8(localPath);
+    // Use node_status as primary; fall back to text_status
+    svn_wc_status_kind itemKind = status->node_status != svn_wc_status_none
+        ? status->node_status : status->text_status;
+    QString itemStr = statusKindToQStr(itemKind);
+    QString propStr = statusKindToQStr(status->prop_status);
+    QString combined = itemStr;
+    if (status->prop_status != svn_wc_status_none && status->prop_status != svn_wc_status_normal) {
+        if (!combined.isEmpty() && !propStr.isEmpty())
+            combined += QLatin1Char(':');
+        combined += propStr;
+    }
+    QMutexLocker locker(&b->mutex);
+    if (b->batchMode) {
+        if (status->node_status != svn_wc_status_normal || status->prop_status != svn_wc_status_normal) {
+            if (b->result)
+                (*b->result)[path] = combined;
+        }
+    } else {
+        if (b->result)
+            (*b->result)[path] = combined;
+    }
+    return SVN_NO_ERROR;
+}
+
+} // anonymous namespace
+
+// ── Private ─────────────────────────────────────────────────────
+
+struct SVNClient::Private {
+    apr_pool_t *pool = nullptr;
+    svn_client_ctx_t *ctx = nullptr;
+    QString username;
+    QString password;
+    QString configDir;
+    bool trustedMode = false;
+
+    struct CacheEntry {
+        qint64 revision = -1;
+        QElapsedTimer timer;
+    };
+    QMap<QString, CacheEntry> headRevCache;
+    mutable QMutex cacheMutex;
+    static constexpr int HEAD_REV_TTL_MS = 30'000;
+
+    ~Private() {
+        if (ctx) {
+            // No svn_client_ctx_destroy; just free the pool
+            ctx = nullptr;
+        }
+        if (pool) {
+            apr_pool_destroy(pool);
+            pool = nullptr;
+        }
+    }
+
+    bool ensureInitialized() {
+        if (pool)
+            return true;
+        pool = svn_pool_create(NULL);
+        return initCtx();
+    }
+
+    bool initCtx() {
+        if (!pool)
+            return false;
+        svn_error_t *err = svn_client_create_context(&ctx, pool);
+        if (err) {
+            svn_error_clear(err);
+            ctx = nullptr;
+            return false;
+        }
+        setupAuth();
+        return true;
+    }
+
+    void setupAuth() {
+        if (!ctx || !pool)
+            return;
+
+        apr_array_header_t *providers = apr_array_make(pool, 8, sizeof(svn_auth_provider_object_t *));
+
+        svn_auth_provider_object_t *provider = nullptr;
+
+        svn_auth_get_simple_provider(&provider, pool);
+        APR_ARRAY_PUSH(providers, svn_auth_provider_object_t *) = provider;
+
+        svn_auth_get_username_provider(&provider, pool);
+        APR_ARRAY_PUSH(providers, svn_auth_provider_object_t *) = provider;
+
+        // No SSL server trust file provider in this SVN version without prompt
+
+        svn_auth_open(&ctx->auth_baton, providers, pool);
+
+        if (!username.isEmpty()) {
+            svn_auth_set_parameter(ctx->auth_baton, SVN_AUTH_PARAM_DEFAULT_USERNAME,
+                                   username.toUtf8().constData());
+        }
+        if (!password.isEmpty()) {
+            svn_auth_set_parameter(ctx->auth_baton, SVN_AUTH_PARAM_DEFAULT_PASSWORD,
+                                   password.toUtf8().constData());
+        }
+        if (!configDir.isEmpty()) {
+            svn_auth_set_parameter(ctx->auth_baton, SVN_AUTH_PARAM_CONFIG_DIR,
+                                   configDir.toUtf8().constData());
+        }
+    }
+
+    svn_client_ctx_t *ctxForOp() {
+        if (!ensureInitialized())
+            return nullptr;
+        return ctx;
+    }
+
+    qint64 getHeadRevCached(const QString &url) {
+        {
+            QMutexLocker locker(&cacheMutex);
+            auto it = headRevCache.find(url);
+            if (it != headRevCache.end()) {
+                if (it.value().timer.elapsed() < HEAD_REV_TTL_MS)
+                    return it.value().revision;
+            }
+        }
+        qint64 rev = fetchHeadRev(url);
+        {
+            QMutexLocker locker(&cacheMutex);
+            CacheEntry entry;
+            entry.revision = rev;
+            entry.timer.start();
+            headRevCache.insert(url, entry);
+        }
+        return rev;
+    }
+
+    qint64 fetchHeadRev(const QString &url) {
+        if (!ctxForOp())
+            return -1;
+
+        svn_opt_revision_t rev;
+        rev.kind = svn_opt_revision_head;
+        svn_opt_revision_t peg;
+        peg.kind = svn_opt_revision_unspecified;
+
+        struct InfoBaton {
+            qint64 rev = -1;
+        } infoBaton;
+
+        svn_error_t *err = svn_client_info3(url.toUtf8().constData(),
+                                            &peg, &rev,
+                                            svn_depth_empty,
+                                            false, false, nullptr,
+                                            [](void *baton, const char *, const svn_client_info2_t *info, apr_pool_t *) -> svn_error_t * {
+                if (info) {
+                    InfoBaton *b = static_cast<InfoBaton *>(baton);
+                    b->rev = info->rev;
+                }
+                return SVN_NO_ERROR;
+            },
+            &infoBaton, ctx, pool);
+        if (err) {
+            svn_error_clear(err);
+            return -1;
+        }
+        return infoBaton.rev;
+    }
+};
+
+// ── SVNClient ───────────────────────────────────────────────────
+
+SVNClient::SVNClient(QObject *parent)
+    : QObject(parent)
+    , d(new Private)
+{
+}
+
+SVNClient::~SVNClient() = default;
+
+void SVNClient::setUsername(const QString &u)
+{
+    d->username = u;
+    if (d->ctx)
+        d->setupAuth();
+}
+
+void SVNClient::setPassword(const QString &p)
+{
+    d->password = p;
+    if (d->ctx)
+        d->setupAuth();
+}
+
+void SVNClient::setConfigDir(const QString &dir)
+{
+    d->configDir = dir;
+    if (d->ctx)
+        d->setupAuth();
+}
+
+void SVNClient::setTrustedMode(bool on)
+{
+    d->trustedMode = on;
+    if (d->ctx)
+        d->setupAuth();
+}
+
+// ── Write operations ────────────────────────────────────────────
 
 bool SVNClient::add(const QString &path)
 {
-    return runSvnBool({"add", "--non-interactive", "--trust-server-cert", path});
-}
-
-bool SVNClient::commit(const QString &path, const QString &message)
-{
-    QStringList args = {"commit", "-m", message, "--non-interactive", "--trust-server-cert", path};
-    return runSvnBool(args);
-}
-
-bool SVNClient::update(const QString &path)
-{
-    return runSvnBool({"update", "--non-interactive", "--trust-server-cert", path});
+    if (!d->ctxForOp())
+        return false;
+    svn_error_t *err = svn_client_add5(path.toUtf8().constData(),
+                                       svn_depth_infinity,
+                                       false, // force
+                                       false, // no_ignore
+                                       false, // no_autoprops
+                                       false, // add_parents
+                                       d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] add failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
 }
 
 bool SVNClient::remove(const QString &path)
 {
-    return runSvnBool({"remove", "--non-interactive", "--trust-server-cert", path});
+    if (!d->ctxForOp())
+        return false;
+    apr_array_header_t *targets = apr_array_make(d->pool, 1, sizeof(const char *));
+    APR_ARRAY_PUSH(targets, const char *) = apr_pstrdup(d->pool, path.toUtf8().constData());
+    svn_error_t *err = svn_client_delete4(targets, false, false, nullptr, nullptr, nullptr, d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] remove failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
+}
+
+bool SVNClient::commit(const QString &path, const QString &message)
+{
+    if (!d->ctxForOp())
+        return false;
+    apr_array_header_t *targets = apr_array_make(d->pool, 1, sizeof(const char *));
+    APR_ARRAY_PUSH(targets, const char *) = apr_pstrdup(d->pool, path.toUtf8().constData());
+
+    // Use deprecated svn_client_commit4 which returns commit_info directly
+    svn_commit_info_t *info = nullptr;
+    svn_error_t *err = svn_client_commit4(&info, targets,
+                                          svn_depth_infinity,
+                                          false, // keep_locks
+                                          false, // keep_changelists
+                                          nullptr, // changelists
+                                          nullptr, // revprop_table
+                                          d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] commit failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
+}
+
+bool SVNClient::update(const QString &path)
+{
+    if (!d->ctxForOp())
+        return false;
+    apr_array_header_t *targets = apr_array_make(d->pool, 1, sizeof(const char *));
+    APR_ARRAY_PUSH(targets, const char *) = apr_pstrdup(d->pool, path.toUtf8().constData());
+    apr_array_header_t *resultRevs = nullptr;
+    svn_opt_revision_t headRev;
+    headRev.kind = svn_opt_revision_head;
+    svn_error_t *err = svn_client_update4(&resultRevs, targets,
+                                          &headRev,
+                                          svn_depth_infinity,
+                                          false, // depth_is_sticky
+                                          false, // ignore_externals
+                                          false, // allow_unver_obstructions
+                                          true,  // adds_as_modification
+                                          false, // make_parents
+                                          d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] update failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
 }
 
 bool SVNClient::mkdir(const QString &path)
 {
-    return runSvnBool({"mkdir", "--non-interactive", "--trust-server-cert", path});
+    if (!d->ctxForOp())
+        return false;
+    apr_array_header_t *targets = apr_array_make(d->pool, 1, sizeof(const char *));
+    APR_ARRAY_PUSH(targets, const char *) = apr_pstrdup(d->pool, path.toUtf8().constData());
+    svn_commit_info_t *info = nullptr;
+    svn_error_t *err = svn_client_mkdir3(&info, targets,
+                                          false, // make_parents
+                                          nullptr, // revprop_table
+                                          d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] mkdir failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
 }
 
 bool SVNClient::move(const QString &src, const QString &dst)
 {
-    return runSvnBool({"move", "--non-interactive", "--trust-server-cert", src, dst});
-}
-
-QString SVNClient::getInfo(const QString &path)
-{
-    QStringList args = {"info", "--non-interactive", "--trust-server-cert", "--xml", path};
-    return runSvn(args);
-}
-
-QString SVNClient::getStatusString(const QString &path)
-{
-    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml", path};
-    QString output = runSvn(args);
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("wc-status")) {
-            QString item = xml.attributes().value("item").toString();
-            if (!item.isEmpty() && item != "normal") {
-                // Title-case: first char upper, rest lower
-                if (!item.isEmpty()) {
-                    item[0] = item[0].toUpper();
-                    for (int i = 1; i < item.size(); ++i)
-                        item[i] = item[i].toLower();
-                }
-                return item;
-            }
-        }
-    }
-    return "Normal";
-}
-
-bool SVNClient::runSvnTimed(const QStringList &args, const QString &workDir, int timeoutMs, QString *output)
-{
-    QProcess p;
-    if (!workDir.isEmpty())
-        p.setWorkingDirectory(workDir);
-    p.start("svn", args);
-    if (!p.waitForStarted(5000)) {
-        qWarning() << "[SVNClient] Failed to start svn process:" << args;
+    if (!d->ctxForOp())
+        return false;
+    apr_array_header_t *targets = apr_array_make(d->pool, 1, sizeof(const char *));
+    APR_ARRAY_PUSH(targets, const char *) = apr_pstrdup(d->pool, src.toUtf8().constData());
+    svn_commit_info_t *info = nullptr;
+    svn_error_t *err = svn_client_move5(&info, targets,
+                                         dst.toUtf8().constData(),
+                                         false, // force
+                                         false, // move_as_child
+                                         false, // make_parents
+                                         nullptr, // revprop_table
+                                         d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] move failed:" << err->message;
+        svn_error_clear(err);
         return false;
     }
-    bool finished = p.waitForFinished(timeoutMs);
-    if (!finished) {
-        qWarning() << "[SVNClient] SVN timed out after" << timeoutMs << "ms:" << args;
-        p.kill();
-        p.waitForFinished(2000);
-        return false;
-    }
-    if (output)
-        *output = QString::fromLocal8Bit(p.readAllStandardOutput());
-    QString errorOutput = QString::fromLocal8Bit(p.readAllStandardError());
-    int exitCode = p.exitCode();
-
-    // Detect authentication failures (SVN error codes E170001-E170014)
-    if (exitCode != 0) {
-        QString err = errorOutput.trimmed();
-        if (err.contains(QStringLiteral("E170001")) || err.contains(QStringLiteral("Authentication failed")) ||
-            err.contains(QStringLiteral("E230001")) || err.contains(QStringLiteral("Server SSL certificate")) ||
-            err.contains(QStringLiteral("credential"))) {
-            qWarning() << "[SVNClient] Auth/ssl error detected, exitCode=" << exitCode << ":" << err;
-            emit commandError(QStringLiteral("auth_error:") + err);
-            return false;
-        }
-    }
-    return exitCode == 0;
-}
-
-QString SVNClient::runSvn(const QStringList &args, const QString &workDir, int timeoutMs)
-{
-    int cap = qMin(timeoutMs, SAFETY_TIMEOUT_MS);
-    QString output;
-    runSvnTimed(args, workDir, cap, &output);
-    return output;
-}
-
-bool SVNClient::runSvnBool(const QStringList &args, const QString &workDir, int timeoutMs)
-{
-    int cap = qMin(timeoutMs, SAFETY_TIMEOUT_MS);
-    return runSvnTimed(args, workDir, cap);
-}
-
-SVNClient::ErrorLevel SVNClient::runSvnLevel(const QStringList &args, const QString &workDir, int timeoutMs)
-{
-    int cap = qMin(timeoutMs, SAFETY_TIMEOUT_MS);
-    QProcess p;
-    if (!workDir.isEmpty())
-        p.setWorkingDirectory(workDir);
-    p.start("svn", args);
-    if (!p.waitForStarted(5000)) {
-        qWarning() << "[SVNClient] Failed to start svn process:" << args;
-        return ErrorLevel::Error;
-    }
-    bool finished = p.waitForFinished(cap);
-    if (!finished) {
-        qWarning() << "[SVNClient] SVN timed out after" << cap << "ms:" << args;
-        p.kill();
-        p.waitForFinished(2000);
-        return ErrorLevel::Error;
-    }
-    QString error = QString::fromLocal8Bit(p.readAllStandardError());
-    QString output = QString::fromLocal8Bit(p.readAllStandardOutput());
-    int exitCode = p.exitCode();
-
-    // Warning-level patterns
-    QStringList warningPatterns = {
-        "Nothing to commit", "Skipped", "At revision",
-        "Updating", "Summary of conflicts", "Revision"
-    };
-    for (const QString &pat : warningPatterns) {
-        if (error.contains(pat) || output.contains(pat)) {
-            if (exitCode == 0 || error.contains("At revision")) {
-                if (!error.isEmpty())
-                    emit commandWarning(error.isEmpty() ? output : error);
-                return ErrorLevel::Warning;
-            }
-        }
-    }
-
-    // Error-level patterns
-    QStringList errorPatterns = {
-        "Authentication required", "authorization failed",
-        "Can't create directory", "Permission denied",
-        "File not found", "Working copy already locked",
-        "Run 'svn cleanup'", "conflict", "Out of date", "Invalid URL"
-    };
-    for (const QString &pat : errorPatterns) {
-        if (error.contains(pat)) {
-            qWarning() << "svn error:" << error;
-            emit commandError(error);
-            return ErrorLevel::Error;
-        }
-    }
-
-    if (exitCode != 0) {
-        if (!error.isEmpty()) {
-            qWarning() << "svn error:" << error;
-            emit commandError(error);
-        }
-        return ErrorLevel::Error;
-    }
-
-    if (!error.isEmpty()) {
-        qWarning() << "svn warning:" << error;
-        emit commandWarning(error);
-    }
-    return ErrorLevel::Success;
-}
-
-int SVNClient::getWorkingCopyRevision(const QString &path)
-{
-    QStringList args = {"info", "--non-interactive", "--trust-server-cert", "--xml", path};
-    QString output = runSvn(args);
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
-            QString rev = xml.attributes().value("revision").toString();
-            if (!rev.isEmpty())
-                return rev.toInt();
-        }
-    }
-    return -1;
-}
-
-int SVNClient::getHeadRevision(const QString &url)
-{
-    // 30s TTL cache to avoid hitting server for every status check.
-    // Mirrors WPF SvnService.GetHeadRevision cache.
-    static constexpr int HEAD_REV_TTL_MS = 30'000;
-    QMutexLocker locker(&m_headRevCacheMutex);
-    auto it = m_headRevCache.find(url);
-    if (it != m_headRevCache.end()) {
-        if (it.value().timestamp.elapsed() < HEAD_REV_TTL_MS) {
-            return it.value().revision;
-        }
-    }
-    locker.unlock();
-
-    QStringList args = {"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", "--xml", url};
-    QString output = runSvn(args);
-    int rev = -1;
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
-            QString r = xml.attributes().value("revision").toString();
-            if (!r.isEmpty()) {
-                rev = r.toInt();
-                break;
-            }
-        }
-    }
-
-    // Cache result (even -1, to avoid retries on persistent failure within TTL)
-    locker.relock();
-    m_headRevCache[url] = { rev, QElapsedTimer() };
-    m_headRevCache[url].timestamp.start();
-    return rev;
-}
-
-int SVNClient::cachedHeadRevision(const QString &url) const
-{
-    QMutexLocker locker(&m_headRevCacheMutex);
-    auto it = m_headRevCache.find(url);
-    if (it != m_headRevCache.end())
-        return it.value().revision;
-    return -1;
-}
-
-bool SVNClient::isCredentialValid(const QString &repoUrl)
-{
-    // Lightweight probe: use `svn info` with a short timeout. If it succeeds
-    // AND no "authorization failed" appears in stderr, creds are good.
-    // Reuses the head-revision cache to avoid duplicate network calls.
-    int rev = getHeadRevision(repoUrl);
-    if (rev > 0) return true;
-
-    // Fallback: explicit info call with short timeout
-    QStringList args = {"info", "--non-interactive", "--trust-server-cert",
-                        "--xml", repoUrl};
-    QString output = runSvn(args, QString(), 10'000);
-    if (output.isEmpty()) return false;
-    if (output.contains(QStringLiteral("authorization failed"), Qt::CaseInsensitive))
-        return false;
-    return output.contains(QStringLiteral("<entry"));
-}
-
-int SVNClient::getHeadRevision(const QString &url, const QString &username, const QString &password)
-{
-    QStringList args = {"info", "--non-interactive", "-r", "HEAD", "--trust-server-cert", "--xml", url};
-    if (!username.isEmpty()) {
-        args.append("--username"); args.append(username);
-        args.append("--password"); args.append(password);
-    }
-    QString output = runSvn(args);
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
-            QString rev = xml.attributes().value("revision").toString();
-            if (!rev.isEmpty())
-                return rev.toInt();
-        }
-    }
-    return -1;
+    return true;
 }
 
 bool SVNClient::revert(const QString &path, bool recursive)
 {
-    QStringList args = {"revert", "--non-interactive", "--trust-server-cert", path};
-    if (recursive) args.insert(2, "--recursive");
-    return runSvnBool(args);
+    if (!d->ctxForOp())
+        return false;
+    apr_array_header_t *targets = apr_array_make(d->pool, 1, sizeof(const char *));
+    APR_ARRAY_PUSH(targets, const char *) = apr_pstrdup(d->pool, path.toUtf8().constData());
+    svn_error_t *err = svn_client_revert4(targets,
+                                           recursive ? svn_depth_infinity : svn_depth_empty,
+                                           nullptr, // changelists
+                                           false, // clear_changelists
+                                           false, // metadata_only
+                                           false, // added_keep_local
+                                           d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] revert failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
 }
 
 bool SVNClient::cleanup(const QString &path)
 {
-    return runSvnBool({"cleanup", "--non-interactive", "--trust-server-cert", path});
-}
-
-// Force-break stale working copy locks left by crashed svn processes.
-// Mirrors WPF SvnService.BreakWriteLockAsync. `svn cleanup --break-wait`
-// aborts any currently-waiting svn client on this working copy and clears
-// the lock files.
-bool SVNClient::breakWriteLock(const QString &path)
-{
-    if (path.isEmpty()) return false;
-    return runSvnBool({"cleanup", "--non-interactive", "--trust-server-cert",
-                       "--break-wait", path});
+    if (!d->ctxForOp())
+        return false;
+    svn_error_t *err = svn_client_cleanup(path.toUtf8().constData(), d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] cleanup failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
 }
 
 bool SVNClient::unlock(const QString &path)
 {
-    return runSvnBool({"unlock", "--non-interactive", "--trust-server-cert", path});
-}
-
-bool SVNClient::checkout(const QString &url, const QString &localPath,
-                          const QString &username, const QString &password) {
-    QStringList args = {"checkout", "--non-interactive", "--trust-server-cert"};
-    if (!username.isEmpty()) {
-        args += {"--username", username};
-        if (!password.isEmpty()) {
-            args += {"--password", password};
-        }
+    if (!d->ctxForOp())
+        return false;
+    apr_array_header_t *targets = apr_array_make(d->pool, 1, sizeof(const char *));
+    APR_ARRAY_PUSH(targets, const char *) = apr_pstrdup(d->pool, path.toUtf8().constData());
+    svn_error_t *err = svn_client_unlock(targets, false, d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] unlock failed:" << err->message;
+        svn_error_clear(err);
+        return false;
     }
-    args += {url, localPath};
-    return runSvnBool(args);
+    return true;
 }
 
-bool SVNClient::isValidWorkingCopy(const QString &path)
+bool SVNClient::checkout(const QString &url, const QString &localPath)
 {
-    if (!QDir(path).exists()) return false;
-    // SVN 1.6+: .svn/entries 文件
-    // SVN 1.14+: .svn/wc.db (SQLite)
-    return QFile::exists(path + "/.svn/entries") || QFile::exists(path + "/.svn/wc.db");
-}
-
-QStringList SVNClient::getConflictedFiles(const QString &path)
-{
-    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml", path};
-    QString output = runSvn(args);
-    QStringList conflicted;
-    QXmlStreamReader xml(output);
-    QString curPath;
-    bool isConflicted = false;
-    while (!xml.atEnd()) {
-        QXmlStreamReader::TokenType tok = xml.readNext();
-        if (tok == QXmlStreamReader::StartElement) {
-            QStringView name = xml.name();
-            if (name == QStringLiteral("entry")) {
-                curPath = xml.attributes().value("path").toString();
-                isConflicted = false;
-            } else if (name == QStringLiteral("wc-status") && xml.attributes().value("item") == QStringLiteral("conflicted")) {
-                isConflicted = true;
-            }
-        } else if (tok == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("entry")) {
-            if (isConflicted && !curPath.isEmpty())
-                conflicted.append(curPath);
-        }
+    if (!d->ctxForOp())
+        return false;
+    svn_opt_revision_t rev;
+    rev.kind = svn_opt_revision_head;
+    svn_revnum_t resultRev = SVN_INVALID_REVNUM;
+    svn_error_t *err = svn_client_checkout3(&resultRev,
+                                             url.toUtf8().constData(),
+                                             localPath.toUtf8().constData(),
+                                             &rev, &rev,
+                                             svn_depth_infinity,
+                                             false, // allow_unver_obstructions
+                                             false, // add_discovered_mat_info
+                                             d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] checkout failed:" << err->message;
+        svn_error_clear(err);
+        return false;
     }
-    return conflicted;
+    return true;
 }
 
 bool SVNClient::resolveConflict(const QString &path, const QString &accept)
 {
-    // accept: "mine-conflict" (keep local) or "theirs-conflict" (use server)
-    QStringList args = {"resolve", "--non-interactive", "--trust-server-cert",
-                        "--accept", accept, path};
-    return runSvnBool(args);
+    if (!d->ctxForOp())
+        return false;
+    svn_wc_conflict_choice_t choice;
+    if (accept == QLatin1String("mine-conflict"))
+        choice = svn_wc_conflict_choose_mine_conflict;
+    else if (accept == QLatin1String("theirs-conflict"))
+        choice = svn_wc_conflict_choose_theirs_conflict;
+    else if (accept == QLatin1String("mine-full"))
+        choice = svn_wc_conflict_choose_mine_full;
+    else if (accept == QLatin1String("theirs-full"))
+        choice = svn_wc_conflict_choose_theirs_full;
+    else if (accept == QLatin1String("base"))
+        choice = svn_wc_conflict_choose_base;
+    else if (accept == QLatin1String("working"))
+        choice = svn_wc_conflict_choose_merged;
+    else
+        choice = svn_wc_conflict_choose_postpone;
+
+    svn_error_t *err = svn_client_resolve(path.toUtf8().constData(),
+                                          svn_depth_empty,
+                                          choice,
+                                          d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] resolve failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
 }
 
 bool SVNClient::copyFileOrFolder(const QString &src, const QString &dest)
 {
-    QStringList args = {"copy", "--non-interactive", "--trust-server-cert", src, dest};
-    return runSvnBool(args);
+    if (!d->ctxForOp())
+        return false;
+    apr_array_header_t *sources = apr_array_make(d->pool, 1, sizeof(const char *));
+    APR_ARRAY_PUSH(sources, const char *) = apr_pstrdup(d->pool, src.toUtf8().constData());
+    svn_commit_info_t *info = nullptr;
+    svn_error_t *err = svn_client_copy4(&info, sources,
+                                         dest.toUtf8().constData(),
+                                         false, // copy_as_child
+                                         false, // make_parents
+                                         nullptr, // revprop_table
+                                         d->ctx, d->pool);
+    if (err) {
+        qWarning() << "[SVNClient] copy failed:" << err->message;
+        svn_error_clear(err);
+        return false;
+    }
+    return true;
 }
 
-// ── Extended read-only API (used by SvnCommandExecutor) ────────
+bool SVNClient::breakWriteLock(const QString &path)
+{
+    if (path.isEmpty())
+        return false;
+    return cleanup(path);
+}
+
+// ── Read operations ─────────────────────────────────────────────
 
 QString SVNClient::getRepoUrl(const QString &path)
 {
-    QStringList args = {"info", "--non-interactive", "--trust-server-cert", "--xml", path};
-    QString output = runSvn(args);
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("url")) {
-            return xml.readElementText();
-        }
+    if (!d->ctxForOp())
+        return QString();
+    svn_opt_revision_t rev;
+    rev.kind = svn_opt_revision_unspecified;
+    struct InfoBaton {
+        QString url;
+    } infoBaton;
+    svn_error_t *err = svn_client_info3(path.toUtf8().constData(),
+                                        &rev, &rev,
+                                        svn_depth_empty,
+                                        false, false, nullptr,
+                                        [](void *baton, const char *, const svn_client_info2_t *info, apr_pool_t *) -> svn_error_t * {
+            if (info && info->URL) {
+                InfoBaton *b = static_cast<InfoBaton *>(baton);
+                b->url = QString::fromUtf8(info->URL);
+            }
+            return SVN_NO_ERROR;
+        },
+                                        &infoBaton, d->ctx, d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return QString();
     }
-    return QString();
+    return infoBaton.url;
 }
 
-QVariantMap SVNClient::getStatus(const QString &path, bool depth)
+QString SVNClient::getInfo(const QString &path)
 {
+    return getRepoUrl(path);
+}
+
+QString SVNClient::getStatusString(const QString &path)
+{
+    if (!d->ctxForOp())
+        return QStringLiteral("Unknown");
+
+    StatusBaton baton;
     QVariantMap result;
-    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml"};
-    if (depth) args.append("--depth=infinity");
-    args.append(path);
-    QString output = runSvn(args);
-    QXmlStreamReader xml(output);
-    QString curPath;
-    QString curItem;
-    while (!xml.atEnd()) {
-        QXmlStreamReader::TokenType tok = xml.readNext();
-        if (tok == QXmlStreamReader::StartElement) {
-            QStringView name = xml.name();
-            if (name == QStringLiteral("entry")) {
-                curPath = xml.attributes().value("path").toString();
-                curItem.clear();
-            } else if (name == QStringLiteral("wc-status")) {
-                QString item = xml.attributes().value("item").toString();
-                QString prop = xml.attributes().value("props").toString();
-                if (!item.isEmpty())
-                    curItem = item;
-                // Detect tree conflict: XML shows tree-conflicted="true" on wc-status
-                if (xml.attributes().value("tree-conflicted") == QStringLiteral("true")) {
-                    curItem = QStringLiteral("treeconflicted");
-                }
-            }
-        } else if (tok == QXmlStreamReader::EndElement && xml.name() == QStringLiteral("entry")) {
-            if (!curPath.isEmpty() && !curItem.isEmpty())
-                result[curPath] = curItem;
-        }
+    baton.result = &result;
+    baton.batchMode = false;
+
+    svn_revnum_t dummyRev = SVN_INVALID_REVNUM;
+    svn_error_t *err = svn_client_status5(&dummyRev,
+                                          d->ctx,
+                                          path.toUtf8().constData(),
+                                          optRevPtr(svn_opt_revision_unspecified),
+                                          svn_depth_empty,
+                                          false, // get_all
+                                          false, // update
+                                          false, // no_ignore
+                                          false, // ignore_externals
+                                          false, // depth_as_sticky
+                                          nullptr, // changelists
+                                          status_catcher,
+                                          &baton,
+                                          d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return QStringLiteral("Unknown");
     }
-    return result;
+    if (result.isEmpty())
+        return QStringLiteral("Normal");
+    return result.constBegin().value().toString();
 }
 
 QString SVNClient::getLastChangedTime(const QString &path)
 {
-    QStringList args = {"info", "--non-interactive", "--trust-server-cert", "--xml", path};
-    QString output = runSvn(args);
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("date")) {
-            return xml.readElementText();
-        }
+    if (!d->ctxForOp())
+        return QString();
+    svn_opt_revision_t rev;
+    rev.kind = svn_opt_revision_unspecified;
+    struct InfoBaton {
+        QString dateStr;
+    } infoBaton;
+    svn_error_t *err = svn_client_info3(path.toUtf8().constData(),
+                                        &rev, &rev,
+                                        svn_depth_empty,
+                                        false, false, nullptr,
+                                        [](void *baton, const char *, const svn_client_info2_t *info, apr_pool_t *pool) -> svn_error_t * {
+            if (info && info->last_changed_date != 0) {
+                InfoBaton *b = static_cast<InfoBaton *>(baton);
+                const char *date_cstr = svn_time_to_cstring(info->last_changed_date, pool);
+                if (date_cstr)
+                    b->dateStr = QString::fromUtf8(date_cstr);
+            }
+            return SVN_NO_ERROR;
+        },
+                                        &infoBaton, d->ctx, d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return QString();
     }
-    return QString();
+    return infoBaton.dateStr;
+}
+
+int SVNClient::getWorkingCopyRevision(const QString &path)
+{
+    if (!d->ctxForOp())
+        return -1;
+    svn_opt_revision_t rev;
+    rev.kind = svn_opt_revision_unspecified;
+    struct InfoBaton {
+        qint64 rev = -1;
+    } infoBaton;
+    svn_error_t *err = svn_client_info3(path.toUtf8().constData(),
+                                        &rev, &rev,
+                                        svn_depth_empty,
+                                        false, false, nullptr,
+                                        [](void *baton, const char *, const svn_client_info2_t *info, apr_pool_t *) -> svn_error_t * {
+            if (info) {
+                InfoBaton *b = static_cast<InfoBaton *>(baton);
+                b->rev = info->rev;
+            }
+            return SVN_NO_ERROR;
+        },
+                                        &infoBaton, d->ctx, d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return -1;
+    }
+    return static_cast<int>(infoBaton.rev);
+}
+
+int SVNClient::getHeadRevision(const QString &url)
+{
+    return static_cast<int>(d->getHeadRevCached(url));
 }
 
 bool SVNClient::isVersioned(const QString &path)
 {
-    return isValidWorkingCopy(path) || QFile::exists(QFileInfo(path).dir().absolutePath() + "/.svn");
+    if (isValidWorkingCopy(path))
+        return true;
+    QFileInfo fi(path);
+    if (fi.isDir()) {
+        return QFile::exists(path + "/.svn/entries") || QFile::exists(path + "/.svn/wc.db");
+    } else {
+        return QFile::exists(fi.dir().absolutePath() + "/.svn/entries") ||
+               QFile::exists(fi.dir().absolutePath() + "/.svn/wc.db");
+    }
+}
+
+bool SVNClient::isValidWorkingCopy(const QString &path)
+{
+    if (!QDir(path).exists())
+        return false;
+    return QFile::exists(path + "/.svn/entries") || QFile::exists(path + "/.svn/wc.db");
 }
 
 bool SVNClient::hasIncompleteWorkingCopy(const QString &path)
 {
-    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml", "--depth=infinity", path};
-    QString output = runSvn(args);
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("wc-status")) {
-            // SVN reports "incomplete" as the 'item' or 'depth' attribute when WC is corrupted
-            QString item = xml.attributes().value("item").toString();
-            if (item == QStringLiteral("incomplete"))
-                return true;
-        }
+    if (!d->ctxForOp())
+        return false;
+    StatusBaton baton;
+    QVariantMap result;
+    baton.result = &result;
+    baton.batchMode = false;
+    svn_revnum_t dummyRev = SVN_INVALID_REVNUM;
+    svn_error_t *err = svn_client_status5(&dummyRev,
+                                          d->ctx,
+                                          path.toUtf8().constData(),
+                                          optRevPtr(svn_opt_revision_unspecified),
+                                          svn_depth_infinity,
+                                          false, false, false, false, false,
+                                          nullptr,
+                                          status_catcher,
+                                          &baton,
+                                          d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return false;
+    }
+    for (auto it = result.constBegin(); it != result.constEnd(); ++it) {
+        if (it.value().toString().contains(QStringLiteral("Incomplete")))
+            return true;
     }
     return false;
 }
 
-bool SVNClient::testConnection(const QString &url, const QString &username, const QString &password)
+bool SVNClient::testConnection(const QString &url)
 {
-    QStringList args = {"info", "--non-interactive", "--trust-server-cert"};
-    if (!username.isEmpty()) {
-        args += {"--username", username};
-        if (!password.isEmpty())
-            args += {"--password", password};
+    if (!d->ctxForOp())
+        return false;
+    svn_opt_revision_t rev;
+    rev.kind = svn_opt_revision_head;
+    struct InfoBaton {
+        bool ok = false;
+    } infoBaton;
+    svn_error_t *err = svn_client_info3(url.toUtf8().constData(),
+                                        &rev, &rev,
+                                        svn_depth_empty,
+                                        false, false, nullptr,
+                                        [](void *baton, const char *, const svn_client_info2_t *, apr_pool_t *) -> svn_error_t * {
+            InfoBaton *b = static_cast<InfoBaton *>(baton);
+            b->ok = true;
+            return SVN_NO_ERROR;
+        },
+                                        &infoBaton, d->ctx, d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return false;
     }
-    args.append(url);
-    QString output = runSvn(args);
-    return output.contains("Revision:") || output.contains("URL:");
+    return infoBaton.ok;
+}
+
+bool SVNClient::isCredentialValid(const QString &repoUrl)
+{
+    return testConnection(repoUrl);
+}
+
+int SVNClient::cachedHeadRevision(const QString &url) const
+{
+    QMutexLocker locker(&d->cacheMutex);
+    auto it = d->headRevCache.find(url);
+    if (it != d->headRevCache.end())
+        return static_cast<int>(it.value().revision);
+    return -1;
+}
+
+QStringList SVNClient::list(const QString &path)
+{
+    if (!d->ctxForOp())
+        return QStringList();
+    struct ListBaton {
+        QStringList names;
+        QMutex mutex;
+    } listBaton;
+    svn_error_t *err = svn_client_list2(path.toUtf8().constData(),
+                                         optRevPtr(svn_opt_revision_unspecified),
+                                         optRevPtr(svn_opt_revision_unspecified),
+                                         svn_depth_immediates,
+                                         0, // dirent_fields (0 = all)
+                                         false, // fetch_locks
+                                         [](void *baton, const char *path, const svn_dirent_t *,
+                                            const svn_lock_t *, const char *, apr_pool_t *) -> svn_error_t * {
+            if (path) {
+                ListBaton *b = static_cast<ListBaton *>(baton);
+                QMutexLocker locker(&b->mutex);
+                b->names.append(QString::fromUtf8(path));
+            }
+            return SVN_NO_ERROR;
+        },
+                                         &listBaton,
+                                         d->ctx, d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return QStringList();
+    }
+    return listBaton.names;
+}
+
+QStringList SVNClient::getConflictedFiles(const QString &path)
+{
+    if (!d->ctxForOp())
+        return QStringList();
+    StatusBaton baton;
+    QVariantMap result;
+    baton.result = &result;
+    baton.batchMode = false;
+    svn_revnum_t dummyRev = SVN_INVALID_REVNUM;
+    svn_error_t *err = svn_client_status5(&dummyRev,
+                                          d->ctx,
+                                          path.toUtf8().constData(),
+                                          optRevPtr(svn_opt_revision_unspecified),
+                                          svn_depth_infinity,
+                                          false, false, false, true, false,
+                                          nullptr,
+                                          status_catcher,
+                                          &baton,
+                                          d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return QStringList();
+    }
+    QStringList conflicted;
+    for (auto it = result.constBegin(); it != result.constEnd(); ++it) {
+        if (it.value().toString().contains(QStringLiteral("Conflicted")))
+            conflicted.append(it.key());
+    }
+    return conflicted;
 }
 
 QStringList SVNClient::getServerUpdatePaths(const QString &path)
 {
-    // svn status -u --xml shows incoming changes with '*' marker
-    QStringList args = {"status", "--non-interactive", "--trust-server-cert", "--xml", "-u", path};
-    QString output = runSvn(args);
-    QStringList paths;
-    QXmlStreamReader xml(output);
-    while (!xml.atEnd()) {
-        if (xml.readNext() == QXmlStreamReader::StartElement && xml.name() == QStringLiteral("entry")) {
-            // Only include entries that have remote updates (status="hidden" means
-            // the server has a newer version that needs to be updated locally).
-            QString filePath = xml.attributes().value("path").toString();
-            QString statusAttr = xml.attributes().value("status").toString();
-            if (!filePath.isEmpty() && statusAttr == "hidden")
-                paths.append(filePath);
-        }
+    // svn_client_status5 with update=true shows repos update info
+    if (!d->ctxForOp())
+        return QStringList();
+    StatusBaton baton;
+    QVariantMap result;
+    baton.result = &result;
+    baton.batchMode = false;
+    svn_revnum_t dummyRev = SVN_INVALID_REVNUM;
+    svn_error_t *err = svn_client_status5(&dummyRev,
+                                          d->ctx,
+                                          path.toUtf8().constData(),
+                                          optRevPtr(svn_opt_revision_unspecified),
+                                          svn_depth_infinity,
+                                          false, // get_all
+                                          true,  // update - repos info
+                                          false, false, false,
+                                          nullptr,
+                                          status_catcher,
+                                          &baton,
+                                          d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return QStringList();
     }
-    return paths;
+    return QStringList();
+}
+
+QVariantMap SVNClient::getStatus(const QString &path, bool depth)
+{
+    if (!d->ctxForOp())
+        return QVariantMap();
+    StatusBaton baton;
+    QVariantMap result;
+    baton.result = &result;
+    baton.batchMode = false;
+    svn_revnum_t dummyRev = SVN_INVALID_REVNUM;
+    svn_error_t *err = svn_client_status5(&dummyRev,
+                                          d->ctx,
+                                          path.toUtf8().constData(),
+                                          optRevPtr(svn_opt_revision_unspecified),
+                                          depth ? svn_depth_infinity : svn_depth_empty,
+                                          false, false, false, true, false,
+                                          nullptr,
+                                          status_catcher,
+                                          &baton,
+                                          d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return QVariantMap();
+    }
+    return result;
+}
+
+QVariantMap SVNClient::batchGetStatus(const QString &dirPath)
+{
+    if (!d->ctxForOp())
+        return QVariantMap();
+    StatusBaton baton;
+    QVariantMap result;
+    baton.result = &result;
+    baton.batchMode = true;
+    svn_revnum_t dummyRev = SVN_INVALID_REVNUM;
+    svn_error_t *err = svn_client_status5(&dummyRev,
+                                          d->ctx,
+                                          dirPath.toUtf8().constData(),
+                                          optRevPtr(svn_opt_revision_unspecified),
+                                          svn_depth_immediates,
+                                          false, false, false, true, false,
+                                          nullptr,
+                                          status_catcher,
+                                          &baton,
+                                          d->pool);
+    if (err) {
+        svn_error_clear(err);
+        return QVariantMap();
+    }
+    return result;
 }

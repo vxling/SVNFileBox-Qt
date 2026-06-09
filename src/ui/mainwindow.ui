@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="windowTitle">
+   <string>SVNFileBox</string>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="rootLayout">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <!-- Left Sidebar (220px) -->
+    <item>
+     <widget class="QWidget" name="m_sidebar">
+      <property name="minimumSize">
+       <size>
+        <width>220</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>220</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QWidget#m_sidebar { background: #FFFFFF; }</string>
+      </property>
+      <layout class="QVBoxLayout" name="sidebarLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="m_repoListLabel">
+         <property name="text">
+          <string>仓库列表</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QLabel#m_repoListLabel { font-size: 14px; font-weight: bold; color: #1A1A2E; margin-bottom: 8px; }</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListView" name="m_repoListView">
+         <property name="editTriggers">
+          <enum>QAbstractItemView::NoEditTriggers</enum>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::SingleSelection</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="m_sep1">
+         <property name="frameShape">
+          <enum>QFrame::HLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Plain</enum>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QFrame#m_sep1 { color: #E8E8E8; }</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="sidebarBtnLayout1">
+         <property name="spacing">
+          <number>4</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="m_btnCheckout">
+           <property name="text">
+           <string>🌐 从网络添加仓库</string>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>36</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton { text-align: left; padding-left: 8px; background: #F0F0F0; border: none; border-radius: 4px; } QPushButton:hover { background: #E0E0E0; }</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="m_btnAddLocal">
+           <property name="text">
+            <string>📂 添加本地仓库</string>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>36</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton { text-align: left; padding-left: 8px; background: #F0F0F0; border: none; border-radius: 4px; } QPushButton:hover { background: #E0E0E0; }</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="m_btnSyncRecords">
+           <property name="text">
+            <string>📋 查看同步记录</string>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>36</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton { text-align: left; padding-left: 8px; background: #F0F0F0; border: none; border-radius: 4px; } QPushButton:hover { background: #E0E0E0; }</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QFrame" name="m_sep2">
+         <property name="frameShape">
+          <enum>QFrame::HLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Plain</enum>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QFrame#m_sep2 { color: #E8E8E8; margin-top: 4px; margin-bottom: 4px; }</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="sidebarBtnLayout2">
+         <property name="spacing">
+          <number>4</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="m_btnSettings">
+           <property name="text">
+            <string>⚙️ 设置</string>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>36</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton { text-align: left; padding-left: 8px; background: #F0F0F0; border: none; border-radius: 4px; } QPushButton:hover { background: #E0E0E0; }</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="m_btnAbout">
+           <property name="text">
+            <string>ℹ️ 关于</string>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>36</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton { text-align: left; padding-left: 8px; background: #F0F0F0; border: none; border-radius: 4px; } QPushButton:hover { background: #E0E0E0; }</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="sidebarSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <!-- Main Content Area -->
+    <item>
+     <widget class="QWidget" name="m_contentArea">
+      <property name="styleSheet">
+       <string notr="true">QWidget#m_contentArea { background: #FFFFFF; }</string>
+      </property>
+      <layout class="QVBoxLayout" name="contentLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <!-- Path Bar -->
+       <item>
+        <widget class="QWidget" name="m_pathBar">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>48</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>48</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QWidget#m_pathBar { background: #FAFBFC; border-bottom: 1px solid #E8E8E8; }</string>
+         </property>
+         <layout class="QHBoxLayout" name="pathLayout">
+          <property name="spacing">
+           <number>8</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="m_pathLabel">
+            <property name="text">
+             <string>路径:</string>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QLabel#m_pathLabel { color: #666666; font-size: 12px; }</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="m_pathEdit">
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QLineEdit#m_pathEdit { border: none; background: transparent; font-size: 13px; color: #333333; }</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="m_goUpBtn">
+            <property name="text">
+             <string>↑ 返回</string>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>70</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>70</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QPushButton { background: #F5F5F5; color: #333333; border: 1px solid #E0E0E0; border-radius: 4px; } QPushButton:hover { background: #E0E0E0; }</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="m_refreshBtn">
+            <property name="text">
+             <string>刷新</string>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>70</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>70</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QPushButton { background: #1E88E5; color: white; border: none; border-radius: 4px; } QPushButton:hover { background: #1565C0; }</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <!-- File Table -->
+       <item>
+        <widget class="QTableView" name="m_fileTableView">
+         <property name="alternatingRowColors">
+          <bool>true</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::SingleSelection</enum>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectRows</enum>
+         </property>
+         <property name="editTriggers">
+          <enum>QAbstractItemView::NoEditTriggers</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="fixedHeight">
+    <number>36</number>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QStatusBar { background: #1E88E5; color: white; }</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

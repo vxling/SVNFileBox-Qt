@@ -66,6 +66,18 @@ void SyncEngine::watchPath(const QString &path)
              << "directories:" << m_watcher->directories().size();
 }
 
+void SyncEngine::setBackgroundMode(bool on)
+{
+    if (!m_syncing) return;
+    if (on) {
+        m_pollTimer->setInterval(m_backgroundPollIntervalSec * 1000);
+        qDebug() << "[SyncEngine] Background mode: poll interval" << m_backgroundPollIntervalSec << "s";
+    } else {
+        m_pollTimer->setInterval(m_pollIntervalSec * 1000);
+        qDebug() << "[SyncEngine] Normal mode: poll interval" << m_pollIntervalSec << "s";
+    }
+}
+
 void SyncEngine::addPathRecursive(const QString &rootPath)
 {
     if (!m_watcher) return;

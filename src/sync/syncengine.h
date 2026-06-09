@@ -44,6 +44,7 @@ public:
     Q_INVOKABLE void syncNow();
     Q_INVOKABLE void scanAndCommit();
     Q_INVOKABLE void watchPath(const QString &path);
+    Q_INVOKABLE void setBackgroundMode(bool on);  // longer polling, suppressed routine notifications
     Q_INVOKABLE QString status() const;
     Q_INVOKABLE QStringList getConflictedFiles() const;
     // Rich conflict info: returns a list of QVariantMaps per file with
@@ -116,7 +117,8 @@ private:
     // onDebounceTimer() would block status() reads (UI hiccup), so we
     // only lock for the read of the flag (one-line critical section).
     mutable QMutex m_stateMutex;
-    int m_pollIntervalSec = 60;
+    int m_pollIntervalSec = 60;          // normal polling (seconds)
+    int m_backgroundPollIntervalSec = 600; // background polling (seconds, default 10 min)
     int m_staleCounter = 0;
     // FileWatcher reconnection: when watcher fails, try to rebuild it
     // with exponential backoff (5s, 10s, then give up).

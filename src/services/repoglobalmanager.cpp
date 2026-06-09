@@ -23,7 +23,9 @@ void RepoGlobalManager::createNetworkRepoAsync(const QString &name, const QStrin
 {
     // Verify URL with a temporary SVNClient before creating manager
     SVNClient tmpClient;
-    if (!tmpClient.testConnection(url, username, password)) {
+    tmpClient.setUsername(username);
+    tmpClient.setPassword(password);
+    if (!tmpClient.testConnection(url)) {
         qWarning() << "[RepoGlobalManager] Cannot connect to URL:" << url;
         return;
     }
@@ -48,17 +50,29 @@ void RepoGlobalManager::switchToAsync(RepoManager *newManager)
 {
     if (!newManager || m_isDisposed) return;
 
-    // Dismiss currently active manager
-    if (m_activeManager && m_activeManager != newManager) {
-        m_activeManager->dismiss();
-    }
 
-    // Unbind old signals
-    if (m_activeManager) {
+    // Demote currently active manager to background monitoring (LRU pool)
+    if (m_activeManager && m_activeManager != newManager) {
+        m_activeManager->background();
+        m_backgroundRepos.removeAll(m_activeManager);
+        m_backgroundRepos.prepend(m_activeManager);  // most recent at front
+
+        // Evict oldest if pool exceeds limit
+        while (m_backgroundRepos.size() > m_maxBackgroundRepos) {
+            RepoManager *oldest = m_backgroundRepos.takeLast();
+            oldest->shutdown();
+            m_managers.removeAll(oldest);
+            oldest->deleteLater();
+            qDebug() << "[RepoGlobalManager] Evicted background repo (LRU):"
+                     << oldest->repository.name;
+        }
         unbindManagerEvents(m_activeManager);
     }
 
     m_activeManager = newManager;
+
+    // Remove new manager from background pool if it was there
+    m_backgroundRepos.removeAll(newManager);
 
     // Bind new manager signals
     bindManagerEvents(newManager);
@@ -75,11 +89,11 @@ void RepoGlobalManager::remove(RepoManager *manager)
     if (!manager) return;
 
     if (m_activeManager == manager) {
-        m_activeManager->dismiss();
         unbindManagerEvents(m_activeManager);
         m_activeManager = nullptr;
     }
 
+    m_backgroundRepos.removeAll(manager);
     manager->shutdown();
     m_managers.removeAll(manager);
     manager->deleteLater();
@@ -91,6 +105,7 @@ void RepoGlobalManager::shutdownAll()
     for (auto *manager : m_managers) {
         manager->shutdown();
     }
+    m_backgroundRepos.clear();
 }
 
 void RepoGlobalManager::restoreFromConfig(const QVariantList &repoList)
@@ -119,6 +134,9 @@ void RepoGlobalManager::restoreFromConfig(const QVariantList &repoList)
 void RepoGlobalManager::restoreAndSwitchToLastActive(const QVariantList &repoList,
                                                       const QString &lastActiveName)
 {
+    if (m_configService) {
+        m_maxBackgroundRepos = m_configService->maxBackgroundRepos();
+    }
     restoreFromConfig(repoList);
 
     RepoManager *target = nullptr;

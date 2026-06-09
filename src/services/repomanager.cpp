@@ -16,7 +16,7 @@ RepoManager::RepoManager(const Repository &repo, QObject *parent)
     // checkout and repo info. Per-repo clients handle local writes via
     // executor and sync operations.
     SVNClient *repoClient = new SVNClient(this);
-    executor = new SvnCommandExecutor(repoClient, this);
+    executor = new SvnCommandExecutor(this);
     syncEngine = new SyncEngine(this);
     syncEngine->setSvnClient(repoClient);
     m_commitQueue = new CommitQueue(this);
@@ -45,6 +45,7 @@ void RepoManager::focus()
 
     m_state = RepoState::Focused;
     syncEngine->setIgnorePatterns(repository.ignorePatterns);
+    syncEngine->setBackgroundMode(false);
     syncEngine->watchPath(repository.path);
     syncEngine->startSync(repository.name, repository.path, repository.url,
                           repository.username, repository.password);
@@ -52,28 +53,31 @@ void RepoManager::focus()
     emitFilesChanged();
 }
 
+void RepoManager::background()
+{
+    if (m_state == RepoState::Background) return;
+    if (m_state == RepoState::None || m_state == RepoState::Closed) return;
+    qDebug() << "[RepoManager] background:" << repository.name;
+
+    m_state = RepoState::Background;
+    syncEngine->setBackgroundMode(true);
+    emit stateChanged(m_state);
+}
+
 void RepoManager::dismiss()
 {
-    if (m_state == RepoState::None) return;
-    qDebug() << "[RepoManager] dismiss:" << repository.name;
-
-    m_state = RepoState::Dismissed;
-    syncEngine->stopSync();
-    if (executor) {
-        executor->stop();
-        executor->waitForDrained(35000);
-    }
-    emit stateChanged(m_state);
+    // dismiss() — backward-compatible alias for background()
+    background();
 }
 
 void RepoManager::shutdown()
 {
     qDebug() << "[RepoManager] shutdown:" << repository.name;
-    m_state = RepoState::None;
+    m_state = RepoState::Closed;
     syncEngine->stopSync();
     if (executor) {
-        executor->stop();           // drain pending operations (max 30s)
-        executor->waitForDrained(35000); // safety net
+        executor->stop();
+        executor->waitForDrained(35000);
     }
 }
 
@@ -118,7 +122,29 @@ void RepoManager::emitFilesChanged()
 
 void RepoManager::emitSyncNotification(const QString &msg)
 {
+    if (m_state == RepoState::Background && isRoutineNotification(msg))
+        return;  // suppress routine notifications in background mode
     emit syncNotification(msg);
+}
+
+// Routine notifications are suppressed when repo is in background monitoring mode.
+// They indicate normal sync activity that doesn't need user attention.
+bool RepoManager::isRoutineNotification(const QString &msg) const
+{
+    // clang-format off
+    static const QStringView routinePrefixes[] = {
+        QStringLiteral(u"批量同步完成"),
+        QStringLiteral(u"已同步删除: "),
+        QStringLiteral(u"已同步: "),
+        QStringLiteral(u"同步失败: "),
+        QStringLiteral(u"同步已启动: "),
+    };
+    // clang-format on
+    for (const QStringView &p : routinePrefixes) {
+        if (msg.startsWith(p))
+            return true;
+    }
+    return false;
 }
 
 void RepoManager::emitConflictDetected(const QStringList &files)

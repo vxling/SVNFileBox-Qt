@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QDateTime>
 #include <QString>
+#include <QTimer>
 
 class SVNClient;
 class FileCopier;
@@ -77,6 +78,9 @@ signals:
     // Copy progress (UI can show progress bar / file count)
     void copyProgress(int currentIndex, int totalCount, qint64 bytesCopied, qint64 totalBytes, const QString &currentFile);
     void copyCompleted(int copiedCount, int skippedCount, int overwrittenCount, const QString &errorMessage);
+
+private slots:
+    void refreshSvnStatus();
 
 private:
     QList<FileItem> m_files;

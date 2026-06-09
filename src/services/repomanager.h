@@ -39,9 +39,10 @@ struct Repository {
 };
 
 enum class RepoState {
-    None,
-    Focused,
-    Dismissed,
+    None,       // Initial state, no sync
+    Focused,    // Active, full notifications, normal polling
+    Background, // Background monitoring, suppressed routine notifications, longer polling
+    Closed,     // Sync stopped, resources released
 };
 
 class RepoManager : public QObject
@@ -59,8 +60,9 @@ public:
     RepoState state() const { return m_state; }
 
     Q_INVOKABLE void focus();
-    Q_INVOKABLE void dismiss();
-    Q_INVOKABLE void shutdown();
+    Q_INVOKABLE void background();  // demote to background monitoring
+    Q_INVOKABLE void dismiss();     // alias for background (backward compat)
+    Q_INVOKABLE void shutdown();    // stop and release all resources
     Q_INVOKABLE void renameRepo(const QString &newName);
     Q_INVOKABLE void updateUrl(const QString &newUrl);
     Q_INVOKABLE SvnCommandExecutor *activeExecutor() const { return executor; }
@@ -69,6 +71,7 @@ public:
 
     void emitFilesChanged();
     void emitSyncNotification(const QString &msg);
+    bool isRoutineNotification(const QString &msg) const;
     void emitConflictDetected(const QStringList &files);
 
 signals:

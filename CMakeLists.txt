@@ -10,6 +10,15 @@ set(CMAKE_AUTOUIC ON)
 # Qt Core & QML
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql Concurrent LinguistTools)
 
+# SVN libsvn (libsvn_client + APR runtime)
+# Use pkg-config since CMake has no FindSVN module.
+# libsvn_client pulls in apr-1 and aprutil-1 transitively.
+set(PKG_CONFIG_PATH_SVN "/usr/lib/x86_64-linux-gnu/pkgconfig" CACHE STRING "")
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SVN_CLIENT REQUIRED libsvn_client libsvn_wc libsvn_subr libsvn_repos libsvn_ra libsvn_delta)
+message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
+message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
+
 # App
 set(APP_SOURCES
     src/main.cpp
@@ -25,6 +34,7 @@ set(APP_SOURCES
     src/sync/ignorepattern.cpp
     src/sync/ignorepattern.h
     src/config/configservice.cpp
+    src/config/credentialstore.cpp
     src/services/repomanager.cpp
     src/services/repoglobalmanager.cpp
     src/services/newfileservice.cpp
@@ -47,6 +57,8 @@ set(APP_SOURCES
     src/ui/addlocaldialog.h
     src/ui/newfiledialog.cpp
     src/ui/newfiledialog.h
+    src/ui/repoitemdelegate.cpp
+    src/ui/repoitemdelegate.h
     src/ui/copyprogressdialog.cpp
     src/ui/copyprogressdialog.h
     src/ui/filecarddelegate.cpp
@@ -65,7 +77,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_LONG_VERSION_STRING ${PROJECT_VERSION}
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${SVN_CLIENT_INCLUDE_DIRS}
+)
 
 # Qt linking
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -78,6 +93,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Widgets
     Qt6::QuickControls2
     Qt6::Sql
+    ${SVN_CLIENT_LIBRARIES}
 )
 
 # Resources

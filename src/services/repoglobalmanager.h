@@ -85,6 +85,9 @@ private:
 
     QList<RepoManager *> m_managers;
     RepoManager *m_activeManager = nullptr;
+    // LRU-ordered list of background-monitoring repos (most recently backgrounded first)
+    QList<RepoManager *> m_backgroundRepos;
+    int m_maxBackgroundRepos = 3;  // loaded from ConfigService
     bool m_isDisposed = false;
     ConfigService *m_configService = nullptr; // injected from main.cpp
 };

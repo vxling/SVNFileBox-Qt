@@ -103,14 +103,34 @@ void FileModel::load(const QString &path)
         item.fileSize = fi.size();
         item.lastModified = fi.lastModified();
         item.isCurrentPath = false;
-        item.svnStatus = m_svnClient
-            ? m_svnClient->getStatusString(fi.absoluteFilePath())
-            : QString("Normal");
+        item.svnStatus = QStringLiteral("Normal");  // 先显示，同步刷新时再查真实状态
         m_files.append(item);
     }
 
     endResetModel();
-    emit currentPathChanged();
+    // 异步批量查询 SVN 状态：交由事件循环 defer，立即返回让 UI 先刷新
+    QTimer::singleShot(0, this, SLOT(refreshSvnStatus()));
+}
+
+void FileModel::refreshSvnStatus()
+{
+    if (!m_svnClient) return;
+    if (m_files.isEmpty()) return;
+
+    // 一次性批量查当前目录及所有子目录的非 Normal 状态
+    QVariantMap allStatuses = m_svnClient->batchGetStatus(m_currentPath);
+    if (allStatuses.isEmpty()) return;
+
+    // 只更新有变更的行，避免整表刷新
+    for (int i = 0; i < m_files.size(); ++i) {
+        const FileItem &item = m_files.at(i);
+        auto it = allStatuses.find(item.fullPath);
+        if (it != allStatuses.end()) {
+            m_files[i].svnStatus = it.value().toString();
+            QModelIndex idx = index(i, 0);
+            emit dataChanged(idx, idx, { SvnStatusRole });
+        }
+    }
 }
 
 QString FileModel::getFilePath(int row) const

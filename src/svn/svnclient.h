@@ -4,10 +4,16 @@
 #include <QtCore/QObject>
 #include <QtCore/QString>
 #include <QtCore/QStringList>
-#include <QtCore/QHash>
+#include <QtCore/QVariantMap>
 #include <QtCore/QMutex>
 #include <QtCore/QElapsedTimer>
-#include <QProcess>
+
+// Forward libsvn types — included here only to allow the Pimpl to hold them.
+// All libsvn symbols stay internal to svnclient.cpp; this header never re-exports them.
+struct svn_client_ctx_t;
+struct svn_commit_info_t;
+struct svn_wc_notify_t;
+struct apr_pool_t;
 
 namespace SVNFileBox { class SvnCommandExecutor; }
 
@@ -18,79 +24,71 @@ public:
     enum class ErrorLevel { Success, Warning, Error };
     Q_ENUM(ErrorLevel)
 
-public:
     explicit SVNClient(QObject *parent = nullptr);
-    ~SVNClient() = default;
+    ~SVNClient() override;
 
-    Q_INVOKABLE QStringList list(const QString &path);
+    SVNClient(const SVNClient&) = delete;
+    SVNClient& operator=(const SVNClient&) = delete;
+
+    // ── Per-client configuration (set before any operations) ─────
+    void setUsername(const QString &u);
+    void setPassword(const QString &p);
+    void setConfigDir(const QString &dir);
+    void setTrustedMode(bool on);
+
+    // ── SVN write operations ────────────────────────────────────
     Q_INVOKABLE bool add(const QString &path);
+    Q_INVOKABLE bool remove(const QString &path);
     Q_INVOKABLE bool commit(const QString &path, const QString &message);
     Q_INVOKABLE bool update(const QString &path);
-    Q_INVOKABLE bool remove(const QString &path);
     Q_INVOKABLE bool mkdir(const QString &path);
     Q_INVOKABLE bool move(const QString &src, const QString &dst);
-    Q_INVOKABLE QString getInfo(const QString &path);
-    Q_INVOKABLE QString getStatusString(const QString &path);
-    Q_INVOKABLE int getWorkingCopyRevision(const QString &path);
-    Q_INVOKABLE int getHeadRevision(const QString &url);
-    Q_INVOKABLE int getHeadRevision(const QString &url, const QString &username, const QString &password);
     Q_INVOKABLE bool revert(const QString &path, bool recursive = true);
     Q_INVOKABLE bool cleanup(const QString &path);
-    // Force-break stale working-copy locks left by a crashed svn process.
-    // Mirrors WPF SvnService.BreakWriteLockAsync.
-    Q_INVOKABLE bool breakWriteLock(const QString &path);
     Q_INVOKABLE bool unlock(const QString &path);
-    Q_INVOKABLE bool checkout(const QString &url, const QString &localPath,
-                               const QString &username = "", const QString &password = "");
-    Q_INVOKABLE bool isValidWorkingCopy(const QString &path);
-    Q_INVOKABLE QStringList getConflictedFiles(const QString &path);
+    Q_INVOKABLE bool checkout(const QString &url, const QString &localPath);
     Q_INVOKABLE bool resolveConflict(const QString &path, const QString &accept);
     Q_INVOKABLE bool copyFileOrFolder(const QString &src, const QString &dest);
+    Q_INVOKABLE bool breakWriteLock(const QString &path);
 
-    // Extended read-only API (used by SvnCommandExecutor)
+    // ── SVN read operations ─────────────────────────────────────
     Q_INVOKABLE QString getRepoUrl(const QString &path);
-    Q_INVOKABLE QVariantMap getStatus(const QString &path, bool depth = false);
+    Q_INVOKABLE QString getInfo(const QString &path);
+    Q_INVOKABLE QString getStatusString(const QString &path);
     Q_INVOKABLE QString getLastChangedTime(const QString &path);
+    Q_INVOKABLE int getWorkingCopyRevision(const QString &path);
+    Q_INVOKABLE int getHeadRevision(const QString &url);
     Q_INVOKABLE bool isVersioned(const QString &path);
+    Q_INVOKABLE bool isValidWorkingCopy(const QString &path);
     Q_INVOKABLE bool hasIncompleteWorkingCopy(const QString &path);
-    Q_INVOKABLE bool testConnection(const QString &url, const QString &username, const QString &password);
-    Q_INVOKABLE QStringList getServerUpdatePaths(const QString &path);
-    // Lightweight credential probe: runs `svn info <repoUrl>` and returns true
-    // if the server replied without auth errors. Mirrors WPF IsCredentialValid.
-    // Uses HEAD_REV_TTL_MS cache.
-    Q_INVOKABLE bool isCredentialValid(const QString &repoUrl);
-    // Return last cached head revision for url, or -1 if unknown.
+    Q_INVOKABLE bool testConnection(const QString &url);
+    Q_INVOKABLE bool isCredentialValid(const QString &url);
     Q_INVOKABLE int cachedHeadRevision(const QString &url) const;
+    Q_INVOKABLE QStringList list(const QString &path);
+    Q_INVOKABLE QStringList getConflictedFiles(const QString &path);
+    Q_INVOKABLE QStringList getServerUpdatePaths(const QString &path);
+    Q_INVOKABLE QVariantMap getStatus(const QString &path, bool depth = false);
+    Q_INVOKABLE QVariantMap batchGetStatus(const QString &dirPath);
 
 signals:
     void commandFinished(const QString &output);
     void commandError(const QString &error);
     void commandWarning(const QString &warning);
-    // Per-file transfer event. Emitted by `update` with each file's transfer
-    // result (filename, transferredBytes, totalBytes or -1 if unknown).
-    // Mirrors WPF SvnService.FileTransferActivity. Listeners (QML status bar)
-    // can show per-file progress.
-    void fileTransferActivity(const QString &filePath, qint64 bytesTransferred, qint64 bytesTotal);
+    // Per-file transfer event emitted during update with each file's
+    // transfer result (filename, transferredBytes, totalBytes or -1).
+    void fileTransferActivity(const QString &filePath, qint64 transferred, qint64 total);
 
     friend class SVNFileBox::SvnCommandExecutor;
 
 private:
-    static constexpr int DEFAULT_TIMEOUT_MS = 60'000;       // 60s for read ops
-    static constexpr int HEAVYWRITE_TIMEOUT_MS = 600'000;   // 600s safety ceiling for HeavyWrite
-    static constexpr int SAFETY_TIMEOUT_MS = 600'000;       // absolute max for any SVN call
+    static constexpr int DEFAULT_TIMEOUT_MS = 60'000;
+    static constexpr int HEAVYWRITE_TIMEOUT_MS = 600'000;
+    static constexpr int SAFETY_TIMEOUT_MS = 600'000;
 
-    QString runSvn(const QStringList &args, const QString &workDir = QString(), int timeoutMs = DEFAULT_TIMEOUT_MS);
-    bool runSvnBool(const QStringList &args, const QString &workDir = QString(), int timeoutMs = DEFAULT_TIMEOUT_MS);
-    ErrorLevel runSvnLevel(const QStringList &args, const QString &workDir = QString(), int timeoutMs = DEFAULT_TIMEOUT_MS);
-    bool runSvnTimed(const QStringList &args, const QString &workDir, int timeoutMs, QString *output = nullptr);
-
-    // Head revision cache: {url -> {revision, timestamp}}
-    struct HeadRevEntry {
-        int revision = -1;
-        QElapsedTimer timestamp;
-    };
-    mutable QHash<QString, HeadRevEntry> m_headRevCache;
-    mutable QMutex m_headRevCacheMutex;
+    // Pimpl — complete definition in svnclient.cpp; this header only holds the pointer.
+    // All libsvn types are invisible to every other translation unit.
+    struct Private;
+    Private *d;
 };
 
 #endif // SVNCLIENT_H

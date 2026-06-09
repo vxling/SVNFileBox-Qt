@@ -36,6 +36,8 @@ class ConfigService : public QObject
     Q_PROPERTY(int fileTransferTimeoutSeconds READ fileTransferTimeoutSeconds WRITE setFileTransferTimeoutSeconds)
 
     Q_PROPERTY(bool autoSyncEnabled READ autoSyncEnabled WRITE setAutoSyncEnabled)
+    Q_PROPERTY(int maxBackgroundRepos READ maxBackgroundRepos WRITE setMaxBackgroundRepos)
+    Q_PROPERTY(int backgroundPollingInterval READ backgroundPollingInterval WRITE setBackgroundPollingInterval)
 
 public:
     explicit ConfigService(QObject *parent = nullptr);
@@ -101,6 +103,12 @@ public:
     bool autoSyncEnabled() const { return m_autoSyncEnabled; }
     void setAutoSyncEnabled(bool v) { m_autoSyncEnabled = v; }
 
+    int maxBackgroundRepos() const { return m_maxBackgroundRepos; }
+    void setMaxBackgroundRepos(int v) { m_maxBackgroundRepos = v; }
+
+    int backgroundPollingInterval() const { return m_backgroundPollingInterval; }
+    void setBackgroundPollingInterval(int v) { m_backgroundPollingInterval = v; }
+
     // P3 #3: expose load/save for unit tests. Safe to call repeatedly;
     // production code only calls them in ctor / setter paths.
     void loadFromDisk();
@@ -125,6 +133,8 @@ private:
     QString m_theme = "system";
     int m_fileTransferTimeoutSeconds = 120;
     bool m_autoSyncEnabled = true;
+    int m_maxBackgroundRepos = 3;          // max repos to keep in background monitoring
+    int m_backgroundPollingInterval = 10;  // background polling interval (minutes)
 
     // 仓库列表
     QList<Repository> m_repositories;

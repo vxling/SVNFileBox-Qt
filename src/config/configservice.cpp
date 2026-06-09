@@ -1,4 +1,5 @@
 #include "configservice.h"
+#include "credentialstore.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -50,6 +51,8 @@ void ConfigService::load()
     m_theme = root["theme"].toString("system");
     m_fileTransferTimeoutSeconds = root["fileTransferTimeoutSeconds"].toInt(120);
     m_autoSyncEnabled = root["autoSyncEnabled"].toBool(true);
+    m_maxBackgroundRepos = root["maxBackgroundRepos"].toInt(3);
+    m_backgroundPollingInterval = root["backgroundPollingInterval"].toInt(10);
 
     m_repositories.clear();
     QJsonArray repos = root["repositories"].toArray();
@@ -60,7 +63,13 @@ void ConfigService::load()
         r.url = o["url"].toString();
         r.localPath = o["localPath"].toString();
         r.username = o["username"].toString();
-        r.password = o["password"].toString();
+        // Password: try CredentialStore first, fall back to legacy plaintext field.
+        auto creds = CredentialStore::retrieve(r.name);
+        if (!creds.second.isEmpty()) {
+            r.password = creds.second; // decrypt from CredentialStore
+        } else {
+            r.password = o["password"].toString(); // legacy plaintext fallback
+        }
         r.type = o["type"].toString("Local");
         // P3 #2: optional ignore patterns. Older config files won't have
         // this key, so default to empty list.
@@ -100,6 +109,8 @@ void ConfigService::saveToDisk()
     root["theme"] = m_theme;
     root["fileTransferTimeoutSeconds"] = m_fileTransferTimeoutSeconds;
     root["autoSyncEnabled"] = m_autoSyncEnabled;
+    root["maxBackgroundRepos"] = m_maxBackgroundRepos;
+    root["backgroundPollingInterval"] = m_backgroundPollingInterval;
     root["activeRepositoryName"] = m_activeRepoName;
 
     QJsonArray repos;
@@ -109,7 +120,8 @@ void ConfigService::saveToDisk()
         o["url"] = r.url;
         o["localPath"] = r.localPath;
         o["username"] = r.username;
-        o["password"] = r.password;
+        // Password stored via CredentialStore (machine-bound encryption)
+        // to prevent config.json theft across machines.
         o["type"] = r.type;
         // P3 #2: persist ignore patterns
         if (!r.ignorePatterns.isEmpty()) {
@@ -139,16 +151,28 @@ void ConfigService::addRepository(const QVariantMap &repo)
         r.ignorePatterns = repo["ignorePatterns"].toStringList();
     }
     m_repositories.append(r);
+    // Store credentials with machine-bound encryption, keyed by repoUrl for
+    // network repos (local repos have empty url and don't need remote creds).
+    CredentialStore::store(r.name, r.username, r.password);
     saveToDisk();
     emit repositoriesChanged();
 }
 
 void ConfigService::removeRepository(const QString &name)
 {
+    // Find repoUrl before erasing so we can remove the CredentialStore entry
+    QString repoUrl;
+    for (const Repository &r : m_repositories) {
+        if (r.name == name) {
+            repoUrl = r.url;
+            break;
+        }
+    }
     m_repositories.erase(
         std::remove_if(m_repositories.begin(), m_repositories.end(),
                       [&](const Repository &r) { return r.name == name; }),
         m_repositories.end());
+    CredentialStore::remove(name);
     saveToDisk();
     emit repositoriesChanged();
 }
@@ -196,6 +220,7 @@ bool ConfigService::updateRepositoryName(const QString &oldName, const QString &
             if (m_activeRepoName == oldName) {
                 m_activeRepoName = trimmedNew;
             }
+            // CredentialStore is keyed by repoUrl — renaming doesn't affect it
             saveToDisk();
             emit repositoriesChanged();
             return true;

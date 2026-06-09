@@ -9,11 +9,8 @@
 #include <QtCore/QString>
 #include <QtCore/QThread>
 #include <QtCore/QVariant>
-#include <QtCore/QRegularExpression>
 #include <QtCore/QSemaphore>
 #include <QtCore/QDateTime>
-
-class SVNClient;
 
 namespace SVNFileBox {
 
@@ -22,7 +19,7 @@ class SvnCommandExecutor : public QObject
     Q_OBJECT
 
 public:
-    explicit SvnCommandExecutor(SVNClient *svnClient, QObject *parent = nullptr);
+    explicit SvnCommandExecutor(QObject *parent = nullptr);
     ~SvnCommandExecutor() override;
 
     // ── Public API ────────────────────────────────────────────
@@ -79,10 +76,9 @@ private:
     QString dedupKey(const SvnCommandItem &item) const;
 
     // ── Concurrency ────────────────────────────────────────────
-    static QSemaphore s_writeSemaphore;   // Serializes all writes (1 permit), initialized in .cpp
+    static QSemaphore s_writeSemaphore;
     static constexpr int LOCK_WAIT_TIMEOUT_MS = 30'000;
 
-    SVNClient *m_svnClient = nullptr;
     QQueue<SvnCommandItem> m_localWriteQueue;
     QQueue<SvnCommandItem> m_heavyWriteQueue;
     QMutex m_queueMutex;
@@ -96,7 +92,6 @@ private:
     QWaitCondition m_drainCond;
     // Throttle svn cleanup: run at most once per 60s per executor
     QDateTime m_lastCleanupAt;
-    void maybeRunStaleLockCleanup(const QString &path);
 };
 
 } // namespace SVNFileBox
