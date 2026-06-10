@@ -84,7 +84,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # Qt linking
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    Qt6::Xml
     Qt6::Core
     Qt6::Concurrent
     Qt6::Gui
