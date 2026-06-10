@@ -38,6 +38,7 @@ private slots:
     void onRepoSelected(const QModelIndex &index);
     void onFileDoubleClicked(const QModelIndex &index);
     void onFileContextMenu(const QPoint &pos);
+    void compressToZip(const QString &sourcePath, const QString &zipPath, bool isDir);
     void onRefreshClicked();
     void onGoUpClicked();
     void onPathEditingFinished();

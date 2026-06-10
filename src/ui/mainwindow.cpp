@@ -31,6 +31,7 @@
 #include <QFileInfo>
 #include <QMenu>
 #include <QClipboard>
+#include <QProcess>
 #include <QMimeData>
 #include <QApplication>
 
@@ -279,6 +280,7 @@ void MainWindow::onFileContextMenu(const QPoint &pos)
     menu.addSeparator();
 
     QAction *copyPath = menu.addAction(QStringLiteral("\xe5\xa4\x8d\xe5\x88\xb6\xe8\xb7\xaf\xe5\xbe\x84"));
+    QAction *compressToZipAction = menu.addAction(QStringLiteral("\xe5\x8e\x8b\xe7\xbc\xa9\xe5\x88\xb0 .Zip \xe5\x8c\x85"));
     menu.addSeparator();
 
     QAction *paste = menu.addAction(QStringLiteral("\xe7\xb2\x98\xe8\xb4\xb4"));
@@ -315,6 +317,24 @@ void MainWindow::onFileContextMenu(const QPoint &pos)
     } else if (triggered == copyPath) {
         QClipboard *clipboard = QApplication::clipboard();
         clipboard->setText(selectedPath);
+    } else if (triggered == compressToZipAction) {
+        if (!selectedPath.isEmpty()) {
+            QString zipPath = selectedPath;
+            if (!isDir) {
+                // For files, put zip next to the file (file.zip)
+                zipPath = selectedPath + ".zip";
+            } else {
+                // For folders, create foldername.zip in parent dir
+                zipPath = QFileInfo(selectedPath).dir().absolutePath() + "/"
+                        + QFileInfo(selectedPath).fileName() + ".zip";
+            }
+            if (QFile::exists(zipPath)) {
+                int ret = QMessageBox::question(this, QStringLiteral("\xe5\x8e\x8b\xe7\xbc\xa9\xe5\x88\xb0"),
+                        QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xb7\xb2\xe5\xad\x98\xe5\x9c\xa8\xff0c\xe8\xa6\x81\xe8\xa6\x86\xe5\x80\x92\xe5\x90\x8c\xe5\x90\x97\xef\xbc\x9f"));
+                if (ret != QMessageBox::Yes) return;
+            }
+            compressToZip(selectedPath, zipPath, isDir);
+        }
     } else if (triggered == paste) {
         // paste from clipboard - TODO
     } else if (triggered == newFolder) {
@@ -354,6 +374,53 @@ void MainWindow::onFileContextMenu(const QPoint &pos)
         onRefreshClicked();
     } else if (triggered == manualSync) {
         onManualSync();
+    }
+}
+
+
+
+void MainWindow::compressToZip(const QString &sourcePath, const QString &zipPath, bool isDir)
+{
+    // Python script to create zip - cross-platform
+    QFile scriptFile(QStringLiteral("/tmp/svnfilebox_zip.py"));
+    QString scriptContent;
+    if (isDir) {
+        scriptContent = R"(import zipfile, os, sys
+base = sys.argv[1]
+out = sys.argv[2]
+z = zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED)
+for root, dirs, files in os.walk(base):
+    for f in files:
+        fp = os.path.join(root, f)
+        arcname = os.path.relpath(fp, os.path.dirname(base))
+        z.write(fp, arcname)
+z.close()
+)";
+    } else {
+        scriptContent = R"(import zipfile, os, sys
+z = zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED)
+z.write(sys.argv[1], os.path.basename(sys.argv[1]))
+z.close()
+)";
+    }
+    if (scriptFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        scriptFile.write(scriptContent.toUtf8());
+        scriptFile.close();
+    }
+
+    QProcess p;
+    p.setProgram(QStringLiteral("python3"));
+    p.setArguments({QStringLiteral("/tmp/svnfilebox_zip.py"), sourcePath, zipPath});
+    p.start();
+    p.waitForFinished();
+
+    scriptFile.remove();
+    if (p.exitCode() == 0) {
+        QMessageBox::information(this, QStringLiteral("Compressed"),
+                                QStringLiteral("Compressed to: %1").arg(zipPath));
+    } else {
+        QMessageBox::warning(this, QStringLiteral("Compression failed"),
+                            QString::fromUtf8(p.readAllStandardError()));
     }
 }
 
