@@ -12,7 +12,7 @@ CheckoutDialog::CheckoutDialog(SVNFileBox::RepoGlobalManager *globalManager, QWi
 {
     ui->setupUi(this);
     setWindowTitle(QStringLiteral("从网络添加仓库"));
-    setFixedSize(540, 400);
+    setFixedSize(480, 260);
 
     ui->confirmBtn->setStyleSheet(QStringLiteral(
         "QPushButton { background: #07C160; color: white; border: none; border-radius: 4px; }"
@@ -23,20 +23,9 @@ CheckoutDialog::CheckoutDialog(SVNFileBox::RepoGlobalManager *globalManager, QWi
 
     connect(ui->confirmBtn, &QPushButton::clicked, this, &CheckoutDialog::onConfirmClicked);
     connect(ui->cancelBtn, &QPushButton::clicked, this, &CheckoutDialog::onCancelClicked);
-    connect(ui->nameInput, &QLineEdit::textChanged, this, &CheckoutDialog::onNameChanged);
 }
 
 CheckoutDialog::~CheckoutDialog() = default;
-
-void CheckoutDialog::onNameChanged(const QString &name)
-{
-    if (name.isEmpty()) {
-        ui->folderInput->setText(QStringLiteral("输入仓库名称后自动生成"));
-    } else {
-        QString workDir = QDir::home().absoluteFilePath(".svnfilebox/workcopies");
-        ui->folderInput->setText(workDir + "/" + name);
-    }
-}
 
 void CheckoutDialog::onConfirmClicked()
 {

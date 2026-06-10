@@ -21,7 +21,6 @@ signals:
     void checkoutCompleted(const QString &name, const QString &path);
 
 private slots:
-    void onNameChanged(const QString &name);
     void onConfirmClicked();
     void onCancelClicked();
 

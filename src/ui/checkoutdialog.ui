@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>540</width>
-    <height>400</height>
+    <width>480</width>
+    <height>260</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -90,37 +90,7 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_folder">
-       <property name="text">
-        <string>检出目录</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="1">
-      <layout class="QHBoxLayout" name="folderLayout">
-       <item>
-        <widget class="QLineEdit" name="folderInput">
-         <property name="placeholderText">
-          <string>选择检出目录</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="browseBtn">
-         <property name="text">
-          <string>浏览...</string>
-         </property>
-         <property name="fixedWidth">
-          <number>90</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
+
     </layout>
    </item>
    <item>

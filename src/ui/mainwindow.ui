@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1100</width>
-    <height>700</height>
+    <width>960</width>
+    <height>600</height>
    </rect>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -23,13 +23,13 @@
      <widget class="QWidget" name="m_sidebar">
       <property name="minimumSize">
        <size>
-        <width>220</width>
+        <width>180</width>
         <height>0</height>
        </size>
       </property>
       <property name="maximumSize">
        <size>
-        <width>220</width>
+        <width>180</width>
         <height>16777215</height>
        </size>
       </property>
@@ -81,12 +81,12 @@
          <item>
           <widget class="QPushButton" name="m_btnCheckout">
            <property name="text">
-           <string>🌐 从网络添加仓库</string>
+           <string>从网络添加仓库</string>
            </property>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>36</height>
+             <height>30</height>
             </size>
            </property>
            <property name="styleSheet">
@@ -97,12 +97,12 @@
          <item>
           <widget class="QPushButton" name="m_btnAddLocal">
            <property name="text">
-            <string>📂 添加本地仓库</string>
+            <string>添加本地仓库</string>
            </property>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>36</height>
+             <height>30</height>
             </size>
            </property>
            <property name="styleSheet">
@@ -113,12 +113,12 @@
          <item>
           <widget class="QPushButton" name="m_btnSyncRecords">
            <property name="text">
-            <string>📋 查看同步记录</string>
+            <string>查看同步记录</string>
            </property>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>36</height>
+             <height>30</height>
             </size>
            </property>
            <property name="styleSheet">
@@ -149,12 +149,12 @@
          <item>
           <widget class="QPushButton" name="m_btnSettings">
            <property name="text">
-            <string>⚙️ 设置</string>
+            <string>设置</string>
            </property>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>36</height>
+             <height>30</height>
             </size>
            </property>
            <property name="styleSheet">
@@ -165,12 +165,12 @@
          <item>
           <widget class="QPushButton" name="m_btnAbout">
            <property name="text">
-            <string>ℹ️ 关于</string>
+            <string>关于</string>
            </property>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>36</height>
+             <height>30</height>
             </size>
            </property>
            <property name="styleSheet">
@@ -206,13 +206,13 @@
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>48</height>
+           <height>40</height>
           </size>
          </property>
          <property name="maximumSize">
           <size>
            <width>16777215</width>
-           <height>48</height>
+           <height>40</height>
           </size>
          </property>
          <property name="styleSheet">
@@ -313,7 +313,7 @@
   </widget>
   <widget class="QStatusBar" name="statusbar">
    <property name="fixedHeight">
-    <number>36</number>
+    <number>28</number>
    </property>
    <property name="styleSheet">
     <string notr="true">QStatusBar { background: #1E88E5; color: white; }</string>
