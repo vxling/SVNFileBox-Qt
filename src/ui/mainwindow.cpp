@@ -184,6 +184,8 @@ void MainWindow::connectSignals()
             this, &MainWindow::onSyncNotification);
     connect(m_globalManager, &SVNFileBox::RepoGlobalManager::conflictDetected,
             this, &MainWindow::onConflictDetected);
+    connect(m_globalManager, &SVNFileBox::RepoGlobalManager::repositoryFocused,
+            this, &MainWindow::onRepositoryFocused);
 
     // File table double-click
     connect(m_fileTableView, &QTableView::doubleClicked,
@@ -353,6 +355,16 @@ void MainWindow::refreshFileTable()
 void MainWindow::onFilesChanged()
 {
     m_currentPath = m_fileModel->currentPath();
+    refreshFileTable();
+}
+
+void MainWindow::onRepositoryFocused(const QString &path)
+{
+    if (path.isEmpty()) return;
+    m_currentPath = path;
+    m_pathEdit->setText(path);
+    m_statusPathLabel->setText(path);
+    m_fileModel->load(path);
     refreshFileTable();
 }
 

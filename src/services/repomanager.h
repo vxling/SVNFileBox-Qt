@@ -76,6 +76,7 @@ public:
 
 signals:
     void filesChanged();
+    void repositoryFocused(const QString &path);  // emitted when repo comes to foreground
     void syncNotification(const QString &message);
     void conflictDetected(const QStringList &conflictedFiles);
     void stateChanged(RepoState newState);

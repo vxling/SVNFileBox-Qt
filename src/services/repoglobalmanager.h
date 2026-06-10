@@ -29,6 +29,7 @@ public:
 
 signals:
     void filesChanged();
+    void repositoryFocused(const QString &path);  // forwarded from RepoManager
     void syncNotification(const QString &message);
     void conflictDetected(const QStringList &conflictedFiles);
     void activeExecutorChanged(RepoManager *manager);
@@ -71,6 +72,7 @@ public slots:
 
 private slots:
     void onManagerFilesChanged();
+    void onManagerRepositoryFocused(const QString &path);
     void onManagerSyncNotification(const QString &msg);
     void onManagerConflictDetected(const QStringList &files);
     void onManagerCredentialExpired(const QString &repoName, const QString &path);

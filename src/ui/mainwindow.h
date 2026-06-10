@@ -42,6 +42,7 @@ private slots:
     void onPathEditingFinished();
     void onManualSync();
     void onFilesChanged();
+    void onRepositoryFocused(const QString &path);
     void onSyncNotification(const QString &message);
     void onConflictDetected(const QStringList &files);
     void onSyncStarted();

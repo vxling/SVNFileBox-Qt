@@ -51,6 +51,7 @@ void RepoManager::focus()
                           repository.username, repository.password);
     emit stateChanged(m_state);
     emitFilesChanged();
+    emit repositoryFocused(repository.path);
 }
 
 void RepoManager::background()

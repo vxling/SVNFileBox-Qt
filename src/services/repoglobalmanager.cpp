@@ -202,6 +202,7 @@ void RepoGlobalManager::bindManagerEvents(RepoManager *manager)
     connect(manager, &RepoManager::conflictDetected, this, &RepoGlobalManager::onManagerConflictDetected);
     connect(manager, &RepoManager::credentialExpired, this, &RepoGlobalManager::onManagerCredentialExpired);
     connect(manager, &RepoManager::repositoryChanged, this, &RepoGlobalManager::onManagerRepositoryChanged);
+    connect(manager, &RepoManager::repositoryFocused, this, &RepoGlobalManager::onManagerRepositoryFocused);
 }
 
 void RepoGlobalManager::unbindManagerEvents(RepoManager *manager)
@@ -211,6 +212,7 @@ void RepoGlobalManager::unbindManagerEvents(RepoManager *manager)
     disconnect(manager, &RepoManager::conflictDetected, this, &RepoGlobalManager::onManagerConflictDetected);
     disconnect(manager, &RepoManager::credentialExpired, this, &RepoGlobalManager::onManagerCredentialExpired);
     disconnect(manager, &RepoManager::repositoryChanged, this, &RepoGlobalManager::onManagerRepositoryChanged);
+    disconnect(manager, &RepoManager::repositoryFocused, this, &RepoGlobalManager::onManagerRepositoryFocused);
 }
 
 void RepoGlobalManager::connectActiveRepoSignals(QObject *receiver)
@@ -225,6 +227,11 @@ void RepoGlobalManager::connectActiveRepoSignals(QObject *receiver)
     connect(m_activeManager, SIGNAL(credentialExpired(QString,QString)), receiver, SLOT(credentialExpired(QString,QString)), Qt::UniqueConnection);
     connect(m_activeManager, SIGNAL(repositoryChanged(QString,QString,QString,QString)),
             receiver, SLOT(repositoryChanged(QString,QString,QString,QString)), Qt::UniqueConnection);
+}
+
+void RepoGlobalManager::onManagerRepositoryFocused(const QString &path)
+{
+    emit repositoryFocused(path);
 }
 
 void RepoGlobalManager::onManagerFilesChanged()
