@@ -34,6 +34,9 @@ public:
                         QWidget *parent = nullptr);
     ~MainWindow() override;
 
+protected:
+    void closeEvent(QCloseEvent *event) override;
+
 private slots:
     void onRepoSelected(const QModelIndex &index);
     void onFileDoubleClicked(const QModelIndex &index);

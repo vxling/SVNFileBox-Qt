@@ -62,5 +62,8 @@ int main(int argc, char *argv[])
     QObject::connect(&app, &QCoreApplication::aboutToQuit,
                      &globalManager, &SVNFileBox::RepoGlobalManager::shutdownAll);
 
+    // Tray "退出" menu → quit
+    QObject::connect(&trayManager, &TrayManager::exitRequested, &app, &QApplication::quit);
+
     return app.exec();
 }

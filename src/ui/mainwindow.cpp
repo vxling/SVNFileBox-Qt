@@ -35,6 +35,7 @@
 #include <QProcess>
 #include <QMimeData>
 #include <QApplication>
+#include <QCloseEvent>
 #include <QDirIterator>
 #include <zip.h>
 static bool copyDirectory(const QString &srcPath, const QString &destPath);
@@ -81,6 +82,17 @@ MainWindow::MainWindow(ConfigService *configService,
 }
 
 MainWindow::~MainWindow() = default;
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    // If minimize to tray is enabled and tray is available, hide to tray instead of quitting
+    if (m_configService && m_configService->minimizeToTray()) {
+        hide();
+        event->ignore();
+    } else {
+        event->accept();
+    }
+}
 
 void MainWindow::setupUiFromCode()
 {
