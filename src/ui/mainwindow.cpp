@@ -22,6 +22,8 @@
 #include <QToolBar>
 #include <QStatusBar>
 #include <QFileDialog>
+#include <QDesktopServices>
+#include <QUrl>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QSortFilterProxyModel>
@@ -250,6 +252,8 @@ void MainWindow::onFileDoubleClicked(const QModelIndex &index)
     QFileInfo info(path);
     if (info.isDir()) {
         navigateTo(path);
+    } else {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
     }
 }
 
