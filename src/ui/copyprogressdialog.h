@@ -7,6 +7,7 @@
 #include <QThread>
 
 class SyncRecordService;
+class SVNClient;
 
 // ── PasteTask ──────────────────────────────────────────────────
 // Worker thread that scans then copies files, emitting progress
@@ -22,7 +23,6 @@ public:
     };
 
     explicit PasteTask(const QList<Item> &items, QObject *parent = nullptr);
-    void setTotalEstimate(qint64 bytes) { m_totalBytes = bytes; }
     void run() override;
 
 signals:
@@ -33,6 +33,7 @@ signals:
 protected:
     QList<Item> m_items;
     qint64 m_totalBytes = 0;
+    QString m_wcPath;
 };
 
 // ── CopyProgressDialog ─────────────────────────────────────────

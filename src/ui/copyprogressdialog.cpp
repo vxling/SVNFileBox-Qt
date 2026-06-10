@@ -1,5 +1,6 @@
 #include "copyprogressdialog.h"
 #include "../sync/syncrecordservice.h"
+#include "../svn/svnclient.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -29,25 +30,31 @@ PasteTask::PasteTask(const QList<Item> &items, QObject *parent)
 
 void PasteTask::run()
 {
+    // Create SVN client for this thread
+    SVNClient client;
+
     emit stageChanged(0);  // analyzing stage
 
     // Stage 1: count total files and size
     int totalFiles = 0;
     qint64 totalBytes = 0;
+    QList<QString> allFiles;
     for (const Item &item : m_items) {
         if (item.isDir) {
-            // Walk directory
             QDirIterator it(item.srcPath, QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
             while (it.hasNext()) {
                 it.next();
                 totalFiles++;
-                if (!it.fileInfo().isDir())
+                if (!it.fileInfo().isDir()) {
                     totalBytes += it.fileInfo().size();
+                    allFiles.append(it.filePath());
+                }
                 emit progressChanged(totalFiles, totalFiles, totalBytes, totalBytes, it.filePath(), QStringLiteral("正在分析..."));
             }
         } else {
             totalFiles++;
             totalBytes += item.size;
+            allFiles.append(item.srcPath);
             emit progressChanged(totalFiles, totalFiles, totalBytes, totalBytes, item.srcPath, QStringLiteral("正在分析..."));
         }
     }
@@ -62,11 +69,15 @@ void PasteTask::run()
         current++;
         if (item.isDir) {
             copyDirectoryRecursive(item.srcPath, item.destPath, this);
+            // Add entire directory to SVN
+            client.add(item.destPath);
             copied++;
         } else {
             if (QFile::copy(item.srcPath, item.destPath)) {
                 copied++;
                 bytesDone += item.size;
+                // Add file to SVN immediately after copy
+                client.add(item.destPath);
             } else {
                 failed++;
             }
