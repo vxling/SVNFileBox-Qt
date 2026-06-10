@@ -34,6 +34,8 @@
 #include <QProcess>
 #include <QMimeData>
 #include <QApplication>
+#include <QDirIterator>
+static bool copyDirectory(const QString &srcPath, const QString &destPath);
 
 MainWindow::MainWindow(ConfigService *configService,
                        FileModel *fileModel,
@@ -336,7 +338,47 @@ void MainWindow::onFileContextMenu(const QPoint &pos)
             compressToZip(selectedPath, zipPath, isDir);
         }
     } else if (triggered == paste) {
-        // paste from clipboard - TODO
+        QString targetDir = selectedPath.isEmpty() ? m_currentPath : selectedPath;
+        if (!QFileInfo(targetDir).isDir()) {
+            targetDir = QFileInfo(targetDir).dir().absolutePath();
+        }
+
+        QClipboard *clipboard = QApplication::clipboard();
+        const QMimeData *mime = clipboard->mimeData();
+
+        QStringList sourcePaths;
+        if (mime->hasUrls()) {
+            for (const QUrl &url : mime->urls()) {
+                QString path = url.toLocalFile();
+                if (!path.isEmpty()) {
+                    sourcePaths.append(path);
+                }
+            }
+        }
+        if (sourcePaths.isEmpty()) {
+            QMessageBox::information(this, QStringLiteral("Paste"),
+                                    QStringLiteral("Clipboard does not contain files"));
+            return;
+        }
+
+        int copied = 0;
+        for (const QString &srcPath : sourcePaths) {
+            QString fileName = QFileInfo(srcPath).fileName();
+            QString destPath = targetDir + "/" + fileName;
+            if (QFileInfo(srcPath).isDir()) {
+                copyDirectory(srcPath, destPath);
+                copied++;
+            } else {
+                if (QFile::copy(srcPath, destPath)) {
+                    copied++;
+                }
+            }
+        }
+        if (copied > 0) {
+            m_fileModel->load(m_currentPath);
+            QMessageBox::information(this, QStringLiteral("Paste"),
+                                    QStringLiteral("Pasted %1 item(s)").arg(copied));
+        }
     } else if (triggered == newFolder) {
         bool ok = false;
         QString name = QInputDialog::getText(this, QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9"),
@@ -378,6 +420,29 @@ void MainWindow::onFileContextMenu(const QPoint &pos)
 }
 
 
+
+static bool copyDirectory(const QString &srcPath, const QString &destPath)
+{
+    QDir srcDir(srcPath);
+    if (!srcDir.exists()) return false;
+    QDir destDir(destPath);
+    if (!destDir.exists()) {
+        destDir.mkpath(destPath);
+    }
+    QDirIterator it(srcPath, QDir::AllEntries | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString item = it.next();
+        QString itemName = QFileInfo(item).fileName();
+        QString destItem = destPath + "/" + itemName;
+        if (QFileInfo(item).isDir()) {
+            destDir.mkpath(destItem);
+            copyDirectory(item, destItem);
+        } else {
+            QFile::copy(item, destItem);
+        }
+    }
+    return true;
+}
 
 void MainWindow::compressToZip(const QString &sourcePath, const QString &zipPath, bool isDir)
 {
