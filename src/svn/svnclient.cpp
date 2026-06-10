@@ -14,7 +14,6 @@ extern "C" {
 #include <svn_ra.h>
 #include <svn_auth.h>
 #include <svn_time.h>
-#include <svn_xml.h>
 #include <svn_io.h>
 #include <svn_delta.h>
 #include <svn_diff.h>
