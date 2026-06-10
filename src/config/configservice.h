@@ -74,40 +74,40 @@ public:
     void setRemoteUrl(const QString &v) { m_remoteUrl = v; }
 
     int syncIntervalMinutes() const { return m_syncIntervalMinutes; }
-    void setSyncIntervalMinutes(int v) { m_syncIntervalMinutes = v; }
+    void setSyncIntervalMinutes(int v) { m_syncIntervalMinutes = v; saveConfig(); }
 
     QString proxyUrl() const { return m_proxyUrl; }
-    void setProxyUrl(const QString &v) { m_proxyUrl = v; }
+    void setProxyUrl(const QString &v) { m_proxyUrl = v; saveConfig(); }
 
     int syncRecordRetentionDays() const { return m_syncRecordRetentionDays; }
     void setSyncRecordRetentionDays(int v) { m_syncRecordRetentionDays = v; }
 
     bool autoStart() const { return m_autoStart; }
-    void setAutoStart(bool v) { m_autoStart = v; }
+    void setAutoStart(bool v) { m_autoStart = v; saveConfig(); }
 
     bool minimizeToTray() const { return m_minimizeToTray; }
-    void setMinimizeToTray(bool v) { m_minimizeToTray = v; }
+    void setMinimizeToTray(bool v) { m_minimizeToTray = v; saveConfig(); }
 
     bool autoStartMinimize() const { return m_autoStartMinimize; }
-    void setAutoStartMinimize(bool v) { m_autoStartMinimize = v; }
+    void setAutoStartMinimize(bool v) { m_autoStartMinimize = v; saveConfig(); }
 
     QString language() const { return m_language; }
-    void setLanguage(const QString &v) { m_language = v; }
+    void setLanguage(const QString &v) { m_language = v; saveConfig(); }
 
     QString theme() const { return m_theme; }
-    void setTheme(const QString &v) { m_theme = v; }
+    void setTheme(const QString &v) { m_theme = v; saveConfig(); }
 
     int fileTransferTimeoutSeconds() const { return m_fileTransferTimeoutSeconds; }
-    void setFileTransferTimeoutSeconds(int v) { m_fileTransferTimeoutSeconds = v; }
+    void setFileTransferTimeoutSeconds(int v) { m_fileTransferTimeoutSeconds = v; saveConfig(); }
 
     bool autoSyncEnabled() const { return m_autoSyncEnabled; }
-    void setAutoSyncEnabled(bool v) { m_autoSyncEnabled = v; }
+    void setAutoSyncEnabled(bool v) { m_autoSyncEnabled = v; saveConfig(); }
 
     int maxBackgroundRepos() const { return m_maxBackgroundRepos; }
-    void setMaxBackgroundRepos(int v) { m_maxBackgroundRepos = v; }
+    void setMaxBackgroundRepos(int v) { m_maxBackgroundRepos = v; saveConfig(); }
 
     int backgroundPollingInterval() const { return m_backgroundPollingInterval; }
-    void setBackgroundPollingInterval(int v) { m_backgroundPollingInterval = v; }
+    void setBackgroundPollingInterval(int v) { m_backgroundPollingInterval = v; saveConfig(); }
 
     // P3 #3: expose load/save for unit tests. Safe to call repeatedly;
     // production code only calls them in ctor / setter paths.
