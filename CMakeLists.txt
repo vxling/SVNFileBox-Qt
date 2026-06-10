@@ -19,6 +19,14 @@ pkg_check_modules(SVN_CLIENT REQUIRED libsvn_client libsvn_wc libsvn_subr libsvn
 message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
 message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
 
+# Zip compression library (cross-platform)
+find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS /usr/include NO_DEFAULT_PATH)
+find_library(ZIP_LIBRARY NAMES zip PATHS /usr/lib/x86_64-linux-gnu NO_DEFAULT_PATH)
+include_directories(${ZIP_INCLUDE_DIR})
+link_directories(/usr/lib/x86_64-linux-gnu)
+message(STATUS "ZIP include: ${ZIP_INCLUDE_DIR}")
+message(STATUS "ZIP library: ${ZIP_LIBRARY}")
+
 # App
 set(APP_SOURCES
     src/main.cpp
@@ -93,6 +101,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::QuickControls2
     Qt6::Sql
     ${SVN_CLIENT_LIBRARIES}
+    zip
 )
 
 # Resources

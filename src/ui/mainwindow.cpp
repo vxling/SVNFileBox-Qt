@@ -36,6 +36,7 @@
 #include <QMimeData>
 #include <QApplication>
 #include <QDirIterator>
+#include <zip.h>
 static bool copyDirectory(const QString &srcPath, const QString &destPath);
 
 MainWindow::MainWindow(ConfigService *configService,
@@ -560,46 +561,47 @@ static bool copyDirectory(const QString &srcPath, const QString &destPath)
 
 void MainWindow::compressToZip(const QString &sourcePath, const QString &zipPath, bool isDir)
 {
-    // Python script to create zip - cross-platform
-    QFile scriptFile(QStringLiteral("/tmp/svnfilebox_zip.py"));
-    QString scriptContent;
+    int error = 0;
+    zip_t *zip = zip_open(zipPath.toUtf8().constData(), ZIP_CREATE | ZIP_TRUNCATE, &error);
+    if (!zip) {
+        QMessageBox::warning(this, QStringLiteral("Compression failed"),
+                            QStringLiteral("Failed to create zip file (error %1)").arg(error));
+        return;
+    }
+
     if (isDir) {
-        scriptContent = R"(import zipfile, os, sys
-base = sys.argv[1]
-out = sys.argv[2]
-z = zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED)
-for root, dirs, files in os.walk(base):
-    for f in files:
-        fp = os.path.join(root, f)
-        arcname = os.path.relpath(fp, os.path.dirname(base))
-        z.write(fp, arcname)
-z.close()
-)";
+        QDirIterator it(sourcePath, QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            QString filePath = it.next();
+            QString relPath = QFileInfo(filePath).fileName();
+            // Compute relative path from source parent dir
+            QDir srcDir(sourcePath);
+            QString arcPath = srcDir.relativeFilePath(filePath);
+            zip_error_t zerr;
+            zip_error_init(&zerr);
+            zip_source_t *src = zip_source_file_create(filePath.toUtf8().constData(), 0, -1, &zerr);
+            if (src) {
+                zip_file_add(zip, arcPath.toUtf8().constData(), src, ZIP_FL_ENC_UTF_8);
+            } else {
+                zip_error_fini(&zerr);
+                break;
+            }
+        }
     } else {
-        scriptContent = R"(import zipfile, os, sys
-z = zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED)
-z.write(sys.argv[1], os.path.basename(sys.argv[1]))
-z.close()
-)";
-    }
-    if (scriptFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        scriptFile.write(scriptContent.toUtf8());
-        scriptFile.close();
+        zip_source_t *src = zip_source_file_create(sourcePath.toUtf8().constData(), 0, -1, nullptr);
+        if (src) {
+            zip_file_add(zip, QFileInfo(sourcePath).fileName().toUtf8().constData(), src, ZIP_FL_ENC_UTF_8);
+        }
     }
 
-    QProcess p;
-    p.setProgram(QStringLiteral("python3"));
-    p.setArguments({QStringLiteral("/tmp/svnfilebox_zip.py"), sourcePath, zipPath});
-    p.start();
-    p.waitForFinished();
+    zip_close(zip);
 
-    scriptFile.remove();
-    if (p.exitCode() == 0) {
+    if (QFile::exists(zipPath)) {
         QMessageBox::information(this, QStringLiteral("Compressed"),
                                 QStringLiteral("Compressed to: %1").arg(zipPath));
     } else {
         QMessageBox::warning(this, QStringLiteral("Compression failed"),
-                            QString::fromUtf8(p.readAllStandardError()));
+                            QStringLiteral("Failed to create zip file"));
     }
 }
 
