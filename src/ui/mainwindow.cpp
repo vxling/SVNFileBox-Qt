@@ -374,17 +374,42 @@ void MainWindow::onFileContextMenu(const QPoint &pos)
             }
         }
         if (sourcePaths.isEmpty()) return;
-        int copied = 0;
+
+        // Build item list
+        QList<PasteTask::Item> items;
+        qint64 totalBytes = 0;
         for (const QString &srcPath : sourcePaths) {
-            QString destPath = tgt + "/" + QFileInfo(srcPath).fileName();
-            if (QFileInfo(srcPath).isDir()) {
-                copyDirectory(srcPath, destPath);
-                copied++;
-            } else {
-                if (QFile::copy(srcPath, destPath)) copied++;
-            }
+            PasteTask::Item item;
+            item.srcPath = srcPath;
+            item.destPath = tgt + "/" + QFileInfo(srcPath).fileName();
+            item.isDir = QFileInfo(srcPath).isDir();
+            if (!item.isDir) item.size = QFileInfo(srcPath).size();
+            items.append(item);
         }
-        if (copied > 0) m_fileModel->load(m_currentPath);
+
+        // Show progress dialog
+        CopyProgressDialog dlg(this);
+        dlg.reset();
+        dlg.show();
+
+        PasteTask task(items);
+        QObject::connect(&task, &PasteTask::stageChanged, &dlg, &CopyProgressDialog::setStage);
+        QObject::connect(&task, &PasteTask::progressChanged, &dlg, &CopyProgressDialog::setProgress);
+        QObject::connect(&dlg, &CopyProgressDialog::cancelled, &task, &QThread::requestInterruption);
+        QObject::connect(&task, &PasteTask::copyFinished, &dlg, [&dlg](int copied, int failed) {
+            dlg.markDone(failed == 0
+                ? QStringLiteral("粘贴完成: 成功 %1 个").arg(copied)
+                : QStringLiteral("粘贴完成: 成功 %1 个，失败 %2 个").arg(copied).arg(failed));
+        });
+
+        task.start();
+        dlg.exec();
+        task.wait();
+        task.quit();
+
+        if (!task.isFinished()) task.terminate();
+        if (dlg.wasCancelled()) return;
+        m_fileModel->load(m_currentPath);
     } else if (triggered == deleteAct) {
         if (selectedPath.isEmpty()) return;
         int ret = QMessageBox::question(this, QStringLiteral("\xe7\xa1\xae\xe8\xae\xa4\xe5\x88\xa0\xe9\x99\xa4"),
