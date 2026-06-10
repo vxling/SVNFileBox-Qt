@@ -31,6 +31,7 @@
 #include <QFileInfo>
 #include <QMenu>
 #include <QClipboard>
+#include <QIcon>
 #include <QProcess>
 #include <QMimeData>
 #include <QApplication>
@@ -278,147 +279,259 @@ void MainWindow::onFileContextMenu(const QPoint &pos)
     }
 
     QMenu menu;
-    QAction *openInExplorer = menu.addAction(QStringLiteral("\xe5\x9c\xa8\xe8\xb5\x84\xe6\xba\x90\xe7\xae\xa1\xe7\x90\x86\xe5\x99\xa8\xe4\xb8\xad\xe6\x89\x93\xe5\xbc\x80"));
+
+    // 打开 (open file/folder with default app)
+    QAction *openAct = menu.addAction(QStringLiteral("\xe6\x89\x93\xe5\xbc\x80"));
     menu.addSeparator();
 
-    QAction *copyPath = menu.addAction(QStringLiteral("\xe5\xa4\x8d\xe5\x88\xb6\xe8\xb7\xaf\xe5\xbe\x84"));
-    QAction *compressToZipAction = menu.addAction(QStringLiteral("\xe5\x8e\x8b\xe7\xbc\xa9\xe5\x88\xb0 .Zip \xe5\x8c\x85"));
+    // 刷新
+    QAction *refreshAct = menu.addAction(QStringLiteral("\xe5\x88\xb7\xe6\x96\xb0"));
     menu.addSeparator();
 
-    QAction *paste = menu.addAction(QStringLiteral("\xe7\xb2\x98\xe8\xb4\xb4"));
-    QAction *newFolder = menu.addAction(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9"));
+    // 复制
+    QAction *copyAct = menu.addAction(QStringLiteral("\xe5\xa4\x8d\xe5\x88\xb6"));
+    // 粘贴
+    QAction *pasteAct = menu.addAction(QStringLiteral("\xe7\xb2\x98\xe8\xb4\xb4"));
     menu.addSeparator();
 
-    QAction *rename = menu.addAction(QStringLiteral("\xe9\x87\x8d\xe5\x91\xbd\xe5\x90\x8d"));
+    // 删除
+    QAction *deleteAct = menu.addAction(QStringLiteral("\xe5\x88\xa0\xe9\x99\xa4"));
     menu.addSeparator();
 
-    QAction *deleteAction = menu.addAction(QStringLiteral("\xe5\x88\xa0\xe9\x99\xa4"));
+    // 重命名
+    QAction *renameAct = menu.addAction(QStringLiteral("\xe9\x87\x8d\xe5\x91\xbd\xe5\x90\x8d"));
     menu.addSeparator();
 
-    QAction *refresh = menu.addAction(QStringLiteral("\xe5\x88\xb7\xe6\x96\xb0"));
-    QAction *manualSync = menu.addAction(QStringLiteral("\xe6\x89\x8b\xe5\xb7\xa5\xe5\x90\x8c\xe6\xad\xa5"));
+    // 添加到 .Zip 压缩包
+    QAction *compressAct = menu.addAction(QStringLiteral("\xe6\xb7\xbb\xe5\x8a\xa0\xe5\x88\xb0 .Zip \xe5\x8e\x8b\xe7\xbc\xa9\xe5\x8c\x85"));
+    menu.addSeparator();
 
-    // Disable inapplicable items when nothing is selected
+    // 新建 (submenu)
+    QMenu *newSubMenu = new QMenu(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba"), &menu);
+    QAction *newSubMenuAct = menu.addAction(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba"));
+    newSubMenuAct->setMenu(newSubMenu);
+    newSubMenuAct->setIcon(QIcon::fromTheme("folder-new"));
+
+    QAction *newFolderAct = newSubMenu->addAction(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9"));
+    QAction *newTextFileAct = newSubMenu->addAction(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe6\x9c\xac\xe6\x96\x87\xe4\xbb\xb6"));
+    QAction *newOfficeAct = newSubMenu->addAction(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba Office \xe7\xb3\xbb\xe5\x88\x97\xe5\xb8\xb8\xe8\xa7\x81\xe6\x96\x87\xe4\xbb\xb6"));
+    newSubMenu->addSeparator();
+    QAction *newPngAct = newSubMenu->addAction(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba PNG \xe5\x9b\xbe\xe7\x89\x87"));
+    QAction *newBmpAct = newSubMenu->addAction(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba BMP \xe5\x9b\xbe\xe7\x89\x87"));
+    menu.addSeparator();
+
+    // 立即同步
+    QAction *syncAct = menu.addAction(QStringLiteral("\xe7\xab\x8b\xe5\x8d\xb3\xe5\x90\x8c\xe6\xad\xa5"));
+    // 在资源管理器中打开
+    QAction *openInExplorerAct = menu.addAction(QStringLiteral("\xe5\x9c\xa8\xe8\xb5\x84\xe6\xba\x90\xe7\xae\xa1\xe7\x90\x86\xe5\x99\xa8\xe4\xb8\xad\xe6\x89\x93\xe5\xbc\x80"));
+
+    // Disable items that require selection
     if (selectedPath.isEmpty()) {
-        paste->setEnabled(false);
-        rename->setEnabled(false);
-        deleteAction->setEnabled(false);
+        copyAct->setEnabled(false);
+        pasteAct->setEnabled(false);
+        deleteAct->setEnabled(false);
+        renameAct->setEnabled(false);
+        compressAct->setEnabled(false);
     } else {
         if (!isDir) {
-            paste->setEnabled(false);
-            newFolder->setEnabled(false);
+            pasteAct->setEnabled(false);
         }
     }
 
     QAction *triggered = menu.exec(m_fileTableView->viewport()->mapToGlobal(pos));
     if (!triggered) return;
 
-    if (triggered == openInExplorer) {
-        QString pathToOpen = selectedPath.isEmpty() ? m_currentPath : selectedPath;
-        QDesktopServices::openUrl(QUrl::fromLocalFile(pathToOpen));
-    } else if (triggered == copyPath) {
-        QClipboard *clipboard = QApplication::clipboard();
-        clipboard->setText(selectedPath);
-    } else if (triggered == compressToZipAction) {
-        if (!selectedPath.isEmpty()) {
-            QString zipPath = selectedPath;
-            if (!isDir) {
-                // For files, put zip next to the file (file.zip)
-                zipPath = selectedPath + ".zip";
-            } else {
-                // For folders, create foldername.zip in parent dir
-                zipPath = QFileInfo(selectedPath).dir().absolutePath() + "/"
-                        + QFileInfo(selectedPath).fileName() + ".zip";
-            }
-            if (QFile::exists(zipPath)) {
-                int ret = QMessageBox::question(this, QStringLiteral("\xe5\x8e\x8b\xe7\xbc\xa9\xe5\x88\xb0"),
-                        QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xb7\xb2\xe5\xad\x98\xe5\x9c\xa8\xff0c\xe8\xa6\x81\xe8\xa6\x86\xe5\x80\x92\xe5\x90\x8c\xe5\x90\x97\xef\xbc\x9f"));
-                if (ret != QMessageBox::Yes) return;
-            }
-            compressToZip(selectedPath, zipPath, isDir);
-        }
-    } else if (triggered == paste) {
-        QString targetDir = selectedPath.isEmpty() ? m_currentPath : selectedPath;
-        if (!QFileInfo(targetDir).isDir()) {
-            targetDir = QFileInfo(targetDir).dir().absolutePath();
-        }
+    // Helper: target dir for new file creation
+    auto targetDir = [&]() -> QString {
+        if (selectedPath.isEmpty()) return m_currentPath;
+        return isDir ? selectedPath : QFileInfo(selectedPath).dir().absolutePath();
+    };
 
+    if (triggered == openAct) {
+        if (selectedPath.isEmpty()) return;
+        if (isDir) {
+            navigateTo(selectedPath);
+        } else {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(selectedPath));
+        }
+    } else if (triggered == refreshAct) {
+        onRefreshClicked();
+    } else if (triggered == copyAct) {
+        if (!selectedPath.isEmpty()) {
+            QClipboard *clipboard = QApplication::clipboard();
+            clipboard->setText(selectedPath);
+        }
+    } else if (triggered == pasteAct) {
+        QString tgt = targetDir();
         QClipboard *clipboard = QApplication::clipboard();
         const QMimeData *mime = clipboard->mimeData();
-
         QStringList sourcePaths;
         if (mime->hasUrls()) {
             for (const QUrl &url : mime->urls()) {
                 QString path = url.toLocalFile();
-                if (!path.isEmpty()) {
-                    sourcePaths.append(path);
-                }
+                if (!path.isEmpty()) sourcePaths.append(path);
             }
         }
-        if (sourcePaths.isEmpty()) {
-            QMessageBox::information(this, QStringLiteral("Paste"),
-                                    QStringLiteral("Clipboard does not contain files"));
-            return;
-        }
-
+        if (sourcePaths.isEmpty()) return;
         int copied = 0;
         for (const QString &srcPath : sourcePaths) {
-            QString fileName = QFileInfo(srcPath).fileName();
-            QString destPath = targetDir + "/" + fileName;
+            QString destPath = tgt + "/" + QFileInfo(srcPath).fileName();
             if (QFileInfo(srcPath).isDir()) {
                 copyDirectory(srcPath, destPath);
                 copied++;
             } else {
-                if (QFile::copy(srcPath, destPath)) {
-                    copied++;
-                }
+                if (QFile::copy(srcPath, destPath)) copied++;
             }
         }
-        if (copied > 0) {
-            m_fileModel->load(m_currentPath);
-            QMessageBox::information(this, QStringLiteral("Paste"),
-                                    QStringLiteral("Pasted %1 item(s)").arg(copied));
-        }
-    } else if (triggered == newFolder) {
-        bool ok = false;
-        QString name = QInputDialog::getText(this, QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9"),
-                                            QStringLiteral("\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9\xe5\x90\x8d\xe7\xa7\xb0:"),
-                                            QLineEdit::Normal, QString(), &ok);
-        if (ok && !name.isEmpty()) {
-            QString newPath = selectedPath.isEmpty() ? m_currentPath : selectedPath + "/" + name;
-            QDir().mkdir(newPath);
+        if (copied > 0) m_fileModel->load(m_currentPath);
+    } else if (triggered == deleteAct) {
+        if (selectedPath.isEmpty()) return;
+        int ret = QMessageBox::question(this, QStringLiteral("\xe7\xa1\xae\xe8\xae\xa4\xe5\x88\xa0\xe9\x99\xa4"),
+                                        QStringLiteral("\xe7\xa1\xae\xe5\xae\x9a\xe8\xa6\x81\xe5\x88\xa0\xe9\x99\xa4 \"%1\" \xe5\x90\x97\xef\xbc\x9f").arg(selectedPath));
+        if (ret == QMessageBox::Yes) {
+            if (isDir) QDir(selectedPath).removeRecursively();
+            else QFile::remove(selectedPath);
             m_fileModel->load(m_currentPath);
         }
-    } else if (triggered == rename) {
+    } else if (triggered == renameAct) {
+        if (selectedPath.isEmpty()) return;
         bool ok = false;
         QString newName = QInputDialog::getText(this, QStringLiteral("\xe9\x87\x8d\xe5\x91\xbd\xe5\x90\x8d"),
                                                QStringLiteral("\xe6\x96\xb0\xe5\x90\x8d\xe7\xa7\xb0:"),
-                                               QLineEdit::Normal,
-                                               QFileInfo(selectedPath).fileName(), &ok);
+                                               QLineEdit::Normal, QFileInfo(selectedPath).fileName(), &ok);
         if (ok && !newName.isEmpty() && newName != QFileInfo(selectedPath).fileName()) {
             QString newPath = QFileInfo(selectedPath).dir().absolutePath() + "/" + newName;
             QFile::rename(selectedPath, newPath);
             m_fileModel->load(m_currentPath);
         }
-    } else if (triggered == deleteAction) {
+    } else if (triggered == compressAct) {
         if (selectedPath.isEmpty()) return;
-        int ret = QMessageBox::question(this, QStringLiteral("\xe7\xa1\xae\xe8\xae\xa4\xe5\x88\xa0\xe9\x99\xa4"),
-                                        QStringLiteral("\xe7\xa1\xae\xe5\xae\x9a\xe8\xa6\x81\xe5\x88\xa0\xe9\x99\xa4 \"%1\" \xe5\x90\x97\xef\xbc\x9f").arg(selectedPath));
-        if (ret == QMessageBox::Yes) {
-            if (isDir) {
-                QDir(selectedPath).removeRecursively();
-            } else {
-                QFile::remove(selectedPath);
-            }
+        QString zipPath = isDir
+            ? QFileInfo(selectedPath).dir().absolutePath() + "/" + QFileInfo(selectedPath).fileName() + ".zip"
+            : selectedPath + ".zip";
+        if (QFile::exists(zipPath)) {
+            int ret = QMessageBox::question(this, QStringLiteral("\xe5\x8e\x8b\xe7\xbc\xa9"),
+                    QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xb7\xb2\xe5\xad\x98\xe5\x9c\xa8\xff0c\xe8\xa6\x81\xe8\xa6\x86\xe5\x80\x92\xe5\x90\x8c\xe5\x90\x97\xef\xbc\x9f"));
+            if (ret != QMessageBox::Yes) return;
+        }
+        compressToZip(selectedPath, zipPath, isDir);
+    } else if (triggered == newFolderAct) {
+        bool ok = false;
+        QString name = QInputDialog::getText(this, QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9"),
+                                            QStringLiteral("\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9\xe5\x90\x8d\xe7\xa7\xb0:"),
+                                            QLineEdit::Normal, QString(), &ok);
+        if (ok && !name.isEmpty()) {
+            QDir().mkpath(targetDir() + "/" + name);
             m_fileModel->load(m_currentPath);
         }
-    } else if (triggered == refresh) {
-        onRefreshClicked();
-    } else if (triggered == manualSync) {
+    } else if (triggered == newTextFileAct) {
+        createNewFile(targetDir(), "txt");
+    } else if (triggered == newOfficeAct) {
+        createNewOfficeFile(targetDir());
+    } else if (triggered == newPngAct) {
+        createNewImage(targetDir(), "png");
+    } else if (triggered == newBmpAct) {
+        createNewImage(targetDir(), "bmp");
+    } else if (triggered == syncAct) {
         onManualSync();
+    } else if (triggered == openInExplorerAct) {
+        QString pathToOpen = selectedPath.isEmpty() ? m_currentPath : selectedPath;
+        QDesktopServices::openUrl(QUrl::fromLocalFile(pathToOpen));
     }
 }
 
+
+static QString suggestNewName(const QString &dir, const QString &base, const QString &ext) {
+    if (ext.isEmpty()) {
+        QString path = dir + "/" + base;
+        if (!QFile::exists(path)) return base;
+    } else {
+        QString path = dir + "/" + base + "." + ext;
+        if (!QFile::exists(path)) return base + "." + ext;
+    }
+    for (int i = 2; i < 1000; i++) {
+        QString candidate = ext.isEmpty()
+            ? QStringLiteral("%1 (%2)").arg(base).arg(i)
+            : QStringLiteral("%1 (%2).%3").arg(base).arg(i).arg(ext);
+        QString path = dir + "/" + candidate;
+        if (!QFile::exists(path)) return candidate;
+    }
+    return QString();
+}
+
+void MainWindow::createNewFile(const QString &dir, const QString &ext)
+{
+    QString baseName = ext == "txt" ? QStringLiteral("ææ¬æä»¶")
+                 : QStringLiteral("newfile");
+    QString name = suggestNewName(dir, baseName, ext);
+    QString path = dir + "/" + name;
+    QFile file(path);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.close();
+        m_fileModel->load(m_currentPath);
+    }
+}
+
+
+void MainWindow::createNewOfficeFile(const QString &dir)
+{
+    // Let user choose type: docx, xlsx, pptx
+    QStringList types = {QStringLiteral("Word (\xe6\x96\x87\xe6\x9c\xac)"), QStringLiteral("Excel (\xe8\xa1\xa8\xe6\xa0\xbc)"), QStringLiteral("PowerPoint (\xe6\x8f\x92\xe5\xb9\x95)")};
+    QStringList exts = {"docx", "xlsx", "pptx"};
+    bool ok = false;
+    QString chosen = QInputDialog::getItem(this, QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba Office \xe6\x96\x87\xe4\xbb\xb6"),
+                                           QStringLiteral("\xe9\x80\x89\xe6\x8b\xa9\xe7\xb1\xbb\xe5\x9e\x8b:"), types, 0, false, &ok);
+    if (!ok) return;
+    int idx = types.indexOf(chosen);
+    QString ext = exts.value(idx, "docx");
+    QString baseName = ext == "docx" ? QStringLiteral("\xe6\x96\x87\xe6\x9c\xac")
+                   : ext == "xlsx" ? QStringLiteral("\xe8\xa1\xa8\xe6\xa0\xbc")
+                   : QStringLiteral("\xe6\x8f\x92\xe5\xb9\x95");
+    QString name = suggestNewName(dir, baseName, ext);
+    QString path = dir + "/" + name;
+
+    // Create minimal placeholder - actual Office content is complex
+    // Users should replace with real documents
+    QFile file(path);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.close();
+    }
+    m_fileModel->load(m_currentPath);
+}
+
+
+void MainWindow::createNewImage(const QString &dir, const QString &format)
+{
+    // Create a minimal 1x1 pixel image using Python PIL/Pillow if available,
+    // otherwise create a minimal BMP header manually
+    QString baseName = format == "png" ? QStringLiteral("å¾ç") : QStringLiteral("å¾ç");
+    QString name = suggestNewName(dir, baseName, format);
+    QString path = dir + "/" + name;
+
+    QProcess p;
+    QStringList args;
+    if (format == "png") {
+        args = {"-c", "from PIL import Image; img = Image.new('RGB', (1,1)); img.save('" + path + "')"};
+    } else {
+        // BMP - minimal 1x1 24-bit BMP
+        args = {"-c", "with open('" + path + "', 'wb') as f: f.write(b'BM\x1e\x00\x00\x00\x00\x00\x00\x1a\x00\x00\x00\x12\x00\x00\x00\x28\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x18\x00\x00\x00\x00\x00\x00\x1e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')"};
+    }
+    p.setProgram("python3");
+    p.setArguments(args);
+    p.start();
+    p.waitForFinished();
+
+    if (p.exitCode() != 0 || !QFile::exists(path)) {
+        // Fallback: minimal BMP
+        QFile file(path);
+        if (file.open(QIODevice::WriteOnly)) {
+            QByteArray minimalBmp = QByteArray::fromHex("424d1e000000000000001a000000120000002800000001000000010000000100180000000000001e000000000000000000000000000000000000000000000000");
+            file.write(minimalBmp);
+            file.close();
+        }
+    }
+    m_fileModel->load(m_currentPath);
+}
 
 
 static bool copyDirectory(const QString &srcPath, const QString &destPath)
@@ -427,13 +540,13 @@ static bool copyDirectory(const QString &srcPath, const QString &destPath)
     if (!srcDir.exists()) return false;
     QDir destDir(destPath);
     if (!destDir.exists()) {
-        destDir.mkpath(destPath);
+        destDir.mkpath(destDir.absolutePath());
     }
     QDirIterator it(srcPath, QDir::AllEntries | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString item = it.next();
         QString itemName = QFileInfo(item).fileName();
-        QString destItem = destPath + "/" + itemName;
+        QString destItem = destDir.absolutePath() + "/" + itemName;
         if (QFileInfo(item).isDir()) {
             destDir.mkpath(destItem);
             copyDirectory(item, destItem);
@@ -443,6 +556,7 @@ static bool copyDirectory(const QString &srcPath, const QString &destPath)
     }
     return true;
 }
+
 
 void MainWindow::compressToZip(const QString &sourcePath, const QString &zipPath, bool isDir)
 {

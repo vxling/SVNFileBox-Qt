@@ -39,6 +39,9 @@ private slots:
     void onFileDoubleClicked(const QModelIndex &index);
     void onFileContextMenu(const QPoint &pos);
     void compressToZip(const QString &sourcePath, const QString &zipPath, bool isDir);
+    void createNewFile(const QString &dir, const QString &ext);
+    void createNewOfficeFile(const QString &dir);
+    void createNewImage(const QString &dir, const QString &format);
     void onRefreshClicked();
     void onGoUpClicked();
     void onPathEditingFinished();
