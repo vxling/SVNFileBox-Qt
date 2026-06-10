@@ -29,6 +29,10 @@
 #include <QSortFilterProxyModel>
 #include <QFileIconProvider>
 #include <QFileInfo>
+#include <QMenu>
+#include <QClipboard>
+#include <QMimeData>
+#include <QApplication>
 
 MainWindow::MainWindow(ConfigService *configService,
                        FileModel *fileModel,
@@ -102,6 +106,7 @@ void MainWindow::setupUiFromCode()
         QStringLiteral("大小"), QStringLiteral("修改时间"), QStringLiteral("文件类型")
     });
     m_fileTableView->setModel(m_fileTableModel);
+    m_fileTableView->setContextMenuPolicy(Qt::CustomContextMenu);
 
     // Column widths
     m_fileTableView->setColumnWidth(0, 40);
@@ -192,6 +197,8 @@ void MainWindow::connectSignals()
     // File table double-click
     connect(m_fileTableView, &QTableView::doubleClicked,
             this, &MainWindow::onFileDoubleClicked);
+    connect(m_fileTableView, &QTableView::customContextMenuRequested,
+            this, &MainWindow::onFileContextMenu);
 
     // Sidebar buttons
     connect(m_btnCheckout, &QPushButton::clicked, this, [this]() {
@@ -256,6 +263,100 @@ void MainWindow::onFileDoubleClicked(const QModelIndex &index)
         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
     }
 }
+
+void MainWindow::onFileContextMenu(const QPoint &pos)
+{
+    QModelIndex index = m_fileTableView->indexAt(pos);
+    QString selectedPath;
+    bool isDir = false;
+    if (index.isValid() && index.row() < m_currentFilePaths.size()) {
+        selectedPath = m_currentFilePaths[index.row()];
+        isDir = QFileInfo(selectedPath).isDir();
+    }
+
+    QMenu menu;
+    QAction *openInExplorer = menu.addAction(QStringLiteral("\xe5\x9c\xa8\xe8\xb5\x84\xe6\xba\x90\xe7\xae\xa1\xe7\x90\x86\xe5\x99\xa8\xe4\xb8\xad\xe6\x89\x93\xe5\xbc\x80"));
+    menu.addSeparator();
+
+    QAction *copyPath = menu.addAction(QStringLiteral("\xe5\xa4\x8d\xe5\x88\xb6\xe8\xb7\xaf\xe5\xbe\x84"));
+    menu.addSeparator();
+
+    QAction *paste = menu.addAction(QStringLiteral("\xe7\xb2\x98\xe8\xb4\xb4"));
+    QAction *newFolder = menu.addAction(QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9"));
+    menu.addSeparator();
+
+    QAction *rename = menu.addAction(QStringLiteral("\xe9\x87\x8d\xe5\x91\xbd\xe5\x90\x8d"));
+    menu.addSeparator();
+
+    QAction *deleteAction = menu.addAction(QStringLiteral("\xe5\x88\xa0\xe9\x99\xa4"));
+    menu.addSeparator();
+
+    QAction *refresh = menu.addAction(QStringLiteral("\xe5\x88\xb7\xe6\x96\xb0"));
+    QAction *manualSync = menu.addAction(QStringLiteral("\xe6\x89\x8b\xe5\xb7\xa5\xe5\x90\x8c\xe6\xad\xa5"));
+
+    // Disable inapplicable items when nothing is selected
+    if (selectedPath.isEmpty()) {
+        paste->setEnabled(false);
+        rename->setEnabled(false);
+        deleteAction->setEnabled(false);
+    } else {
+        if (!isDir) {
+            paste->setEnabled(false);
+            newFolder->setEnabled(false);
+        }
+    }
+
+    QAction *triggered = menu.exec(m_fileTableView->viewport()->mapToGlobal(pos));
+    if (!triggered) return;
+
+    if (triggered == openInExplorer) {
+        QString pathToOpen = selectedPath.isEmpty() ? m_currentPath : selectedPath;
+        QDesktopServices::openUrl(QUrl::fromLocalFile(pathToOpen));
+    } else if (triggered == copyPath) {
+        QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(selectedPath);
+    } else if (triggered == paste) {
+        // paste from clipboard - TODO
+    } else if (triggered == newFolder) {
+        bool ok = false;
+        QString name = QInputDialog::getText(this, QStringLiteral("\xe6\x96\xb0\xe5\xbb\xba\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9"),
+                                            QStringLiteral("\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xb9\xe5\x90\x8d\xe7\xa7\xb0:"),
+                                            QLineEdit::Normal, QString(), &ok);
+        if (ok && !name.isEmpty()) {
+            QString newPath = selectedPath.isEmpty() ? m_currentPath : selectedPath + "/" + name;
+            QDir().mkdir(newPath);
+            m_fileModel->load(m_currentPath);
+        }
+    } else if (triggered == rename) {
+        bool ok = false;
+        QString newName = QInputDialog::getText(this, QStringLiteral("\xe9\x87\x8d\xe5\x91\xbd\xe5\x90\x8d"),
+                                               QStringLiteral("\xe6\x96\xb0\xe5\x90\x8d\xe7\xa7\xb0:"),
+                                               QLineEdit::Normal,
+                                               QFileInfo(selectedPath).fileName(), &ok);
+        if (ok && !newName.isEmpty() && newName != QFileInfo(selectedPath).fileName()) {
+            QString newPath = QFileInfo(selectedPath).dir().absolutePath() + "/" + newName;
+            QFile::rename(selectedPath, newPath);
+            m_fileModel->load(m_currentPath);
+        }
+    } else if (triggered == deleteAction) {
+        if (selectedPath.isEmpty()) return;
+        int ret = QMessageBox::question(this, QStringLiteral("\xe7\xa1\xae\xe8\xae\xa4\xe5\x88\xa0\xe9\x99\xa4"),
+                                        QStringLiteral("\xe7\xa1\xae\xe5\xae\x9a\xe8\xa6\x81\xe5\x88\xa0\xe9\x99\xa4 \"%1\" \xe5\x90\x97\xef\xbc\x9f").arg(selectedPath));
+        if (ret == QMessageBox::Yes) {
+            if (isDir) {
+                QDir(selectedPath).removeRecursively();
+            } else {
+                QFile::remove(selectedPath);
+            }
+            m_fileModel->load(m_currentPath);
+        }
+    } else if (triggered == refresh) {
+        onRefreshClicked();
+    } else if (triggered == manualSync) {
+        onManualSync();
+    }
+}
+
 
 void MainWindow::onRefreshClicked()
 {

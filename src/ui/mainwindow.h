@@ -37,6 +37,7 @@ public:
 private slots:
     void onRepoSelected(const QModelIndex &index);
     void onFileDoubleClicked(const QModelIndex &index);
+    void onFileContextMenu(const QPoint &pos);
     void onRefreshClicked();
     void onGoUpClicked();
     void onPathEditingFinished();
