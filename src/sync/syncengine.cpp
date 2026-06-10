@@ -298,8 +298,9 @@ QVariantList SyncEngine::getConflictedFileInfo() const
         QVariantMap info;
         info["path"] = rel;
 
-        // Get base info via `svn info` for revision + times
-        QString infoXml = m_svnClient->getInfo(absPath);
+        // Get structured info via libsvn (returns QVariantMap directly)
+        QVariantMap infoData = m_svnClient->getInfo(absPath);
+
         // Local mtime via QFileInfo
         QFileInfo fi(absPath);
         QDateTime localMtime = fi.exists() ? fi.lastModified() : QDateTime();
@@ -311,19 +312,21 @@ QVariantList SyncEngine::getConflictedFileInfo() const
         if (statusStr == "treeconflicted" || statusStr == "Tree conflicted")
             kind = "tree";
 
-        // Parse commit revision from info xml if present
-        int commitRev = -1;
-        int incomingRev = -1;
-        if (!infoXml.isEmpty()) {
-            // Look for <entry ... revision="N" ...>
-            QRegularExpression revRe(QStringLiteral(R"X([Rr]evision="(\d+)")X"));
-            auto m1 = revRe.match(infoXml);
-            if (m1.hasMatch()) commitRev = m1.captured(1).toInt();
+        // Extract fields from structured data (no XML parsing needed)
+        int commitRev = infoData.value("revision").toInt();
+        int incomingRev = infoData.value("lastChangedRev").toInt();
+
+        // Convert apr_time_t (microseconds) to QDateTime for server time
+        QDateTime serverMtime;
+        qlonglong dateMicros = infoData.value("lastChangedDate").toLongLong();
+        if (dateMicros > 0) {
+            // apr_time_t is microseconds since epoch (1970-01-01 00:00:00 UTC)
+            serverMtime = QDateTime::fromMSecsSinceEpoch(dateMicros / 1000, Qt::UTC);
         }
 
         info["kind"] = kind;
         info["localModifiedTime"] = localMtime;
-        info["serverModifiedTime"] = QDateTime();  // server time not available without log
+        info["serverModifiedTime"] = serverMtime;
         info["selectedResolution"] = QString();
         info["baseRevision"] = commitRev;
         info["incomingRevision"] = incomingRev;
@@ -331,6 +334,7 @@ QVariantList SyncEngine::getConflictedFileInfo() const
     }
     return result;
 }
+
 
 void SyncEngine::resolveConflict(const QString &accept)
 {

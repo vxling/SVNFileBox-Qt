@@ -53,7 +53,7 @@ public:
 
     // ── SVN read operations ─────────────────────────────────────
     Q_INVOKABLE QString getRepoUrl(const QString &path);
-    Q_INVOKABLE QString getInfo(const QString &path);
+    Q_INVOKABLE QVariantMap getInfo(const QString &path);
     Q_INVOKABLE QString getStatusString(const QString &path);
     Q_INVOKABLE QString getLastChangedTime(const QString &path);
     Q_INVOKABLE int getWorkingCopyRevision(const QString &path);

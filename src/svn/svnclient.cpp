@@ -580,64 +580,45 @@ QString SVNClient::getRepoUrl(const QString &path)
     return infoBaton.url;
 }
 
-QString SVNClient::getInfo(const QString &path)
+QVariantMap SVNClient::getInfo(const QString &path)
 {
     if (!d->ctxForOp())
-        return QString();
+        return QVariantMap();
     svn_opt_revision_t rev;
     rev.kind = svn_opt_revision_unspecified;
     struct InfoBaton {
-        QString xml;
-        QString path;
-        int revision = -1;
-        int lastChangedRev = -1;
-        qlonglong lastChangedDate = 0;
-        QString author;
+        QVariantMap result;
     } infoBaton;
-    infoBaton.path = path;
 
     svn_error_t *err = svn_client_info3(path.toUtf8().constData(),
                                         &rev, &rev,
                                         svn_depth_empty,
                                         false, false, nullptr,
-                                        [](void *baton, const char *localPath, const svn_client_info2_t *info, apr_pool_t *pool) -> svn_error_t * {
+                                        [](void *baton, const char *, const svn_client_info2_t *info, apr_pool_t *pool) -> svn_error_t * {
             if (!info) return SVN_NO_ERROR;
             InfoBaton *b = static_cast<InfoBaton *>(baton);
-            b->revision = info->rev;
-            b->lastChangedRev = info->last_changed_rev;
-            b->lastChangedDate = info->last_changed_date;
+            b->result[QStringLiteral("revision")] = static_cast<int>(info->rev);
+            b->result[QStringLiteral("lastChangedRev")] = static_cast<int>(info->last_changed_rev);
+            b->result[QStringLiteral("lastChangedDate")] = static_cast<qlonglong>(info->last_changed_date);
             if (info->last_changed_author)
-                b->author = QString::fromUtf8(info->last_changed_author);
-
-            // Build XML-like string with the fields syncengine.cpp expects
-            QString pathStr = localPath ? QString::fromUtf8(localPath) : b->path;
-            b->xml = QStringLiteral("<entry path=\"") + pathStr + QStringLiteral("\"");
-            if (info->rev >= 0)
-                b->xml += QStringLiteral(" revision=\"") + QString::number(info->rev) + QStringLiteral("\"");
-            if (info->last_changed_rev >= 0)
-                b->xml += QStringLiteral(" last_changed_rev=\"") + QString::number(info->last_changed_rev) + QStringLiteral("\"");
-            b->xml += QStringLiteral(">");
+                b->result[QStringLiteral("author")] = QString::fromUtf8(info->last_changed_author);
             if (info->URL)
-                b->xml += QStringLiteral("<url>") + QString::fromUtf8(info->URL) + QStringLiteral("</url>");
+                b->result[QStringLiteral("url")] = QString::fromUtf8(info->URL);
             if (info->last_changed_date > 0) {
-                // Convert apr_time_t (microseconds since epoch) to ISO8601
-                apr_time_t t = info->last_changed_date;
-                const char *date_cstr = svn_time_to_cstring(t, pool);
+                const char *date_cstr = svn_time_to_cstring(info->last_changed_date, pool);
                 if (date_cstr)
-                    b->xml += QStringLiteral("<last_changed_date>") + QString::fromUtf8(date_cstr) + QStringLiteral("</last_changed_date>");
+                    b->result[QStringLiteral("lastChangedDateStr")] = QString::fromUtf8(date_cstr);
             }
-            if (info->last_changed_author)
-                b->xml += QStringLiteral("<author>") + b->author + QStringLiteral("</author>");
-            b->xml += QStringLiteral("</entry>");
             return SVN_NO_ERROR;
         },
                                         &infoBaton, d->ctx, d->pool);
     if (err) {
         svn_error_clear(err);
-        return QString();
+        return QVariantMap();
     }
-    return infoBaton.xml;
+    return infoBaton.result;
 }
+
 
 QString SVNClient::getStatusString(const QString &path)
 {
