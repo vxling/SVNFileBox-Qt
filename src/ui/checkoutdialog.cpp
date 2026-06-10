@@ -4,6 +4,7 @@
 
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QFileInfo>
 
 CheckoutDialog::CheckoutDialog(SVNFileBox::RepoGlobalManager *globalManager, QWidget *parent)
     : QDialog(parent)
@@ -24,12 +25,24 @@ CheckoutDialog::CheckoutDialog(SVNFileBox::RepoGlobalManager *globalManager, QWi
     connect(ui->browseBtn, &QPushButton::clicked, this, &CheckoutDialog::onBrowseFolder);
     connect(ui->confirmBtn, &QPushButton::clicked, this, &CheckoutDialog::onConfirmClicked);
     connect(ui->cancelBtn, &QPushButton::clicked, this, &CheckoutDialog::onCancelClicked);
+    connect(ui->nameInput, &QLineEdit::textChanged, this, &CheckoutDialog::onNameChanged);
 }
 
 CheckoutDialog::~CheckoutDialog() = default;
 
+void CheckoutDialog::onNameChanged(const QString &name)
+{
+    if (name.isEmpty()) {
+        ui->folderInput->setText(QStringLiteral("输入仓库名称后自动生成"));
+    } else {
+        QString workDir = QDir::home().absoluteFilePath(".svnfilebox/workcopies");
+        ui->folderInput->setText(workDir + "/" + name);
+    }
+}
+
 void CheckoutDialog::onBrowseFolder()
 {
+    // Allow user to override the default path if they want a different location
     QString dir = QFileDialog::getExistingDirectory(this,
         QStringLiteral("选择检出目录"), QDir::homePath());
     if (!dir.isEmpty()) {
@@ -57,6 +70,9 @@ void CheckoutDialog::onConfirmClicked()
         ui->statusLabel->setText(QStringLiteral("检出目录不能为空"));
         return;
     }
+
+    // Ensure the parent directory exists
+    QDir().mkpath(QFileInfo(folder).absolutePath());
 
     m_globalManager->createNetworkRepoAsync(name, folder, url, user, pass);
     emit checkoutCompleted(name, folder);
