@@ -14,22 +14,33 @@ Rectangle {
     signal editUrlClicked()
 
     color: {
-        if (isSelected) return "#E3F2FD"
-        if (mouseArea.containsMouse) return "#E8EDF2"
-        return "#F5F7FA"
+        if (isSelected) return "#D9EBFD"
+        if (mouseArea.containsMouse) return "#EEF4FA"
+        return "#FFFFFF"
     }
-    border.color: isSelected ? "#1E88E5" : "transparent"
-    border.width: 3
-    radius: 6
+
+    // 左侧选中竖条
+    Rectangle {
+        id: leftBar
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 3
+        color: "#1E88E5"
+        visible: isSelected
+    }
+
+    // 悬停时显示删除按钮
+    property alias removeButton: removeBtn
 
     Behavior on color { ColorAnimation { duration: 120 } }
 
     MouseArea {
         id: mouseArea
         anchors.fill: parent
+        anchors.leftMargin: 3  // 留出竖条空间
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
         onClicked: function(mouse) {
             if (mouse.button === Qt.RightButton) {
                 repoContextMenu.popup()
@@ -58,8 +69,9 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: 8
-        anchors.rightMargin: 4
+        anchors.leftMargin: 12
+        anchors.rightMargin: 8
+        anchors.right: parent.right
         spacing: 10
 
         Label {
@@ -91,10 +103,16 @@ Rectangle {
             }
         }
 
+        // 删除按钮：默认隐藏，悬停或选中时显示
         Button {
+            id: removeBtn
             text: "✕"
             implicitWidth: 24
             implicitHeight: 24
+            visible: mouseArea.containsMouse || isSelected
+            opacity: visible ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+
             background: Rectangle { color: "transparent" }
             contentItem: Label {
                 text: control.text

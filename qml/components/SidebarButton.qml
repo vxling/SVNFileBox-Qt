@@ -10,23 +10,22 @@ Rectangle {
     property bool selected: false
     signal clicked()
 
-    radius: 8
+    radius: 6
     color: {
-        if (selected) return "#1E88E5"
-        if (mouseArea.containsMouse) return "#1E88E5"
-        return accent ? "#E3F2FD" : "#F5F7FA"
+        if (selected || mouseArea.containsMouse) return "#1E88E5"
+        return "#FFFFFF"
     }
     border.color: {
-        if (selected) return "#1565C0"
-        if (mouseArea.containsMouse) return "#1565C0"
-        return accent ? "#BBDEFB" : "#E0E0E0"
+        if (selected || mouseArea.containsMouse) return "#1565C0"
+        return "#E0E0E0"
     }
     border.width: 1
 
-    implicitHeight: 40
+    implicitHeight: 38
     implicitWidth: parent ? parent.width : 0
 
     Behavior on color { ColorAnimation { duration: 150 } }
+    Behavior on border.color { ColorAnimation { duration: 150 } }
 
     MouseArea {
         id: mouseArea
@@ -46,6 +45,10 @@ Rectangle {
             text: root.icon
             font.pixelSize: 16
             Layout.alignment: Qt.AlignVCenter
+            color: {
+                if (root.selected || mouseArea.containsMouse) return "#FFFFFF"
+                return "#666666"
+            }
         }
 
         Label {
@@ -53,8 +56,7 @@ Rectangle {
             font.pixelSize: 13
             font.weight: Font.Medium
             color: {
-                if (root.selected) return "#FFFFFF"
-                if (mouseArea.containsMouse) return "#FFFFFF"
+                if (root.selected || mouseArea.containsMouse) return "#FFFFFF"
                 return "#1A1A2E"
             }
             Layout.fillWidth: true

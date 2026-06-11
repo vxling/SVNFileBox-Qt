@@ -16,13 +16,18 @@ Rectangle {
     signal doubleClicked()
     signal contextMenuRequested(real x, real y)
 
+    // 整行背景：选中=淡蓝，悬停=更淡蓝，返回上级=浅灰背景
     color: {
-        if (isCurrentPath) return "#F8F9FA"
-        if (mouseArea.containsMouse) return "#F0F4F8"
-        return "transparent"
+        if (root.isCurrentPath) return "#F5F5F5"
+        if (mouseArea.containsMouse) return "#E8F4FD"
+        return "#FFFFFF"
     }
-    border.color: "#EEEEEE"
-    border.width: 1
+
+    // 移除行边框
+    border.color: "#FFFFFF"
+    border.width: 0
+
+    // 圆角
     radius: 4
     height: 44
 
@@ -31,6 +36,7 @@ Rectangle {
     MouseArea {
         id: mouseArea
         anchors.fill: parent
+        anchors.margins: 2
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -70,7 +76,7 @@ Rectangle {
             leftPadding: root.name === ".." ? 0 : 8
         }
 
-        // 状态徽章
+        // 状态徽章（圆形图标）
         Item { implicitWidth: 70; implicitHeight: 44; Layout.alignment: Qt.AlignVCenter; Layout.minimumWidth: 70
             StatusBadge {
                 anchors.horizontalCenter: parent.horizontalCenter

@@ -5,40 +5,63 @@ Rectangle {
     id: root
     property string svnStatus: "Normal"  // Normal Modified Added Deleted Conflicted Unversioned Missing Hidden
 
-    width: 18
-    height: 18
-    radius: 9
+    width: 22
+    height: 22
+    radius: 11
+
     visible: svnStatus !== "Hidden"
 
-    color: {
+    // Color mapping
+    property color statusColor: {
         switch (root.svnStatus) {
-            case "Modified":   return "#1E88E5"
-            case "Added":      return "#00A650"
-            case "Deleted":   return "#E53935"
-            case "Conflicted": return "#FB8C00"
-            case "Unversioned": return "#9E9E9E"
-            case "Missing":   return "#8E24AA"
-            case "Normal":    return "#00C853"
-            default:          return "#9E9E9E"
+            case "Normal":      return "#00C853"  // 绿色 - 已同步
+            case "Modified":    return "#FF9800"  // 橙色 - 已修改
+            case "Added":      return "#2196F3"  // 蓝色 - 新增
+            case "Deleted":    return "#F44336"  // 红色 - 已删除
+            case "Conflicted":  return "#9C27B0"  // 紫色 - 冲突
+            case "Unversioned": return "#9E9E9E"  // 灰色 - 未纳入版本
+            case "Missing":     return "#795548"  // 棕色 - 缺失
+            default:           return "#9E9E9E"
         }
     }
 
+    // Icon text mapping
+    property string iconText: {
+        switch (root.svnStatus) {
+            case "Normal":      return "✓"   // 绿色勾 - 已同步
+            case "Modified":    return "●"   // 实心圆 - 已修改
+            case "Added":       return "+"   // 加号 - 新增
+            case "Deleted":     return "×"   // 叉号 - 已删除
+            case "Conflicted":  return "!"   // 感叹号 - 冲突
+            case "Unversioned": return "?"   // 问号 - 未纳入版本
+            case "Missing":     return "!"   // 感叹号 - 缺失
+            default:           return ""
+        }
+    }
+
+    // Icon color: white for dark backgrounds, statusColor for light
+    property color iconColor: {
+        switch (root.svnStatus) {
+            case "Normal":      return "#FFFFFF"  // 白字绿底（勾）
+            case "Modified":    return "#FFFFFF"  // 白字橙底（圆点）
+            case "Added":       return "#FFFFFF"  // 白字蓝底（加号）
+            case "Deleted":     return "#FFFFFF"  // 白字红底（叉）
+            case "Conflicted":  return "#FFFFFF"  // 白字紫底（感叹号）
+            case "Unversioned": return statusColor  // 灰字灰底（问号）
+            case "Missing":     return "#FFFFFF"  // 白字棕底（感叹号）
+            default:           return "#FFFFFF"
+        }
+    }
+
+    color: statusColor
+
     Label {
         anchors.centerIn: parent
-        text: {
-            switch (root.svnStatus) {
-                case "Modified":    return "M"
-                case "Added":       return "A"
-                case "Deleted":     return "D"
-                case "Conflicted":  return "C"
-                case "Unversioned": return "?"
-                case "Missing":     return "!"
-                case "Normal":      return "✓"
-                default:            return ""
-            }
-        }
-        font.pixelSize: 10
-        font.bold: true
-        color: "#FFFFFF"
+        text: iconText
+        font.pixelSize: svnStatus === "Normal" ? 12 : 14
+        font.bold: svnStatus === "Normal"
+        color: iconColor
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
     }
 }
