@@ -14,7 +14,9 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 X
 # Linux: use pkg-config; Windows: use vcpkg find_path/find_library (no CMake config in manifest mode)
 if(WIN32)
     set(VCPKG_INSTALLED "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
-    find_path(SVN_INCLUDE_DIR NAMES svn_client.h PATHS "${VCPKG_INSTALLED}/include" NO_DEFAULT_PATH)
+    # Direct hardcoded paths for vcpkg manifest mode
+    set(SVN_CLIENT_INCLUDE_DIRS "${VCPKG_INSTALLED}/include")
+    find_path(SVN_INCLUDE_DIR NAMES svn_client.h PATHS "${VCPKG_INSTALLED}/include/subversion-1" NO_DEFAULT_PATH)
     find_library(SVN_CLIENT_LIB NAMES libsvn_client-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
     find_library(SVN_WC_LIB NAMES libsvn_wc-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
     find_library(SVN_SUBR_LIB NAMES libsvn_subr-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
@@ -24,7 +26,8 @@ if(WIN32)
     set(SVN_CLIENT_LIBRARIES
         ${SVN_CLIENT_LIB} ${SVN_WC_LIB} ${SVN_SUBR_LIB} ${SVN_REPOS_LIB} ${SVN_RA_LIB} ${SVN_DELTA_LIB}
     )
-    set(SVN_CLIENT_INCLUDE_DIRS "${VCPKG_INSTALLED}/include")
+    message(STATUS "SVN include: ${SVN_INCLUDE_DIR}")
+    message(STATUS "SVN lib: ${SVN_CLIENT_LIB}")
     message(STATUS "SVN: using vcpkg manual find_path (Windows)")
 else()
     set(PKG_CONFIG_PATH_SVN "/usr/lib/x86_64-linux-gnu/pkgconfig" CACHE STRING "")
@@ -109,6 +112,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${SVN_CLIENT_INCLUDE_DIRS}
+    ${SVN_CLIENT_INCLUDE_DIRS}/subversion-1
 )
 
 # Qt linking
