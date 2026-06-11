@@ -22,18 +22,14 @@ if(WIN32)
     set(VCPKG_INSTALLED "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
     # Direct hardcoded paths for vcpkg manifest mode
     set(SVN_CLIENT_INCLUDE_DIRS "${VCPKG_INSTALLED}/include")
+    link_directories(${VCPKG_INSTALLED}/lib)
     find_path(SVN_INCLUDE_DIR NAMES svn_client.h PATHS "${VCPKG_INSTALLED}/include/subversion-1" NO_DEFAULT_PATH)
-    find_library(SVN_CLIENT_LIB NAMES libsvn_client-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
-    find_library(SVN_WC_LIB NAMES libsvn_wc-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
-    find_library(SVN_SUBR_LIB NAMES libsvn_subr-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
-    find_library(SVN_REPOS_LIB NAMES libsvn_repos-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
-    find_library(SVN_RA_LIB NAMES libsvn_ra-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
-    find_library(SVN_DELTA_LIB NAMES libsvn_delta-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
     set(SVN_CLIENT_LIBRARIES
-        ${SVN_CLIENT_LIB} ${SVN_WC_LIB} ${SVN_SUBR_LIB} ${SVN_REPOS_LIB} ${SVN_RA_LIB} ${SVN_DELTA_LIB}
+        libsvn_client-1 libsvn_wc-1 libsvn_subr-1 libsvn_repos-1 libsvn_ra-1 libsvn_delta-1
+        libapr-1 libaprutil-1 libexpat libserf-1
+        libcrypto libssl bz2 z sqlite3
     )
     message(STATUS "SVN include: ${SVN_INCLUDE_DIR}")
-    message(STATUS "SVN lib: ${SVN_CLIENT_LIB}")
     message(STATUS "SVN: using vcpkg manual find_path (Windows)")
 else()
     set(PKG_CONFIG_PATH_SVN "/usr/lib/x86_64-linux-gnu/pkgconfig" CACHE STRING "")
