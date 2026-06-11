@@ -3,7 +3,7 @@
 ## 环境要求
 
 - **操作系统**: Windows 10/11 (64-bit)
-- **磁盘空间**: 建议预留 10GB+ 用于 Qt + Visual Studio + 依赖
+- **磁盘空间**: 建议预留 15GB+ 用于 Qt + Visual Studio + 依赖
 
 ---
 
@@ -34,8 +34,9 @@ mkdir C:\Qt\6.9.0
 # 下载 Qt 6.9.0 MSVC2022 64-bit（推荐，用 VS2022）
 aqt install-qt windows desktop 6.9.0 win64_msvc2022_64 -O C:\Qt\6.9.0
 
-# 或下载 Qt 6.7.2 MSVC2019 64-bit
-aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:\Qt\6.7.2
+# 安装时需要选择以下模块：
+#   Qt 6.9.0 → Qt Core、Qt GUI、Qt Widgets
+#   Qt 6.9.0 → Qt Quick Controls 2、Qt QML、Qt SQL
 ```
 
 ### 方法 B：手动下载 Qt Creator（需要注册 Qt 账号）
@@ -44,10 +45,8 @@ aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:\Qt\6.7.2
 2. 注册/登录 Qt 账号
 3. 下载 **Qt Online Installer**
 4. 安装时选择对应版本的 MSVC 编译器，包含以下模块：
-   - Qt 6.x → Qt Core、Qt Gui、Qt Widgets
-   - Qt 6.x → Qt Quick Controls 2
-   - Qt 6.x → Qt QML
-   - Qt 6.x → Qt SQL
+   - Qt 6.x → Qt Core、Qt GUI、Qt Widgets
+   - Qt 6.x → Qt Quick Controls 2、Qt QML、Qt SQL
 
 > ⚠️ **推荐方法 A**，手动安装需要账号且速度较慢。
 
@@ -60,7 +59,9 @@ aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:\Qt\6.7.2
 
 ---
 
-## 三、安装 vcpkg（用于 libsvn、zlib 等依赖库）
+## 三、安装 vcpkg（用于 libsvn、zlib）
+
+### 3.1 安装 vcpkg
 
 ```powershell
 # 在 C:\vcpkg 目录下克隆
@@ -69,18 +70,57 @@ git clone --depth 1 https://github.com/microsoft/vcpkg.git C:\vcpkg
 # 运行引导脚本
 cd C:\vcpkg
 .\bootstrap-vcpkg.bat
-
-# 安装依赖
-.\vcpkg install libsvn:x64-windows zlib:x64-windows
 ```
 
-> 📌 libsvn 依赖链较长（apr、apr-util、serf 等），编译需要约 10~20 分钟，耐心等待。
+### 3.2 安装 libsvn（Subversion）依赖
+
+> ⚠️ libsvn 依赖链较长（apr、apr-util、serf 等），编译需要约 15~30 分钟，耐心等待。
+
+```powershell
+# 安装 subversion（vcpkg 端口名就是 subversion，不是 libsvn）
+C:\vcpkg\vcpkg install subversion:x64-windows
+
+# 安装 zlib（libzip 依赖）
+C:\vcpkg\vcpkg install zlib:x64-windows
+```
+
+> 📌 `subversion` 端口会拉取 apr、apr-util、serf 等一系列依赖，自动编译好，不需要单独安装。
 
 ---
 
-## 四、编译 SVNFileBox-Qt
+## 四、修改 CMakeLists.txt 支持 Windows
 
-### 1. 克隆代码
+当前 CMakeLists.txt 使用 pkg-config 找 libsvn，这是 Linux 专用的。在 Windows 上需要改用 vcpkg 的 find_package 方式。
+
+**找到 CMakeLists.txt 中的 libsvn 段落，替换为以下内容：**
+
+```cmake
+# ============================================================
+# SVN libsvn (libsvn_client + APR runtime)
+# Windows: use vcpkg find_package; Linux: use pkg-config
+# ============================================================
+if(WIN32)
+    # vcpkg provides subversion port with cmake config files
+    find_package(subversion CONFIG REQUIRED)
+    # subversion::svn_client is the main target
+    set(SVN_CLIENT_LIBRARIES subversion::svn_client subversion::svn_wc subversion::svn_subr subversion::svn_repos subversion::svn_ra subversion::svn_delta)
+    set(SVN_CLIENT_INCLUDE_DIRS "")
+    message(STATUS "SVN: using vcpkg subversion")
+else()
+    # Linux: use pkg-config
+    set(PKG_CONFIG_PATH_SVN "/usr/lib/x86_64-linux-gnu/pkgconfig" CACHE STRING "")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SVN_CLIENT REQUIRED libsvn_client libsvn_wc libsvn_subr libsvn_repos libsvn_ra libsvn_delta)
+    message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
+    message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
+endif()
+```
+
+---
+
+## 五、编译 SVNFileBox-Qt
+
+### 5.1 克隆代码
 
 ```powershell
 # 在 x64 Native Tools Command Prompt 中执行
@@ -88,11 +128,14 @@ git clone https://github.com/vxling/SVNFileBox-Qt.git
 cd SVNFileBox-Qt
 ```
 
-### 2. 配置 CMake（Qt 6.9 + vcpkg 混用方式）
+### 5.2 应用 CMakeLists.txt 修改
+
+> 如果你已经克隆了代码，需要先手动修改 `CMakeLists.txt`（参考第四节的替换内容），再进行配置。
+
+### 5.3 配置 CMake（Qt 6.9 + vcpkg 混用方式）
 
 ```powershell
 # 设置 Qt PATH（每次编译前执行）
-# 根据你安装的 Qt 版本和 VS 版本调整路径
 set PATH=C:\Qt\6.9.0\6.9.0\msvc2022_64\bin;%PATH%
 
 # 创建 build 目录并配置
@@ -106,13 +149,13 @@ cmake -B build -G "Visual Studio 17 2022" -A x64 ^
 
 > ⚠️ **Qt6_DIR 必须指向你自己安装的 Qt 目录**，不要让 vcpkg 的 Qt6 介入，否则会出现版本冲突。
 
-### 3. 编译
+### 5.4 编译
 
 ```powershell
 cmake --build build --parallel --config Release
 ```
 
-### 4. 安装和打包
+### 5.5 安装和打包
 
 ```powershell
 # 安装到 release 目录
@@ -121,7 +164,7 @@ cmake --install build --config Release --prefix release
 # 使用 windeployqt 部署 Qt 运行时
 C:\Qt\6.9.0\6.9.0\msvc2022_64\bin\windeployqt release\bin\SVNFileBox.exe --qmldir C:\Qt\6.9.0\6.9.0\msvc2022_64\qml --no-translations
 
-# 复制 vcpkg 的依赖 DLL（libsvn、zlib 等）
+# 复制 vcpkg 的依赖 DLL（subversion、zlib 等）
 copy C:\vcpkg\installed\x64-windows\bin\*.dll release\bin\ 2>nul
 
 # 打包（可选）
@@ -131,7 +174,7 @@ powershell Compress-Archive -Path bin -DestinationPath svnfilebox-win64.zip
 
 ---
 
-## 五、运行
+## 六、运行
 
 ```powershell
 cd release\bin
@@ -153,7 +196,7 @@ SVNFileBox.exe
 ### Q2: 报 zlib.h / libsvn 找不到
 确保 vcpkg 安装了对应库：
 ```powershell
-C:\vcpkg\vcpkg install libsvn:x64-windows zlib:x64-windows
+C:\vcpkg\vcpkg install subversion:x64-windows zlib:x64-windows
 ```
 
 ### Q3: windeployqt 报 "Cannot find qmake"
@@ -169,10 +212,23 @@ cd C:\vcpkg
 .\bootstrap-vcpkg.bat
 ```
 
-### Q5: libsvn 编译失败
-libsvn 依赖链较长，确保先安装：
+### Q5: subversion 编译失败（常见）
+subversion 依赖链很长，确保先完整安装所有前置依赖：
 ```powershell
-vcpkg install serf:x64-windows apr:x64-windows apr-util:x64-windows
+# 清理之前的失败尝试
+C:\vcpkg\vcpkg remove subversion
+C:\vcpkg\vcpkg integrate remove
+
+# 重新安装（加 verbose 看进度）
+C:\vcpkg\vcpkg install subversion:x64-windows --recurse
+```
+
+### Q6: 运行时提示找不到 libsvn.dll
+确保 vcpkg 的 DLL 已复制到 output 目录：
+```powershell
+copy C:\vcpkg\installed\x64-windows\bin\libsvn*.dll release\bin\ 2>nul
+copy C:\vcpkg\installed\x64-windows\bin\apr*.dll release\bin\ 2>nul
+copy C:\vcpkg\installed\x64-windows\bin\serf*.dll release\bin\ 2>nul
 ```
 
 ---
@@ -181,6 +237,7 @@ vcpkg install serf:x64-windows apr:x64-windows apr-util:x64-windows
 
 - [ ] Visual Studio 2022（含 C++ 桌面开发 workload）
 - [ ] Qt 6.4~6.9 MSVC2022 64-bit（aqtinstall 安装）
-- [ ] vcpkg 安装并执行 `vcpkg install libsvn:x64-windows zlib:x64-windows`
+- [ ] vcpkg 安装并执行 `vcpkg install subversion:x64-windows zlib:x64-windows`
+- [ ] CMakeLists.txt 已按第四节修改（libsvn find_package 方式）
 - [ ] x64 Native Tools Command Prompt for VS 2022
 - [ ] Git（用于克隆代码）
