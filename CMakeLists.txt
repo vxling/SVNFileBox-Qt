@@ -75,6 +75,9 @@ set(APP_SOURCES
     src/sync/ignorepattern.cpp
     src/sync/ignorepattern.h
     src/config/configservice.cpp
+    src/config/configservice.h
+    src/config/credentialstore.cpp
+    src/config/credentialstore.h
     src/services/repomanager.cpp
     src/services/repoglobalmanager.cpp
     src/services/newfileservice.cpp
@@ -89,6 +92,8 @@ set(APP_SOURCES
     src/ui/mainwindow.h
     src/ui/repolistmodel.cpp
     src/ui/repolistmodel.h
+    src/ui/repoitemdelegate.cpp
+    src/ui/repoitemdelegate.h
     src/ui/settingsdialog.cpp
     src/ui/settingsdialog.h
     src/ui/checkoutdialog.cpp
