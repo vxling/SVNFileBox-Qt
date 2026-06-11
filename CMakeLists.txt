@@ -11,12 +11,19 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql Concurrent LinguistTools)
 
 # SVN libsvn (libsvn_client + APR runtime)
-# Linux: use pkg-config; Windows: use vcpkg find_package(subversion)
+# Linux: use pkg-config; Windows: use vcpkg find_package(unofficial-subversion)
 if(WIN32)
-    find_package(subversion CONFIG REQUIRED)
-    set(SVN_CLIENT_LIBRARIES subversion::svn_client subversion::svn_wc subversion::svn_subr subversion::svn_repos subversion::svn_ra subversion::svn_delta)
-    set(SVN_CLIENT_INCLUDE_DIRS "")
-    message(STATUS "SVN: using vcpkg subversion (Windows)")
+    find_package(unofficial-subversion CONFIG REQUIRED)
+    set(SVN_CLIENT_LIBRARIES
+        unofficial::subversion::svn_client
+        unofficial::subversion::svn_wc
+        unofficial::subversion::svn_subr
+        unofficial::subversion::svn_repos
+        unofficial::subversion::svn_ra
+        unofficial::subversion::svn_delta
+    )
+    set(SVN_CLIENT_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/include")
+    message(STATUS "SVN: using vcpkg unofficial-subversion (Windows)")
 else()
     set(PKG_CONFIG_PATH_SVN "/usr/lib/x86_64-linux-gnu/pkgconfig" CACHE STRING "")
     find_package(PkgConfig REQUIRED)
