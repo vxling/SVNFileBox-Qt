@@ -13,6 +13,12 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 X
 # SVN libsvn (libsvn_client + APR runtime)
 # Linux: use pkg-config; Windows: use vcpkg find_path/find_library (no CMake config in manifest mode)
 if(WIN32)
+    # APR/libsvn macros (required before including any APR headers)
+    add_definitions(-DAPR_DECLARE_STATIC)
+    add_definitions(-DAPR_WANT_MEMFUNCTIONS)
+    # Zlib macro
+    add_definitions(-DZLIB_WINAPI)
+
     set(VCPKG_INSTALLED "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
     # Direct hardcoded paths for vcpkg manifest mode
     set(SVN_CLIENT_INCLUDE_DIRS "${VCPKG_INSTALLED}/include")
