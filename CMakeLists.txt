@@ -11,19 +11,21 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql Concurrent LinguistTools)
 
 # SVN libsvn (libsvn_client + APR runtime)
-# Linux: use pkg-config; Windows: use vcpkg find_package(unofficial-subversion)
+# Linux: use pkg-config; Windows: use vcpkg find_path/find_library (no CMake config in manifest mode)
 if(WIN32)
-    find_package(unofficial-subversion CONFIG REQUIRED)
+    set(VCPKG_INSTALLED "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
+    find_path(SVN_INCLUDE_DIR NAMES svn_client.h PATHS "${VCPKG_INSTALLED}/include" NO_DEFAULT_PATH)
+    find_library(SVN_CLIENT_LIB NAMES libsvn_client-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
+    find_library(SVN_WC_LIB NAMES libsvn_wc-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
+    find_library(SVN_SUBR_LIB NAMES libsvn_subr-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
+    find_library(SVN_REPOS_LIB NAMES libsvn_repos-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
+    find_library(SVN_RA_LIB NAMES libsvn_ra-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
+    find_library(SVN_DELTA_LIB NAMES libsvn_delta-1 PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
     set(SVN_CLIENT_LIBRARIES
-        unofficial::subversion::svn_client
-        unofficial::subversion::svn_wc
-        unofficial::subversion::svn_subr
-        unofficial::subversion::svn_repos
-        unofficial::subversion::svn_ra
-        unofficial::subversion::svn_delta
+        ${SVN_CLIENT_LIB} ${SVN_WC_LIB} ${SVN_SUBR_LIB} ${SVN_REPOS_LIB} ${SVN_RA_LIB} ${SVN_DELTA_LIB}
     )
-    set(SVN_CLIENT_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/include")
-    message(STATUS "SVN: using vcpkg unofficial-subversion (Windows)")
+    set(SVN_CLIENT_INCLUDE_DIRS "${VCPKG_INSTALLED}/include")
+    message(STATUS "SVN: using vcpkg manual find_path (Windows)")
 else()
     set(PKG_CONFIG_PATH_SVN "/usr/lib/x86_64-linux-gnu/pkgconfig" CACHE STRING "")
     find_package(PkgConfig REQUIRED)
@@ -33,11 +35,13 @@ else()
 endif()
 
 # Zip compression library (cross-platform)
-# Linux: use find_path/find_library; Windows: use vcpkg find_package
+# Linux: use find_path/find_library; Windows: use vcpkg find_path/find_library (no CMake config)
 if(WIN32)
-    find_package(ZLIB REQUIRED)
-    set(ZIP_LIBRARY ZLIB::ZLIB)
-    message(STATUS "ZIP: using vcpkg ZLIB (Windows)")
+    set(VCPKG_INSTALLED "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
+    find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${VCPKG_INSTALLED}/include" NO_DEFAULT_PATH)
+    find_library(ZIP_LIBRARY NAMES zlib zlib-static PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
+    include_directories(${ZIP_INCLUDE_DIR})
+    message(STATUS "ZIP: using vcpkg manual find_path (Windows)")
 else()
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS /usr/include NO_DEFAULT_PATH)
     find_library(ZIP_LIBRARY NAMES zip PATHS /usr/lib/x86_64-linux-gnu NO_DEFAULT_PATH)
@@ -121,7 +125,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::QuickControls2
     Qt6::Sql
     ${SVN_CLIENT_LIBRARIES}
-    zip
+    ${ZIP_LIBRARY}
 )
 
 # Resources
