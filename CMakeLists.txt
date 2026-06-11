@@ -66,7 +66,6 @@ set(APP_SOURCES
     src/sync/ignorepattern.cpp
     src/sync/ignorepattern.h
     src/config/configservice.cpp
-    src/config/credentialstore.cpp
     src/services/repomanager.cpp
     src/services/repoglobalmanager.cpp
     src/services/newfileservice.cpp
@@ -89,8 +88,6 @@ set(APP_SOURCES
     src/ui/addlocaldialog.h
     src/ui/newfiledialog.cpp
     src/ui/newfiledialog.h
-    src/ui/repoitemdelegate.cpp
-    src/ui/repoitemdelegate.h
     src/ui/copyprogressdialog.cpp
     src/ui/copyprogressdialog.h
     src/ui/filecarddelegate.cpp
