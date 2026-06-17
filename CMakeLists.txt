@@ -152,6 +152,11 @@ qt_add_translations(${PROJECT_NAME}
 # Install
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 
+# Deploy Qt runtime dependencies (DLLs, plugins) to the build directory.
+# Qt provides qt_deploy_runtime_dependencies() but it only works during install time.
+# Use install(SCRIPT) to run a separate cmake script that sets up the deploy function.
+install(SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/deploy_runtime.cmake")
+
 # CPack config (must set vars BEFORE include)
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
