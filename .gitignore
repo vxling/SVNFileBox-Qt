@@ -29,3 +29,4 @@ config.json
 
 # SVN
 .svn/
+/.vs
