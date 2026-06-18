@@ -10,50 +10,93 @@ set(CMAKE_AUTOUIC ON)
 # Qt Core & QML
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Xml Sql Concurrent LinguistTools)
 
-# SVN libsvn (libsvn_client + APR runtime)
-# Linux: use pkg-config; Windows: use vcpkg find_path/find_library (no CMake config in manifest mode)
+#
+# SVN libsvn — use subversion-prebuild SDK (https://github.com/vxling/subversion-prebuild)
+# SDK archives: svn-sdk-windows-x64.zip, svn-sdk-linux-x64.tar.gz, svn-sdk-macos-x64.tar.gz
+# Extract to deps/svn-sdk/{win32,linux,macos}/
+#
+set(SDK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/deps/svn-sdk")
+
 if(WIN32)
-    # APR/libsvn macros (required before including any APR headers)
+    # ============================================================
+    # Windows: use prebuilt SDK from deps/svn-sdk/win32
+    # ============================================================
     add_definitions(-DAPR_DECLARE_STATIC)
     add_definitions(-DAPR_WANT_MEMFUNCTIONS)
-    # Zlib macro
     add_definitions(-DZLIB_WINAPI)
 
-    set(VCPKG_INSTALLED "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
-    # Direct hardcoded paths for vcpkg manifest mode
-    set(SVN_CLIENT_INCLUDE_DIRS "${VCPKG_INSTALLED}/include")
-    link_directories(${VCPKG_INSTALLED}/lib)
-    find_path(SVN_INCLUDE_DIR NAMES svn_client.h PATHS "${VCPKG_INSTALLED}/include/subversion-1" NO_DEFAULT_PATH)
+    set(SDK_WIN "${SDK_ROOT}/win32")
+    set(SVN_CLIENT_INCLUDE_DIRS "${SDK_WIN}/include")
+    link_directories("${SDK_WIN}/lib")
+    link_directories("${SDK_WIN}/bin")
+    find_path(SVN_INCLUDE_DIR NAMES svn_client.h PATHS "${SDK_WIN}/include/subversion-1" NO_DEFAULT_PATH)
+
     set(SVN_CLIENT_LIBRARIES
         libsvn_client-1 libsvn_wc-1 libsvn_subr-1 libsvn_repos-1 libsvn_ra-1 libsvn_delta-1
         libapr-1 libaprutil-1 libexpat libserf-1
-        libcrypto libssl bz2 z sqlite3
+        libcrypto libssl z sqlite3
     )
+    message(STATUS "SVN: using prebuilt SDK (Windows) -> ${SDK_WIN}")
     message(STATUS "SVN include: ${SVN_INCLUDE_DIR}")
-    message(STATUS "SVN: using vcpkg manual find_path (Windows)")
-else()
-    set(PKG_CONFIG_PATH_SVN "/usr/lib/x86_64-linux-gnu/pkgconfig" CACHE STRING "")
+
+    # Zip — from SDK
+    find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_WIN}/include" NO_DEFAULT_PATH)
+    find_library(ZIP_LIBRARY NAMES zip PATHS "${SDK_WIN}/lib" NO_DEFAULT_PATH)
+    include_directories(${ZIP_INCLUDE_DIR})
+    message(STATUS "ZIP: using prebuilt SDK (Windows)")
+
+elseif(APPLE)
+    # ============================================================
+    # macOS: use prebuilt SDK from deps/svn-sdk/macos
+    # ============================================================
+    set(SDK_MACOS "${SDK_ROOT}/macos")
+    set(ENV{PKG_CONFIG_PATH} "${SDK_MACOS}/lib/pkgconfig")
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SVN_CLIENT REQUIRED libsvn_client libsvn_wc libsvn_subr libsvn_repos libsvn_ra libsvn_delta)
+    pkg_check_modules(SVN_CLIENT REQUIRED
+        libsvn_client libsvn_wc libsvn_subr libsvn_repos libsvn_ra libsvn_delta)
+    message(STATUS "SVN: using prebuilt SDK (macOS) -> ${SDK_MACOS}")
     message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
     message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
-endif()
 
-# Zip compression library (cross-platform)
-# Linux: use find_path/find_library; Windows: use vcpkg find_path/find_library (no CMake config)
-if(WIN32)
-    set(VCPKG_INSTALLED "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
-    find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${VCPKG_INSTALLED}/include" NO_DEFAULT_PATH)
-    find_library(ZIP_LIBRARY NAMES zip PATHS "${VCPKG_INSTALLED}/lib" NO_DEFAULT_PATH)
-    include_directories(${ZIP_INCLUDE_DIR})
-    message(STATUS "ZIP: using vcpkg manual find_path (Windows)")
+    # Zip — from SDK (or system fallback)
+    set(ZIP_ENV_PATH "${SDK_MACOS}/lib/pkgconfig:/usr/local/lib/pkgconfig")
+    set(ENV{PKG_CONFIG_PATH} "${ZIP_ENV_PATH}")
+    pkg_check_modules(ZIP_CLIENT QUIET IMPORTED_TARGET libzip)
+    if(ZIP_CLIENT_FOUND)
+        set(ZIP_LIBRARY PkgConfig::ZIP_CLIENT)
+        message(STATUS "ZIP: using prebuilt SDK (macOS) via pkg-config")
+    else()
+        find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_MACOS}/include" "/usr/local/include" NO_DEFAULT_PATH)
+        find_library(ZIP_LIBRARY NAMES zip PATHS "${SDK_MACOS}/lib" "/usr/local/lib" NO_DEFAULT_PATH)
+        message(STATUS "ZIP: fallback find_path (macOS) include=${ZIP_INCLUDE_DIR} lib=${ZIP_LIBRARY}")
+    endif()
+
 else()
-    find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS /usr/include NO_DEFAULT_PATH)
-    find_library(ZIP_LIBRARY NAMES zip PATHS /usr/lib/x86_64-linux-gnu NO_DEFAULT_PATH)
-    include_directories(${ZIP_INCLUDE_DIR})
-    link_directories(/usr/lib/x86_64-linux-gnu)
-    message(STATUS "ZIP include: ${ZIP_INCLUDE_DIR}")
-    message(STATUS "ZIP library: ${ZIP_LIBRARY}")
+    # ============================================================
+    # Linux: use prebuilt SDK from deps/svn-sdk/linux
+    # ============================================================
+    set(SDK_LINUX "${SDK_ROOT}/linux")
+    set(ENV{PKG_CONFIG_PATH} "${SDK_LINUX}/lib/pkgconfig")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SVN_CLIENT REQUIRED
+        libsvn_client libsvn_wc libsvn_subr libsvn_repos libsvn_ra libsvn_delta)
+    message(STATUS "SVN: using prebuilt SDK (Linux) -> ${SDK_LINUX}")
+    message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
+    message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
+
+    # Zip — from SDK first, fallback to system
+    find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_LINUX}/include" NO_DEFAULT_PATH)
+    if(NOT ZIP_INCLUDE_DIR)
+        find_path(ZIP_INCLUDE_DIR NAMES zip.h)
+    endif()
+    find_library(ZIP_LIBRARY NAMES zip PATHS "${SDK_LINUX}/lib" NO_DEFAULT_PATH)
+    if(NOT ZIP_LIBRARY)
+        find_library(ZIP_LIBRARY NAMES zip)
+    endif()
+    if(ZIP_INCLUDE_DIR)
+        include_directories(${ZIP_INCLUDE_DIR})
+    endif()
+    message(STATUS "ZIP: include=${ZIP_INCLUDE_DIR} lib=${ZIP_LIBRARY}")
 endif()
 
 # App
