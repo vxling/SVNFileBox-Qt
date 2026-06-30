@@ -25,7 +25,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get install -y libgl1-mesa-dev zlib1g-dev libapr1-dev libaprutil1-dev
+          sudo apt-get install -y libgl1-mesa-dev zlib1g-dev libapr1-dev libaprutil1-dev libzip-dev
 
       - name: Build
         run: |
@@ -70,13 +70,6 @@ jobs:
 
       - name: Install dependencies
         run: brew install libzip apr apr-util
-
-      - name: Symlink APR into SDK
-        run: |
-          # SDK's libsvn points to /usr/include/apr-1 but it doesn't exist on
-          # the CI image; create symlinks so the SDK finds brew's APR headers
-          ln -sf /opt/homebrew/include/apr-1 deps/svn-sdk/macos/include/apr-1
-          ln -sf /opt/homebrew/include/aprutil-1 deps/svn-sdk/macos/include/aprutil-1
 
       - name: Build
         run: |

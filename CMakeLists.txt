@@ -79,6 +79,11 @@ elseif(APPLE)
         set(_brew_prefix "/usr/local")
     endif()
 
+    # SDK's libsvn has /usr/include/apr-1 hardcoded; add brew APR paths
+    list(APPEND SVN_CLIENT_INCLUDE_DIRS
+        "${_brew_prefix}/include/apr-1"
+        "${_brew_prefix}/include/aprutil-1")
+
     # Zip — from SDK (or system fallback)
     set(ZIP_ENV_PATH "${SDK_MACOS}/lib/pkgconfig:${_brew_prefix}/lib/pkgconfig")
     set(ENV{PKG_CONFIG_PATH} "${ZIP_ENV_PATH}")
