@@ -61,16 +61,9 @@ if(WIN32)
 
 elseif(APPLE)
     # ============================================================
-    # macOS: use prebuilt SDK from deps/svn-sdk/macos
+    # macOS: brew provides libsvn + APR on this platform
     # ============================================================
     set(SDK_MACOS "${SDK_ROOT}/macos")
-    set(ENV{PKG_CONFIG_PATH} "${SDK_MACOS}/lib/pkgconfig")
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SVN_CLIENT REQUIRED
-        libsvn_client libsvn_wc libsvn_subr libsvn_repos libsvn_ra libsvn_delta)
-    message(STATUS "SVN: using prebuilt SDK (macOS) -> ${SDK_MACOS}")
-    message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
-    message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
 
     # brew on ARM macOS uses /opt/homebrew, on Intel uses /usr/local
     set(_brew_prefix "/opt/homebrew")
@@ -78,8 +71,15 @@ elseif(APPLE)
         set(_brew_prefix "/usr/local")
     endif()
 
-    # APR headers from homebrew (libsvn depends on apr-1)
-    list(APPEND SVN_CLIENT_INCLUDE_DIRS "${_brew_prefix}/include/apr-1")
+    # Set PKG_CONFIG_PATH BEFORE calling pkg_check_modules so that brew's
+    # libsvn is found first (and its APR deps are resolved via brew paths)
+    set(ENV{PKG_CONFIG_PATH} "${_brew_prefix}/lib/pkgconfig:${SDK_MACOS}/lib/pkgconfig")
+
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SVN_CLIENT REQUIRED
+        libsvn_client libsvn_wc libsvn_subr libsvn_repos libsvn_ra libsvn_delta)
+    message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
+    message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
 
     # Zip — from SDK (or system fallback)
     set(ZIP_ENV_PATH "${SDK_MACOS}/lib/pkgconfig:${_brew_prefix}/lib/pkgconfig")
