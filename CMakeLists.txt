@@ -54,6 +54,16 @@ if(WIN32)
     message(STATUS "SVN include: ${SVN_INCLUDE_DIR}")
 
     # Zip — from SDK
+    # zip.h needs zipconf.h which is not shipped in the SDK; generate a minimal stub.
+    set(_zipconf_h "${SDK_WIN}/include/zipconf.h")
+    if(NOT EXISTS "${_zipconf_h}")
+        file(WRITE "${_zipconf_h}"
+            "#ifndef ZIPCONF_H\n"
+            "#define ZIPCONF_H\n"
+            "/* Minimal zipconf.h stub for MSVC build */\n"
+            "#define ZIP_EXTERN __declspec(dllimport)\n"
+            "#endif\n")
+    endif()
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_WIN}/include" NO_DEFAULT_PATH)
     find_library(ZIP_LIBRARY NAMES zip PATHS "${SDK_WIN}/lib" NO_DEFAULT_PATH)
     include_directories(${ZIP_INCLUDE_DIR})

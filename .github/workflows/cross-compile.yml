@@ -17,11 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt 6.7.2 via aqtinstall
+      - name: Install Qt 6.9.3 via aqtinstall
         run: |
           pip install aqtinstall>=3.2
           mkdir -p ~/Qt
-          aqt install-qt linux desktop 6.7.2 linux_gcc_64 -O ~/Qt
+          aqt install-qt linux desktop 6.9.3 linux_gcc_64 -O ~/Qt
 
       - name: Install system dependencies
         run: |
@@ -31,7 +31,7 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH=$HOME/Qt/6.7.2/gcc_64/lib/cmake
+            -DCMAKE_PREFIX_PATH=$HOME/Qt/6.9.3/gcc_64/lib/cmake
           cmake --build build --parallel
 
       - name: Package (Linux)
@@ -42,7 +42,7 @@ jobs:
           if command -v patchelf &> /dev/null; then
             # 复制 Qt 动态库到 bin 目录
             mkdir -p release/bin/Qt6/lib
-            cp -n $HOME/Qt/6.7.2/gcc_64/lib/*.so* release/bin/ 2>/dev/null || true
+            cp -n $HOME/Qt/6.9.3/gcc_64/lib/*.so* release/bin/ 2>/dev/null || true
             # 设置 rpath 让 Qt 库从 bin 目录加载
             patchelf --set-rpath '$ORIGIN/Qt6/lib' "$EXE" 2>/dev/null || true
             patchelf --add-needed libQt6*.so* "$EXE" 2>/dev/null || true
@@ -62,11 +62,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt 6.7.2
+      - name: Install Qt 6.9.3
         run: |
           pip install aqtinstall>=3.2
           mkdir -p ~/Qt
-          aqt install-qt mac desktop 6.7.2 clang_64 -O ~/Qt
+          aqt install-qt mac desktop 6.9.3 clang_64 -O ~/Qt
 
       - name: Install dependencies
         run: brew install libzip apr apr-util
@@ -75,14 +75,14 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DQt6_DIR=$HOME/Qt/6.7.2/macos/lib/cmake/Qt6
+            -DQt6_DIR=$HOME/Qt/6.9.3/macos/lib/cmake/Qt6
           cmake --build build --parallel
 
       - name: Package (macOS)
         run: |
           cmake --install build --prefix release
           # macdeployqt: 复制 Qt 运行时和 QML，修复 @rpath
-          ~/Qt/6.7.2/macos/bin/macdeployqt release/bin/SVNFileBox.app
+          ~/Qt/6.9.3/macos/bin/macdeployqt release/bin/SVNFileBox.app
           # 打包 .app 目录
           tar -C release -czvf svnfilebox-macos.tar.gz .
 
@@ -99,28 +99,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt 6.7.2
+      - name: Install Qt 6.9.3
         run: |
           pip install aqtinstall>=3.2
-          mkdir -p C:/Qt/6.7.2
-          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -O C:/Qt/6.7.2
+          mkdir -p C:/Qt
+          aqt install-qt windows desktop 6.9.3 win64_msvc2022_64 -O C:/Qt
 
       - name: Build
         shell: pwsh
         run: |
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
-            -DQt6_DIR=C:/Qt/6.7.2/6.7.2/msvc2019_64/lib/cmake/Qt6
+            -DQt6_DIR=C:/Qt/6.9.3/msvc2022_64/lib/cmake/Qt6
           cmake --build build --parallel --config Release
 
       - name: Package
         shell: pwsh
         run: |
-          $env:Path = "C:/Qt/6.7.2/6.7.2/msvc2019_64/bin;$env:Path"
+          $env:Path = "C:/Qt/6.9.3/msvc2022_64/bin;$env:Path"
           mkdir -p release/bin
           cmake --install build --config Release --prefix release
           Get-ChildItem -Path release -Filter "*.exe" -Recurse | ForEach-Object {
-            windeployqt $_.FullName --qmldir C:/Qt/6.7.2/6.7.2/msvc2019_64/qml --no-translations
+            windeployqt $_.FullName --qmldir C:/Qt/6.9.3/msvc2022_64/qml --no-translations
           }
           Compress-Archive -Path release/bin -DestinationPath svnfilebox-win64.zip
 
