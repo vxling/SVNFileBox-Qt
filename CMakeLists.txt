@@ -1,16 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
 project(SVNFileBox VERSION 1.0.0 LANGUAGES CXX)
 
-# MSVC doesn't understand GCC's __attribute__(()), erase it for the
-# C++ compiler and for moc (which runs as an independent subprocess).
+# MSVC doesn't understand GCC's __attribute__(()), erase it so both
+# the C++ compiler and Qt's moc (which runs as an independent subprocess)
+# see a no-op.
 if(MSVC)
-    # C++ compiler: define a no-op macro so __attribute__ expands to nothing
-    add_compile_definitions(__attribute__(x)=)
-    # moc: use -fi (force include) to inject the same erasure before moc
-    # parses any project header.  Using -include without a space avoids
-    # CMake option-space handling bugs on Windows path args.
-    set(CMAKE_AUTOMOC_MOC_OPTIONS "-fi${CMAKE_BINARY_DIR}/CMakeFiles/__attr.h")
-    file(WRITE "${CMAKE_BINARY_DIR}/CMakeFiles/__attr.h" "#define __attribute__(x)\n")
+    # Write a header that maps __attribute__ to nothing and place it in the
+    # build tree so it can be force-included by both the compiler and moc.
+    set(_attr_h "${CMAKE_BINARY_DIR}/CMakeFiles/__attr.h")
+    file(WRITE "${_attr_h}" "#define __attribute__(x)\n")
+    # Compiler: use CMake's platform-wide mechanism for the C++ build
+    add_definitions(-D__attribute__(x)=)
+    # moc: --include injects the header before moc parses any project header
+    set(CMAKE_AUTOMOC_MOC_OPTIONS "--include;${_attr_h}")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
