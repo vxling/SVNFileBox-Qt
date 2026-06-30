@@ -1,15 +1,16 @@
 cmake_minimum_required(VERSION 3.16)
 project(SVNFileBox VERSION 1.0.0 LANGUAGES CXX)
 
-# MSVC doesn't understand GCC's __attribute__(()), erase it
+# MSVC doesn't understand GCC's __attribute__(()), erase it for the
+# C++ compiler and for moc (which runs as an independent subprocess).
 if(MSVC)
+    # C++ compiler: define a no-op macro so __attribute__ expands to nothing
     add_compile_definitions(__attribute__(x)=)
-    # CMAKE_AUTOMOC_MOC_OPTIONS: inject a pre-included header that erases
-    # __attribute__ before moc parses any project header (moc runs as an
-    # independent preprocessor that does not see CMAKE_CXX_FLAGS).
-    set(_attr_h "${CMAKE_BINARY_DIR}/CMakeFiles/__attribute__cleanup.h")
-    file(WRITE "${_attr_h}" "#define __attribute__(x)\n")
-    set(CMAKE_AUTOMOC_MOC_OPTIONS "-include${_attr_h}")
+    # moc: use -fi (force include) to inject the same erasure before moc
+    # parses any project header.  Using -include without a space avoids
+    # CMake option-space handling bugs on Windows path args.
+    set(CMAKE_AUTOMOC_MOC_OPTIONS "-fi${CMAKE_BINARY_DIR}/CMakeFiles/__attr.h")
+    file(WRITE "${CMAKE_BINARY_DIR}/CMakeFiles/__attr.h" "#define __attribute__(x)\n")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -69,12 +70,16 @@ elseif(APPLE)
     message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
     message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
 
-    # Zip — from SDK (or system fallback)
     # brew on ARM macOS uses /opt/homebrew, on Intel uses /usr/local
     set(_brew_prefix "/opt/homebrew")
     if(NOT EXISTS "${_brew_prefix}/lib/pkgconfig")
         set(_brew_prefix "/usr/local")
     endif()
+
+    # APR headers from homebrew (libsvn depends on apr-1)
+    list(APPEND SVN_CLIENT_INCLUDE_DIRS "${_brew_prefix}/include/apr-1")
+
+    # Zip — from SDK (or system fallback)
     set(ZIP_ENV_PATH "${SDK_MACOS}/lib/pkgconfig:${_brew_prefix}/lib/pkgconfig")
     set(ENV{PKG_CONFIG_PATH} "${ZIP_ENV_PATH}")
     pkg_check_modules(ZIP_CLIENT QUIET IMPORTED_TARGET libzip)

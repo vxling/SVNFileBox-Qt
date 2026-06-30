@@ -68,8 +68,8 @@ jobs:
           mkdir -p ~/Qt
           aqt install-qt mac desktop 6.7.2 clang_64 -O ~/Qt
 
-      - name: Install libzip
-        run: brew install libzip
+      - name: Install libzip and libsvn
+        run: brew install libzip libsvn
 
       - name: Build
         run: |
