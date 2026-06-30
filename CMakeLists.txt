@@ -110,6 +110,9 @@ else()
     message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
     message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
 
+    # SDK's .so files are in SDK_LINUX/lib but pkg-config returns bare -l names
+    link_directories(${SDK_LINUX}/lib)
+
     # Zip — from SDK first, fallback to system
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_LINUX}/include" NO_DEFAULT_PATH)
     if(NOT ZIP_INCLUDE_DIR)
