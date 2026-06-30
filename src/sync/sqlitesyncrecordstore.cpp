@@ -56,7 +56,7 @@ void SqliteSyncRecordStore::addRecord(const QString &repoName, qlonglong timesta
     q.prepare("INSERT INTO sync_records (repo_name, timestamp, file_path, operation, result, message) "
               "VALUES (:repo, :ts, :path, :op, :result, :msg)");
     q.bindValue(":repo", repoName);
-    q.bindValue(":ts", QDateTime::fromMSecsSinceEpoch(timestampMs).toString(Qt::ISODateWithMs));
+    q.bindValue(":ts", QDateTime::fromMSecsSinceEpoch(timestampMs, QTimeZone::UTC).toString(Qt::ISODateWithMs));
     q.bindValue(":path", filePath);
     q.bindValue(":op", operation);
     q.bindValue(":result", result);
@@ -132,7 +132,7 @@ void SqliteSyncRecordStore::cleanupAll()
     qlonglong cutoff = QDateTime::currentDateTime().addDays(-MaxAgeDays).toMSecsSinceEpoch();
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM sync_records WHERE timestamp < :cutoff");
-    q.bindValue(":cutoff", QDateTime::fromMSecsSinceEpoch(cutoff).toString(Qt::ISODateWithMs));
+    q.bindValue(":cutoff", QDateTime::fromMSecsSinceEpoch(cutoff, QTimeZone::UTC).toString(Qt::ISODateWithMs));
     q.exec();
     qDebug() << "[SqliteSyncRecordStore] Cleanup done";
 

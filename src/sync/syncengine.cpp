@@ -321,7 +321,7 @@ QVariantList SyncEngine::getConflictedFileInfo() const
         qlonglong dateMicros = infoData.value("lastChangedDate").toLongLong();
         if (dateMicros > 0) {
             // apr_time_t is microseconds since epoch (1970-01-01 00:00:00 UTC)
-            serverMtime = QDateTime::fromMSecsSinceEpoch(dateMicros / 1000, Qt::UTC);
+            serverMtime = QDateTime::fromMSecsSinceEpoch(dateMicros / 1000, QTimeZone::UTC);
         }
 
         info["kind"] = kind;
