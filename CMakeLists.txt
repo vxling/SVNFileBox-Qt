@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(SVNFileBox VERSION 1.0.0 LANGUAGES CXX)
 
+# MSVC doesn't understand GCC's __attribute__(()), erase it
+if(MSVC)
+    add_compile_definitions(__attribute__(x)=)
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
