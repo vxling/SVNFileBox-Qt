@@ -4,6 +4,12 @@ project(SVNFileBox VERSION 1.0.0 LANGUAGES CXX)
 # MSVC doesn't understand GCC's __attribute__(()), erase it
 if(MSVC)
     add_compile_definitions(__attribute__(x)=)
+    # CMAKE_AUTOMOC_MOC_OPTIONS: inject a pre-included header that erases
+    # __attribute__ before moc parses any project header (moc runs as an
+    # independent preprocessor that does not see CMAKE_CXX_FLAGS).
+    set(_attr_h "${CMAKE_BINARY_DIR}/CMakeFiles/__attribute__cleanup.h")
+    file(WRITE "${_attr_h}" "#define __attribute__(x)\n")
+    set(CMAKE_AUTOMOC_MOC_OPTIONS "-include${_attr_h}")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -64,15 +70,20 @@ elseif(APPLE)
     message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
 
     # Zip — from SDK (or system fallback)
-    set(ZIP_ENV_PATH "${SDK_MACOS}/lib/pkgconfig:/usr/local/lib/pkgconfig")
+    # brew on ARM macOS uses /opt/homebrew, on Intel uses /usr/local
+    set(_brew_prefix "/opt/homebrew")
+    if(NOT EXISTS "${_brew_prefix}/lib/pkgconfig")
+        set(_brew_prefix "/usr/local")
+    endif()
+    set(ZIP_ENV_PATH "${SDK_MACOS}/lib/pkgconfig:${_brew_prefix}/lib/pkgconfig")
     set(ENV{PKG_CONFIG_PATH} "${ZIP_ENV_PATH}")
     pkg_check_modules(ZIP_CLIENT QUIET IMPORTED_TARGET libzip)
     if(ZIP_CLIENT_FOUND)
         set(ZIP_LIBRARY PkgConfig::ZIP_CLIENT)
         message(STATUS "ZIP: using prebuilt SDK (macOS) via pkg-config")
     else()
-        find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_MACOS}/include" "/usr/local/include" NO_DEFAULT_PATH)
-        find_library(ZIP_LIBRARY NAMES zip PATHS "${SDK_MACOS}/lib" "/usr/local/lib" NO_DEFAULT_PATH)
+        find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_MACOS}/include" "${_brew_prefix}/include" NO_DEFAULT_PATH)
+        find_library(ZIP_LIBRARY NAMES zip PATHS "${SDK_MACOS}/lib" "${_brew_prefix}/lib" NO_DEFAULT_PATH)
         message(STATUS "ZIP: fallback find_path (macOS) include=${ZIP_INCLUDE_DIR} lib=${ZIP_LIBRARY}")
     endif()
 
