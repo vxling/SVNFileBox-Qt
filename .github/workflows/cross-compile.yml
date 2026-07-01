@@ -73,8 +73,10 @@ jobs:
 
       - name: Symlink APR headers into SDK
         run: |
-          ln -sf /opt/homebrew/include/apr-1 deps/svn-sdk/macos/include/apr-1
-          ln -sf /opt/homebrew/include/aprutil-1 deps/svn-sdk/macos/include/aprutil-1
+          # SDK's libsvn_client.h includes <apr.h> (top-level), not <apr-1/apr.h>.
+          # Create direct symlinks at top-level so compiler finds them in SDK path.
+          ln -sf /opt/homebrew/include/apr.h deps/svn-sdk/macos/include/apr.h
+          ln -sf /opt/homebrew/include/aprutil.h deps/svn-sdk/macos/include/aprutil.h
 
       - name: Build
         run: |
