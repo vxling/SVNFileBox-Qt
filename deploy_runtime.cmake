@@ -31,7 +31,8 @@ if(_qt6_core_dir STREQUAL "")
     set(_qt6_core_dir "/home/osuser/Qt/6.7.2/6.7.2/gcc_64/lib/cmake/Qt6Core")
 endif()
 
-# Qt deploy support files
+# Qt deploy support files — when cmake --install is given an absolute path,
+# CMAKE_BINARY_DIR resolves to the actual build directory
 set(_qt_deploy_support_dir "${CMAKE_BINARY_DIR}/.qt")
 
 if(NOT EXISTS "${_qt_deploy_support_dir}/QtDeploySupport.cmake")
