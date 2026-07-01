@@ -60,14 +60,23 @@ set(QT_DEPLOY_PREFIX "${_install_dir}")
 if(NOT DEFINED _app_name)
     set(_app_name "SVNFileBox")
 endif()
-get_filename_component(_exe_path "${_install_dir}/bin/${_app_name}" ABSOLUTE)
+get_filename_component(_install_dir_abs "${_install_dir}" ABSOLUTE)
 
-message(STATUS "Deploying Qt runtime for '${_app_name}' to: ${_install_dir}")
+# On macOS the install target is an .app bundle, not a raw executable.
+# qt_deploy_runtime_dependencies expects the .app path for MACOSX_BUNDLE targets.
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    get_filename_component(_exe_path "${_install_dir_abs}/bin/${_app_name}.app" ABSOLUTE)
+else()
+    get_filename_component(_exe_path "${_install_dir_abs}/bin/${_app_name}" ABSOLUTE)
+endif()
+
+message(STATUS "Deploying Qt runtime for '${_app_name}' to: ${_install_dir_abs}")
+message(STATUS "Executable path: ${_exe_path}")
 
 qt_deploy_runtime_dependencies(
     EXECUTABLE "${_exe_path}"
-    BIN_DIR    "${_install_dir}"
-    LIB_DIR    "${_install_dir}"
-    QML_DIR    "${_install_dir}/qml"
-    PLUGINS_DIR "${_install_dir}/plugins"
+    BIN_DIR    "${_install_dir_abs}"
+    LIB_DIR    "${_install_dir_abs}"
+    QML_DIR    "${_install_dir_abs}/qml"
+    PLUGINS_DIR "${_install_dir_abs}/plugins"
 )
