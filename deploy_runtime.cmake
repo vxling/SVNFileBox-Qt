@@ -31,10 +31,12 @@ if(_qt6_core_dir STREQUAL "")
     set(_qt6_core_dir "/home/osuser/Qt/6.7.2/6.7.2/gcc_64/lib/cmake/Qt6Core")
 endif()
 
-# Build directory is passed explicitly at cmake --install time via -D
-if(NOT DEFINED _qt_build_dir)
-    message(FATAL_ERROR "_qt_build_dir must be passed via -D when invoking cmake --install")
+# Build directory: read from environment (set by workflow before cmake --install)
+# This is the only reliable way to communicate the build dir to the install script
+if(NOT DEFINED ENV{QT_BUILD_DIR})
+    message(FATAL_ERROR "QT_BUILD_DIR environment variable must be set before cmake --install")
 endif()
+set(_qt_build_dir "$ENV{QT_BUILD_DIR}")
 set(_qt_deploy_support_dir "${_qt_build_dir}/.qt")
 
 if(NOT EXISTS "${_qt_deploy_support_dir}/QtDeploySupport.cmake")
