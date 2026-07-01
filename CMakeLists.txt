@@ -143,7 +143,13 @@ else()
     foreach(_lib ${_svn_libs})
         list(APPEND SVN_CLIENT_LIBRARIES "${SDK_LINUX}/lib/lib${_lib}.so")
     endforeach()
-    list(APPEND SVN_CLIENT_LIBRARIES ${APR_LIBRARY} ${APRU_LIBRARY} serf-1 expat z crypto ssl)
+    # serf-1 runtime library is needed by libsvn_ra_serf-1
+    # On CI Ubuntu: system libserf-dev is installed; on local it may be absent
+    find_library(SERF_LIBRARY NAMES serf-1)
+    if(SERF_LIBRARY)
+        list(APPEND SVN_CLIENT_LIBRARIES ${SERF_LIBRARY})
+    endif()
+    list(APPEND SVN_CLIENT_LIBRARIES ${APR_LIBRARY} ${APRU_LIBRARY} expat z crypto ssl)
 
     # SDK's .so files are in SDK_LINUX/lib
     link_directories(${SDK_LINUX}/lib)
