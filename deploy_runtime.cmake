@@ -62,12 +62,14 @@ if(NOT DEFINED _app_name)
 endif()
 get_filename_component(_install_dir_abs "${_install_dir}" ABSOLUTE)
 
-# On macOS the install target is an .app bundle, not a raw executable.
-# qt_deploy_runtime_dependencies expects the .app path for MACOSX_BUNDLE targets.
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    get_filename_component(_exe_path "${_install_dir_abs}/bin/${_app_name}.app" ABSOLUTE)
+# On macOS the install target is an .app bundle. Detect by checking if it exists.
+# cmake --install on macOS creates SVNFileBox.app in bin/, not a raw executable.
+get_filename_component(_raw_exe_path "${_install_dir_abs}/bin/${_app_name}" ABSOLUTE)
+get_filename_component(_app_bundle_path "${_install_dir_abs}/bin/${_app_name}.app" ABSOLUTE)
+if(EXISTS "${_app_bundle_path}")
+    set(_exe_path "${_app_bundle_path}")
 else()
-    get_filename_component(_exe_path "${_install_dir_abs}/bin/${_app_name}" ABSOLUTE)
+    set(_exe_path "${_raw_exe_path}")
 endif()
 
 message(STATUS "Deploying Qt runtime for '${_app_name}' to: ${_install_dir_abs}")
