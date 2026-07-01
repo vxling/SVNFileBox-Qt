@@ -54,23 +54,11 @@ if(WIN32)
     message(STATUS "SVN include: ${SVN_INCLUDE_DIR}")
 
     # Zip — from SDK
-    # zip.h needs zipconf.h which is not shipped in the SDK; generate a minimal stub.
+    # zipconf.h is committed to the SDK (deps/svn-sdk/win32/include/zipconf.h).
+    # It must define all platform types (zip_int64_t, zip_uint64_t, etc.) for zip.h.
     set(_zipconf_h "${SDK_WIN}/include/zipconf.h")
     if(NOT EXISTS "${_zipconf_h}")
-        file(WRITE "${_zipconf_h}"
-            "#ifndef ZIPCONF_H\n"
-            "#define ZIPCONF_H\n"
-            "/* Minimal zipconf.h stub for MSVC build */\n"
-            "#define ZIP_EXTERN __declspec(dllimport)\n"
-            "#define ZIP_STATIC\n"
-            "typedef __int64 zip_int64_t;\n"
-            "typedef unsigned __int64 zip_uint64_t;\n"
-            "typedef int zip_int32_t;\n"
-            "typedef unsigned int zip_uint32_t;\n"
-            "typedef short zip_int16_t;\n"
-            "typedef unsigned short zip_uint16_t;\n"
-            "typedef unsigned char zip_uint8_t;\n"
-            "#endif\n")
+        message(FATAL_ERROR "zipconf.h missing from Windows SDK at ${_zipconf_h}")
     endif()
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_WIN}/include" NO_DEFAULT_PATH)
     find_library(ZIP_LIBRARY NAMES zip PATHS "${SDK_WIN}/lib" NO_DEFAULT_PATH)
