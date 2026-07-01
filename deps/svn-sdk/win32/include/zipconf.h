@@ -18,10 +18,9 @@ typedef uintptr_t zip_uintmax_t;
 typedef long zip_int32_t;
 typedef unsigned long zip_uint32_t;
 
-/* MSVC: ssize_t is defined in stddef.h but we use a signed type */
+/* MSVC: SSIZE_T is not natively defined; use intptr_t as the equivalent */
 #if defined(_MSC_VER)
-#include <stddef.h>
-typedef SSIZE_T zip_ssize_t;
+typedef intptr_t zip_ssize_t;
 #else
 typedef long zip_ssize_t;
 #endif
