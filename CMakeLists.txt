@@ -144,8 +144,8 @@ else()
         list(APPEND SVN_CLIENT_LIBRARIES "${SDK_LINUX}/lib/lib${_lib}.so")
     endforeach()
     # serf-1 runtime library is needed by libsvn_ra_serf-1
-    # On CI Ubuntu: system libserf-dev is installed; on local it may be absent
-    find_library(SERF_LIBRARY NAMES serf-1)
+    # CI Ubuntu has libserf-1.so.1 at /usr/lib/x86_64-linux-gnu/
+    find_library(SERF_LIBRARY NAMES serf-1.so.1 serf-1)
     if(SERF_LIBRARY)
         list(APPEND SVN_CLIENT_LIBRARIES ${SERF_LIBRARY})
     endif()
