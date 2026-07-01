@@ -122,7 +122,11 @@ else()
     # ============================================================
     message(STATUS "LINUX: SDK_ROOT=${SDK_ROOT}")
     message(STATUS "LINUX: SDK_LINUX=${SDK_LINUX}")
-    # pkg-config returns libsvn_ra_serf as a REQUIRED dependency, but serf-1 dev
+    message(STATUS "LINUX: CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
+    message(STATUS "LINUX: CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID}")
+    set(SDK_LINUX "${SDK_ROOT}/linux")
+    message(STATUS "LINUX: after SDK_LINUX set=${SDK_LINUX}")
+    set(ENV{PKG_CONFIG_PATH} "${SDK_LINUX}/lib/pkgconfig")
     # package no longer exists on Ubuntu 24.04 (only the runtime libserf-1.so.1
     # is available). We build the library list manually, excluding serf.
     set(SDK_LINUX "${SDK_ROOT}/linux")
