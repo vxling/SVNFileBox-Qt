@@ -26,6 +26,10 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get install -y libgl1-mesa-dev zlib1g-dev libapr1-dev libaprutil1-dev libzip-dev
+          # Ubuntu's apr.h lives at /usr/include/apr-1/apr.h but SDK's svn_client.h
+          # includes <apr.h> (top-level); create a compat symlink in the SDK tree
+          sudo ln -sf /usr/include/apr-1/apr.h /usr/include/apr.h
+          sudo ln -sf /usr/include/aprutil-1/aprutil.h /usr/include/aprutil.h
 
       - name: Build
         run: |
@@ -79,10 +83,12 @@ jobs:
           ln -sf /opt/homebrew/include/aprutil.h deps/svn-sdk/macos/include/aprutil.h
 
       - name: Build
-        env:
-          CPPFLAGS: "-I/opt/homebrew/opt/apr/include -I/opt/homebrew/opt/apr-util/include"
-          LDFLAGS: "-L/opt/homebrew/opt/apr/lib -L/opt/homebrew/opt/apr-util/lib"
         run: |
+          # apr/apr-util are keg-only (no auto-symlink); find their cellar paths dynamically
+          APR_CELLAR=$(brew --cellar apr)
+          APRU_CELLAR=$(brew --cellar apr-util)
+          ln -sf "$APR_CELLAR" /opt/homebrew/opt/apr
+          ln -sf "$APRU_CELLAR" /opt/homebrew/opt/apr-util
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="$HOME/Qt/6.9.3/macos/lib/cmake" \
