@@ -25,7 +25,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get install -y libgl1-mesa-dev zlib1g-dev libapr1-dev libaprutil1-dev libzip-dev
+          sudo apt-get install -y libgl1-mesa-dev zlib1g-dev libapr1-dev libaprutil1-dev libzip-dev libserf-1-dev
 
       - name: Build
         run: |
