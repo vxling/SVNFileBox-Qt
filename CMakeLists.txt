@@ -5,13 +5,10 @@ project(SVNFileBox VERSION 1.0.0 LANGUAGES CXX)
 # the C++ compiler and Qt's moc (which runs as an independent subprocess)
 # see a no-op.
 if(MSVC)
-    # Write a header that maps __attribute__ to nothing and place it in the
-    # build tree so it can be force-included by both the compiler and moc.
+    # Write a header that maps __attribute__ to nothing for Qt's moc
+    # (moc runs as an independent subprocess and doesn't see /FI).
     set(_attr_h "${CMAKE_BINARY_DIR}/CMakeFiles/__attr.h")
     file(WRITE "${_attr_h}" "#define __attribute__(x)\n")
-    # Compiler: use CMake's platform-wide mechanism for the C++ build
-    add_definitions(-D__attribute__(x)=)
-    # moc: --include injects the header before moc parses any project header
     set(CMAKE_AUTOMOC_MOC_OPTIONS "--include;${_attr_h}")
 endif()
 

@@ -42,13 +42,9 @@
 #define WIN32 1
 #endif
 
-/* MSVC does not support GCC's __attribute__(()). Map it to nothing. */
-#ifndef __attribute__
-#define __attribute__(x)
-#endif
+#define __attribute__(__x)
 
 #if defined(WIN32) || defined(DOXYGEN)
-
 /* Ignore most warnings (back down to /W3) for poorly constructed headers
  */
 #if defined(_MSC_VER) && _MSC_VER >= 1200
