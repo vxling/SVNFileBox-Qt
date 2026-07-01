@@ -31,13 +31,18 @@ if(_qt6_core_dir STREQUAL "")
     set(_qt6_core_dir "/home/osuser/Qt/6.7.2/6.7.2/gcc_64/lib/cmake/Qt6Core")
 endif()
 
-# Qt deploy support files — when cmake --install is given an absolute path,
-# CMAKE_BINARY_DIR resolves to the actual build directory
-set(_qt_deploy_support_dir "${CMAKE_BINARY_DIR}/.qt")
+# Build directory is passed explicitly at cmake --install time via -D
+if(NOT DEFINED _qt_build_dir)
+    message(FATAL_ERROR "_qt_build_dir must be passed via -D when invoking cmake --install")
+endif()
+set(_qt_deploy_support_dir "${_qt_build_dir}/.qt")
 
 if(NOT EXISTS "${_qt_deploy_support_dir}/QtDeploySupport.cmake")
     message(FATAL_ERROR "Qt deploy support not found at: ${_qt_deploy_support_dir}")
 endif()
+
+# Also fix CMakeCache.txt lookup — CMAKE_BINARY_DIR in install-script context = source dir
+set(_cmake_cache_file "${_qt_build_dir}/CMakeCache.txt")
 if(NOT EXISTS "${_qt6_core_dir}/Qt6CoreDeploySupport.cmake")
     message(FATAL_ERROR "Qt6CoreDeploySupport.cmake not found at: ${_qt6_core_dir}")
 endif()

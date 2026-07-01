@@ -40,7 +40,7 @@ jobs:
 
       - name: Package (Linux)
         run: |
-          cmake --install $(pwd)/build --prefix release
+          cmake --install $(pwd)/build --prefix release -D_qt_build_dir=$(pwd)/build
           # patchelf: 让可执行文件使用同目录下的 Qt 库（便携）
           EXE=$(find release -type f -executable -name 'SVNFileBox' | head -1)
           if command -v patchelf &> /dev/null; then
