@@ -90,7 +90,6 @@ jobs:
         run: |
           export QT_BUILD_DIR=$(pwd)/build
           cmake --install build --prefix release
-          ~/Qt/6.9.3/macos/bin/macdeployqt release/bin/SVNFileBox.app
           tar -C release -czvf svnfilebox-macos.tar.gz .
 
       - name: Upload Artifact
