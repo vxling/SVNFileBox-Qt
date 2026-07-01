@@ -120,7 +120,7 @@ else()
     # ============================================================
     # Linux: use prebuilt SDK from deps/svn-sdk/linux
     # ============================================================
-    message(FATAL_ERROR "LINUX BRANCH REACHED")
+    message(STATUS "LINUX BRANCH: SDK_LINUX=${SDK_LINUX} SVN_CLIENT_INCLUDE_DIRS=/usr/include ${SDK_LINUX}/include")
     # pkg-config returns libsvn_ra_serf as a REQUIRED dependency, but serf-1 dev
     # package no longer exists on Ubuntu 24.04 (only the runtime libserf-1.so.1
     # is available). We build the library list manually, excluding serf.
