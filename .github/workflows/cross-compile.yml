@@ -33,7 +33,6 @@ jobs:
 
       - name: Build
         run: |
-          rm -rf build
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH=$HOME/Qt/6.9.3/gcc_64/lib/cmake
