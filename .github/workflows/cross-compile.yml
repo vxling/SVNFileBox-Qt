@@ -42,15 +42,16 @@ jobs:
         run: |
           export QT_BUILD_DIR=$(pwd)/build
           cmake --install $(pwd)/build --prefix release
+
+          # Copy SVN SDK libraries (qt_deploy_runtime_dependencies only handles Qt deps)
+          cp deps/svn-sdk/linux/lib/*.so* release/bin/ 2>/dev/null || true
+
           # patchelf: 让可执行文件使用同目录下的 Qt 库（便携）
           EXE=$(find release -type f -executable -name 'SVNFileBox' | head -1)
           if command -v patchelf &> /dev/null; then
-            # 复制 Qt 动态库到 bin 目录
             mkdir -p release/bin/Qt6/lib
             cp -n $HOME/Qt/6.9.3/gcc_64/lib/*.so* release/bin/ 2>/dev/null || true
-            # 设置 rpath 让 Qt 库从 bin 目录加载
-            patchelf --set-rpath '$ORIGIN/Qt6/lib' "$EXE" 2>/dev/null || true
-            patchelf --add-needed libQt6*.so* "$EXE" 2>/dev/null || true
+            patchelf --set-rpath '$ORIGIN:$ORIGIN/Qt6/lib' "$EXE" 2>/dev/null || true
           fi
           tar -C release -czvf svnfilebox-linux.tar.gz .
 
@@ -90,6 +91,10 @@ jobs:
         run: |
           export QT_BUILD_DIR=$(pwd)/build
           cmake --install build --prefix release
+
+          # Copy SVN SDK dylibs (qt_deploy_runtime_dependencies only handles Qt deps)
+          cp deps/svn-sdk/macos/lib/*.dylib release/bin/SVNFileBox.app/Contents/Frameworks/ 2>/dev/null || true
+
           tar -C release -czvf svnfilebox-macos.tar.gz .
 
       - name: Upload Artifact
@@ -125,6 +130,10 @@ jobs:
           $env:Path = "C:/Qt/6.9.3/msvc2022_64/bin;$env:Path"
           mkdir -p release/bin
           cmake --install build --config Release --prefix release
+
+          # Copy SVN SDK DLLs (windeployqt only handles Qt deps)
+          Copy-Item deps/svn-sdk/win32/bin/*.dll -Destination release/bin/ -ErrorAction SilentlyContinue
+
           Get-ChildItem -Path release -Filter "*.exe" -Recurse | ForEach-Object {
             windeployqt $_.FullName --qmldir C:/Qt/6.9.3/msvc2022_64/qml --no-translations
           }
