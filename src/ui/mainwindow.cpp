@@ -37,7 +37,9 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDirIterator>
+#undef offset
 #include <zip.h>
+#define offset __offset
 static bool copyDirectory(const QString &srcPath, const QString &destPath);
 
 MainWindow::MainWindow(ConfigService *configService,
