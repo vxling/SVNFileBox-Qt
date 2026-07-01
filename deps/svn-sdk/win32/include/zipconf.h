@@ -9,14 +9,14 @@
 
 #include <stdint.h>
 
-typedef int8_t  zip_int8_t;
-typedef uint8_t zip_uint8_t;
-typedef int64_t zip_int64_t;
+typedef int8_t   zip_int8_t;
+typedef uint8_t  zip_uint8_t;
+typedef int16_t  zip_int16_t;
+typedef uint16_t zip_uint16_t;
+typedef int32_t  zip_int32_t;
+typedef uint32_t zip_uint32_t;
+typedef int64_t  zip_int64_t;
 typedef uint64_t zip_uint64_t;
-typedef intptr_t zip_intmax_t;
-typedef uintptr_t zip_uintmax_t;
-typedef long zip_int32_t;
-typedef unsigned long zip_uint32_t;
 
 /* MSVC: SSIZE_T is not natively defined; use intptr_t as the equivalent */
 #if defined(_MSC_VER)
