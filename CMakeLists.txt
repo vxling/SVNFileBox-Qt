@@ -62,6 +62,9 @@ if(WIN32)
             "#define ZIPCONF_H\n"
             "/* Minimal zipconf.h stub for MSVC build */\n"
             "#define ZIP_EXTERN __declspec(dllimport)\n"
+            "typedef __int64 zip_int64_t;\n"
+            "typedef unsigned __int64 zip_uint64_t;\n"
+            "typedef unsigned __int64 zip_flags_t;\n"
             "#endif\n")
     endif()
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_WIN}/include" NO_DEFAULT_PATH)
@@ -92,6 +95,9 @@ elseif(APPLE)
     # SDK's libsvn has /usr/include/apr-1 hardcoded; add brew APR so compiler finds it
     include_directories("${_brew_prefix}/include/apr-1" "${_brew_prefix}/include/aprutil-1")
 
+    # Link directories — SDK libs and brew libs
+    link_directories("${SDK_MACOS}/lib" "${_brew_prefix}/lib")
+
     # Zip — from SDK (or system fallback)
     set(ZIP_ENV_PATH "${SDK_MACOS}/lib/pkgconfig:${_brew_prefix}/lib/pkgconfig")
     set(ENV{PKG_CONFIG_PATH} "${ZIP_ENV_PATH}")
@@ -114,6 +120,7 @@ else()
     # is available). We build the library list manually, excluding serf.
     set(SDK_LINUX "${SDK_ROOT}/linux")
     set(ENV{PKG_CONFIG_PATH} "${SDK_LINUX}/lib/pkgconfig")
+    set(SVN_CLIENT_INCLUDE_DIRS "${SDK_LINUX}/include")
 
     # Find APR libraries from system (dev packages still exist)
     find_library(APR_LIBRARY NAMES apr-1 REQUIRED)
@@ -133,18 +140,9 @@ else()
     # SDK's .so files are in SDK_LINUX/lib
     link_directories(${SDK_LINUX}/lib)
 
-    # Discover include path from a known SDK header
-    find_path(SVN_INCLUDE_DIR NAMES svn_client.h PATHS "${SDK_LINUX}/include/subversion-1" NO_DEFAULT_PATH)
-    if(SVN_INCLUDE_DIR)
-        include_directories(${SVN_INCLUDE_DIR})
-    endif()
-    # Also add system APR include path (SDK's libsvn headers include <apr.h> from system)
-    find_path(APR_INCLUDE_DIR NAMES apr.h PATHS /usr/include NO_DEFAULT_PATH)
-    if(APR_INCLUDE_DIR)
-        include_directories(${APR_INCLUDE_DIR})
-        message(STATUS "APR include: ${APR_INCLUDE_DIR}")
-    endif()
-    message(STATUS "SVN include: ${SVN_INCLUDE_DIR}")
+    # SDK's svn_client.h includes <apr.h> (top-level); Ubuntu puts it at apr-1/
+    # but we linked it to top-level via sudo ln -sf in CI
+    include_directories(/usr/include)
 
     # Zip — from SDK first, fallback to system
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_LINUX}/include" NO_DEFAULT_PATH)
