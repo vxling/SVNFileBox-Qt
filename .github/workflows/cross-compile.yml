@@ -44,7 +44,8 @@ jobs:
           cmake --install $(pwd)/build --prefix release
 
           # Copy SVN SDK libraries (qt_deploy_runtime_dependencies only handles Qt deps)
-          cp deps/svn-sdk/linux/lib/*.so* release/bin/ 2>/dev/null || true
+          # Use -a to preserve symlinks (don't follow them)
+          cp -a deps/svn-sdk/linux/lib/*.so* release/bin/ 2>/dev/null || true
 
           # patchelf: 让可执行文件使用同目录下的 Qt 库（便携）
           EXE=$(find release -type f -executable -name 'SVNFileBox' | head -1)
