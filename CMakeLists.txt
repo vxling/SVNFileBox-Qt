@@ -62,9 +62,14 @@ if(WIN32)
             "#define ZIPCONF_H\n"
             "/* Minimal zipconf.h stub for MSVC build */\n"
             "#define ZIP_EXTERN __declspec(dllimport)\n"
+            "#define ZIP_STATIC\n"
             "typedef __int64 zip_int64_t;\n"
             "typedef unsigned __int64 zip_uint64_t;\n"
-            "typedef unsigned __int64 zip_flags_t;\n"
+            "typedef int zip_int32_t;\n"
+            "typedef unsigned int zip_uint32_t;\n"
+            "typedef short zip_int16_t;\n"
+            "typedef unsigned short zip_uint16_t;\n"
+            "typedef unsigned char zip_uint8_t;\n"
             "#endif\n")
     endif()
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_WIN}/include" NO_DEFAULT_PATH)
@@ -120,9 +125,9 @@ else()
     # is available). We build the library list manually, excluding serf.
     set(SDK_LINUX "${SDK_ROOT}/linux")
     set(ENV{PKG_CONFIG_PATH} "${SDK_LINUX}/lib/pkgconfig")
-    set(SVN_CLIENT_INCLUDE_DIRS "${SDK_LINUX}/include")
-
-    # Find APR libraries from system (dev packages still exist)
+    # APR headers are at /usr/include/apr-1 (symlinked to /usr/include/apr.h via CI)
+    # SDK's svn_client.h lives at subversion-1/
+    set(SVN_CLIENT_INCLUDE_DIRS /usr/include ${SDK_LINUX}/include)
     find_library(APR_LIBRARY NAMES apr-1 REQUIRED)
     find_library(APRU_LIBRARY NAMES aprutil-1 REQUIRED)
 
