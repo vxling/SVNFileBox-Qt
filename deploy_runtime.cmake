@@ -12,10 +12,16 @@ set(__QT_DEPLOY_IS_SHARED_LIBS_BUILD ON)
 set(__QT_NO_CREATE_VERSIONLESS_FUNCTIONS OFF)
 set(__QT_DEFAULT_MAJOR_VERSION "6")
 
-# Qt6Core_DIR is not passed through to install script context, so read it from
-# the build directory's CMakeCache.txt. This works on all platforms.
+# Build directory: read from environment FIRST — CMAKE_BINARY_DIR in install-script
+# context = source dir (not build dir), so we must get the real build dir another way.
+if(NOT DEFINED ENV{QT_BUILD_DIR})
+    message(FATAL_ERROR "QT_BUILD_DIR environment variable must be set before cmake --install")
+endif()
+set(_qt_build_dir "$ENV{QT_BUILD_DIR}")
+
+# Read Qt6Core_DIR from the REAL build directory's CMakeCache.txt
 set(_qt6_core_dir "")
-set(_cmake_cache_file "${CMAKE_BINARY_DIR}/CMakeCache.txt")
+set(_cmake_cache_file "${_qt_build_dir}/CMakeCache.txt")
 if(EXISTS "${_cmake_cache_file}")
     file(STRINGS "${_cmake_cache_file}" _cache_lines)
     foreach(_line IN LISTS _cache_lines)
@@ -31,20 +37,11 @@ if(_qt6_core_dir STREQUAL "")
     set(_qt6_core_dir "/home/osuser/Qt/6.7.2/6.7.2/gcc_64/lib/cmake/Qt6Core")
 endif()
 
-# Build directory: read from environment (set by workflow before cmake --install)
-# This is the only reliable way to communicate the build dir to the install script
-if(NOT DEFINED ENV{QT_BUILD_DIR})
-    message(FATAL_ERROR "QT_BUILD_DIR environment variable must be set before cmake --install")
-endif()
-set(_qt_build_dir "$ENV{QT_BUILD_DIR}")
 set(_qt_deploy_support_dir "${_qt_build_dir}/.qt")
 
 if(NOT EXISTS "${_qt_deploy_support_dir}/QtDeploySupport.cmake")
     message(FATAL_ERROR "Qt deploy support not found at: ${_qt_deploy_support_dir}")
 endif()
-
-# Also fix CMakeCache.txt lookup — CMAKE_BINARY_DIR in install-script context = source dir
-set(_cmake_cache_file "${_qt_build_dir}/CMakeCache.txt")
 if(NOT EXISTS "${_qt6_core_dir}/Qt6CoreDeploySupport.cmake")
     message(FATAL_ERROR "Qt6CoreDeploySupport.cmake not found at: ${_qt6_core_dir}")
 endif()
