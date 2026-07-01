@@ -10,6 +10,9 @@ if(MSVC)
     set(_attr_h "${CMAKE_BINARY_DIR}/CMakeFiles/__attr.h")
     file(WRITE "${_attr_h}" "#define __attribute__(x)\n")
     set(CMAKE_AUTOMOC_MOC_OPTIONS "--include;${_attr_h}")
+    # C3646: MSVC in C++ mode misinterprets C struct members (e.g. 'offset')
+    # as C++/CX override specifiers. /wd3646 suppresses this false positive.
+    add_compile_options(/wd3646)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
