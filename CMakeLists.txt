@@ -138,12 +138,12 @@ else()
     find_library(APRU_LIBRARY NAMES aprutil-1 REQUIRED NO_SYSTEM_ENVIRONMENT_PATHS)
 
     # Find SVN SDK libraries directly by name in SDK (avoids serf-1 which is unavailable)
-    set(_svn_libs svn_client-1 svn_wc-1 svn_subr-1 svn_repos-1 svn_ra-1 svn_delta-1)
+    set(_svn_libs svn_client-1 svn_wc-1 svn_subr-1 svn_repos-1 svn_ra-1 svn_delta-1 svn_ra_serf-1)
     set(SVN_CLIENT_LIBRARIES "")
     foreach(_lib ${_svn_libs})
         list(APPEND SVN_CLIENT_LIBRARIES "${SDK_LINUX}/lib/lib${_lib}.so")
     endforeach()
-    list(APPEND SVN_CLIENT_LIBRARIES ${APR_LIBRARY} ${APRU_LIBRARY} expat z crypto ssl)
+    list(APPEND SVN_CLIENT_LIBRARIES ${APR_LIBRARY} ${APRU_LIBRARY} serf-1 expat z crypto ssl)
 
     # SDK's .so files are in SDK_LINUX/lib
     link_directories(${SDK_LINUX}/lib)
