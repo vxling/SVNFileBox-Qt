@@ -109,17 +109,35 @@ else()
     # ============================================================
     # Linux: use prebuilt SDK from deps/svn-sdk/linux
     # ============================================================
+    # pkg-config returns libsvn_ra_serf as a REQUIRED dependency, but serf-1 dev
+    # package no longer exists on Ubuntu 24.04 (only the runtime libserf-1.so.1
+    # is available). We build the library list manually, excluding serf.
     set(SDK_LINUX "${SDK_ROOT}/linux")
     set(ENV{PKG_CONFIG_PATH} "${SDK_LINUX}/lib/pkgconfig")
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SVN_CLIENT REQUIRED
-        libsvn_client libsvn_wc libsvn_subr libsvn_repos libsvn_ra libsvn_delta)
-    message(STATUS "SVN: using prebuilt SDK (Linux) -> ${SDK_LINUX}")
-    message(STATUS "SVN include dirs: ${SVN_CLIENT_INCLUDE_DIRS}")
-    message(STATUS "SVN libraries:    ${SVN_CLIENT_LIBRARIES}")
 
-    # SDK's .so files are in SDK_LINUX/lib but pkg-config returns bare -l names
+    # Find APR libraries from system (dev packages still exist)
+    find_library(APR_LIBRARY NAMES apr-1 REQUIRED)
+    find_library(APRU_LIBRARY NAMES aprutil-1 REQUIRED)
+
+    # Find SVN SDK libraries manually (avoids serf-1 which is unavailable as dev pkg)
+    set(_svn_libs svn_client-1 svn_wc-1 svn_subr-1 svn_repos-1 svn_ra-1 svn_delta-1)
+    set(SVN_CLIENT_LIBRARIES "")
+    foreach(_lib ${_svn_libs})
+        find_library(_lib_path NAMES ${_lib} PATHS "${SDK_LINUX}/lib" NO_DEFAULT_PATH)
+        if(_lib_path)
+            list(APPEND SVN_CLIENT_LIBRARIES ${_lib_path})
+        endif()
+    endforeach()
+    list(APPEND SVN_CLIENT_LIBRARIES ${APR_LIBRARY} ${APRU_LIBRARY} expat z crypto ssl)
+
+    # SDK's .so files are in SDK_LINUX/lib
     link_directories(${SDK_LINUX}/lib)
+
+    # Discover include path from a known SDK header
+    find_path(SVN_INCLUDE_DIR NAMES svn_client.h PATHS "${SDK_LINUX}/include/subversion-1" NO_DEFAULT_PATH)
+    if(SVN_INCLUDE_DIR)
+        include_directories(${SVN_INCLUDE_DIR})
+    endif()
 
     # Zip — from SDK first, fallback to system
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_LINUX}/include" NO_DEFAULT_PATH)

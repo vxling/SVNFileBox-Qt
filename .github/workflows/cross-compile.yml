@@ -71,6 +71,11 @@ jobs:
       - name: Install dependencies
         run: brew install libzip apr apr-util
 
+      - name: Symlink APR headers into SDK
+        run: |
+          ln -sf /opt/homebrew/include/apr-1 deps/svn-sdk/macos/include/apr-1
+          ln -sf /opt/homebrew/include/aprutil-1 deps/svn-sdk/macos/include/aprutil-1
+
       - name: Build
         run: |
           cmake -B build \
