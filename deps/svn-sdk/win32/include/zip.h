@@ -34,6 +34,14 @@
   IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/* MSVC does not support _Nullable/_Nonnull annotations */
+#ifndef _Nullable
+#define _Nullable
+#endif
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+
 
 #ifdef __cplusplus
 extern "C" {
