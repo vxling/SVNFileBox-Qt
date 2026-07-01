@@ -138,6 +138,13 @@ else()
     if(SVN_INCLUDE_DIR)
         include_directories(${SVN_INCLUDE_DIR})
     endif()
+    # Also add system APR include path (SDK's libsvn headers include <apr.h> from system)
+    find_path(APR_INCLUDE_DIR NAMES apr.h PATHS /usr/include NO_DEFAULT_PATH)
+    if(APR_INCLUDE_DIR)
+        include_directories(${APR_INCLUDE_DIR})
+        message(STATUS "APR include: ${APR_INCLUDE_DIR}")
+    endif()
+    message(STATUS "SVN include: ${SVN_INCLUDE_DIR}")
 
     # Zip — from SDK first, fallback to system
     find_path(ZIP_INCLUDE_DIR NAMES zip.h PATHS "${SDK_LINUX}/include" NO_DEFAULT_PATH)
