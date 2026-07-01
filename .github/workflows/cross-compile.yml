@@ -25,7 +25,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get install -y libgl1-mesa-dev zlib1g-dev libapr1-dev libaprutil1-dev libzip-dev
+          sudo apt-get install -y libgl1-mesa-dev zlib1g-dev libapr1-dev libaprutil1-dev libzip-dev libserf-dev
           # Ubuntu's apr.h lives at /usr/include/apr-1/apr.h but SDK's svn_client.h
           # includes <apr.h> (top-level); create a compat symlink in the SDK tree
           sudo ln -sf /usr/include/apr-1/apr.h /usr/include/apr.h
